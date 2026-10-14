@@ -124,8 +124,23 @@ namespace BichoShow
         readonly RaycastHit[] impactosSuelo = new RaycastHit[8];
         readonly Collider[] candidatosAgarre = new Collider[12];
 
-        void Awake()
+        bool inicializado;
+
+        // Con "Enter Play Mode Options" sin recarga de dominio, los estáticos sobreviven entre partidas.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void LimpiarEstaticos() => Todos.Clear();
+
+        void Awake() => Inicializar();
+
+        /// <summary>
+        /// PlayerInputManager avisa de "jugador unido" desde el OnEnable de PlayerInput, que puede
+        /// ejecutarse ANTES que nuestro Awake. Por eso la API pública llama aquí primero.
+        /// </summary>
+        void Inicializar()
         {
+            if (inicializado) return;
+            inicializado = true;
+
             rb = GetComponent<Rigidbody>();
             capsula = GetComponent<CapsuleCollider>();
             playerInput = GetComponent<PlayerInput>();
@@ -384,6 +399,7 @@ namespace BichoShow
         /// <summary>Tira al bicho al suelo durante un tiempo. Al acabar se levanta solo.</summary>
         public void Tropezar(float duracion)
         {
+            Inicializar();
             float fin = Time.time + duracion;
             if (fin <= finTumbado) return;
             bool yaEstabaTumbado = Tumbado;
@@ -396,6 +412,7 @@ namespace BichoShow
         /// <summary>Coloca al bicho en un punto y lo guarda como punto de reaparición.</summary>
         public void Colocar(Vector3 posicion, Quaternion rotacion)
         {
+            Inicializar();
             puntoReaparicion = posicion;
             rotacionReaparicion = rotacion;
             direccionMirada = Aplanar(rotacion * Vector3.forward);
@@ -404,6 +421,7 @@ namespace BichoShow
 
         public void Reaparecer()
         {
+            Inicializar();
             Soltar();
             finTumbado = -10f;
             Teletransportar(puntoReaparicion, rotacionReaparicion);
