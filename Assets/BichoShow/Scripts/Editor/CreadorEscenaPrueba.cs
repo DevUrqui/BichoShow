@@ -15,12 +15,12 @@ namespace BichoShow.Herramientas
     /// </summary>
     public static class CreadorEscenaPrueba
     {
-        const string Raiz = "Assets/BichoShow";
-        const string CarpetaMateriales = Raiz + "/Materiales";
-        const string CarpetaPrefabs = Raiz + "/Prefabs";
-        const string CarpetaEscenas = Raiz + "/Escenas";
-        const string RutaControles = Raiz + "/Input/BichoControles.inputactions";
-        const string RutaPrefabBicho = CarpetaPrefabs + "/Bicho.prefab";
+        internal const string Raiz = "Assets/BichoShow";
+        internal const string CarpetaMateriales = Raiz + "/Materiales";
+        internal const string CarpetaPrefabs = Raiz + "/Prefabs";
+        internal const string CarpetaEscenas = Raiz + "/Escenas";
+        internal const string RutaControles = Raiz + "/Input/BichoControles.inputactions";
+        internal const string RutaPrefabBicho = CarpetaPrefabs + "/Bicho.prefab";
         const string RutaEscena = CarpetaEscenas + "/PruebaBicho.unity";
 
         [MenuItem("BichoShow/Crear escena de prueba del bicho")]
@@ -56,12 +56,12 @@ namespace BichoShow.Herramientas
         // Materiales
         // ------------------------------------------------------------------
 
-        class Materiales
+        internal class Materiales
         {
             public Material bicho, ojo, pupila, suelo, borde, obstaculo, caja, pelota;
         }
 
-        static Materiales CrearMateriales()
+        internal static Materiales CrearMateriales()
         {
             return new Materiales
             {
@@ -76,7 +76,7 @@ namespace BichoShow.Herramientas
             };
         }
 
-        static Material CrearMaterial(string nombre, Color color, float brillo)
+        internal static Material CrearMaterial(string nombre, Color color, float brillo)
         {
             string ruta = $"{CarpetaMateriales}/{nombre}.mat";
             var mat = AssetDatabase.LoadAssetAtPath<Material>(ruta);
@@ -98,7 +98,7 @@ namespace BichoShow.Herramientas
         // Prefab del bicho
         // ------------------------------------------------------------------
 
-        static GameObject CrearPrefabBicho(InputActionAsset controles, Materiales m)
+        internal static GameObject CrearPrefabBicho(InputActionAsset controles, Materiales m)
         {
             var raiz = new GameObject("Bicho");
 
@@ -153,7 +153,7 @@ namespace BichoShow.Herramientas
             return prefab;
         }
 
-        static GameObject Pieza(PrimitiveType tipo, string nombre, Transform padre,
+        internal static GameObject Pieza(PrimitiveType tipo, string nombre, Transform padre,
                                 Vector3 posicion, Vector3 escala, Material material, bool conCollider = false)
         {
             var go = GameObject.CreatePrimitive(tipo);
@@ -281,7 +281,7 @@ namespace BichoShow.Herramientas
             Selection.activeGameObject = jugadoresGo;
         }
 
-        static GameObject Bloque(string nombre, Transform padre, Vector3 posicion, Vector3 escala,
+        internal static GameObject Bloque(string nombre, Transform padre, Vector3 posicion, Vector3 escala,
                                  Material material, bool local = false)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -298,13 +298,13 @@ namespace BichoShow.Herramientas
         // Utilidades
         // ------------------------------------------------------------------
 
-        static void CrearCarpeta(string padre, string nombre)
+        internal static void CrearCarpeta(string padre, string nombre)
         {
             if (!AssetDatabase.IsValidFolder($"{padre}/{nombre}"))
                 AssetDatabase.CreateFolder(padre, nombre);
         }
 
-        static void AnadirAlBuild(string ruta)
+        internal static void AnadirAlBuild(string ruta)
         {
             var escenas = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             if (escenas.Exists(e => e.path == ruta)) return;

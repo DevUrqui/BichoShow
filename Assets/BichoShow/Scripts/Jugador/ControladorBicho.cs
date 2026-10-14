@@ -131,6 +131,7 @@ namespace BichoShow
         bool agarreBloqueado; // tras soltarse a la fuerza, hay que volver a pulsar
         bool pulsandoAgarrar;
         FixedJoint agarre;
+        bool agarreACuerpo;             // agarré algo con Rigidbody (no el escenario)
         ControladorBicho bichoAgarrado; // si lo que agarro es otro jugador
         int agarradoPor;                // cuántos bichos me agarran a mí
         Transform camara;
@@ -372,7 +373,7 @@ namespace BichoShow
 
         void Agarrar()
         {
-            if (!pulsandoAgarrar || Tumbado)
+            if (!pulsandoAgarrar || Tumbado || AgarreRoto())
             {
                 Soltar();
                 return;
@@ -402,6 +403,7 @@ namespace BichoShow
             agarre.breakForce = fuerzaRoturaAgarre;
             agarre.breakTorque = fuerzaRoturaAgarre;
             agarre.enableCollision = true;
+            agarreACuerpo = mejor.attachedRigidbody != null;
 
             bichoAgarrado = mejor.attachedRigidbody != null
                 ? mejor.attachedRigidbody.GetComponent<ControladorBicho>()
@@ -434,7 +436,30 @@ namespace BichoShow
         {
             if (agarre != null) Destroy(agarre);
             agarre = null;
+            agarreACuerpo = false;
             LiberarBichoAgarrado();
+        }
+
+        /// <summary>Suelta lo agarrado si es este cuerpo (p. ej. un objeto que se entrega o se rompe).</summary>
+        public void SoltarSi(Rigidbody cuerpo)
+        {
+            if (agarre != null && cuerpo != null && agarre.connectedBody == cuerpo) Soltar();
+        }
+
+        /// <summary>
+        /// El agarre ya no tiene sentido: lo agarrado se destruyó (Unity lo convertiría en un
+        /// agarre al mundo y el bicho se quedaría colgado en el aire) o se teletransportó lejos.
+        /// </summary>
+        bool AgarreRoto()
+        {
+            if (agarre == null) return false;
+            if (agarreACuerpo && agarre.connectedBody == null) return true;
+
+            Vector3 miPunto = transform.TransformPoint(agarre.anchor);
+            Vector3 suPunto = agarre.connectedBody != null
+                ? agarre.connectedBody.transform.TransformPoint(agarre.connectedAnchor)
+                : agarre.connectedAnchor;
+            return (miPunto - suPunto).sqrMagnitude > 1.5f * 1.5f;
         }
 
         void LiberarBichoAgarrado()

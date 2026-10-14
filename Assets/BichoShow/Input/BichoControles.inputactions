@@ -40,6 +40,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Empezar",
+                    "type": "Button",
+                    "id": "e1a2b3c4-5d6e-4f70-8a9b-0c1d2e3f4a65",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -249,6 +258,28 @@
                     "processors": "",
                     "groups": "Teclado",
                     "action": "Lanzarse",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f2b3c4d5-6e7f-4081-9bac-1d2e3f4a5b76",
+                    "path": "<Gamepad>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Mando",
+                    "action": "Empezar",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "03c4d5e6-7f80-4192-acbd-2e3f4a5b6c87",
+                    "path": "<Keyboard>/enter",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Teclado",
+                    "action": "Empezar",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
