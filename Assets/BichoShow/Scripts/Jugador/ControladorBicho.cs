@@ -65,10 +65,12 @@ namespace BichoShow
         public float duracionLevantarse = 0.5f;
 
         [Header("Agarrar")]
-        public float alcanceAgarre = 0.75f;
-        public float radioAgarre = 0.4f;
+        public float alcanceAgarre = 0.8f;
+        public float radioAgarre = 0.5f;
         [Tooltip("Fuerza a partir de la cual el agarre se suelta solo.")]
         public float fuerzaRoturaAgarre = 2500f;
+        [Tooltip("Fracción de su fuerza que conserva un bicho mientras otro lo tiene agarrado.")]
+        [Range(0f, 1f)] public float fuerzaSiTeAgarran = 0.3f;
 
         [Header("Lanzarse (placaje)")]
         public float impulsoLanzarse = 7f;
@@ -92,6 +94,8 @@ namespace BichoShow
         public bool EnSuelo { get; private set; }
         public bool Tumbado => Time.time < finTumbado;
         public bool Agarrando => agarre != null;
+        /// <summary>Otro bicho me tiene agarrado.</summary>
+        public bool TeTienenAgarrado => agarradoPor > 0;
         public int IndiceJugador => playerInput != null ? playerInput.playerIndex : 0;
         public Color ColorJugador { get; private set; } = Color.white;
         public Rigidbody Cuerpo => rb;
@@ -115,8 +119,12 @@ namespace BichoShow
         float finLevantarse = -10f;
         bool lanzarsePendiente;
         bool agarreBloqueado; // tras soltarse a la fuerza, hay que volver a pulsar
+        bool pulsandoAgarrar;
         FixedJoint agarre;
+        ControladorBicho bichoAgarrado; // si lo que agarro es otro jugador
+        int agarradoPor;                // cuántos bichos me agarran a mí
         Transform camara;
+        Transform mano, brazo;
 
         Vector3 puntoReaparicion;
         Quaternion rotacionReaparicion = Quaternion.identity;
@@ -164,10 +172,23 @@ namespace BichoShow
             direccionMirada = Aplanar(transform.forward);
             puntoReaparicion = transform.position;
             rotacionReaparicion = transform.rotation;
+
+            CrearManoVisual();
         }
 
         void OnEnable() => Todos.Add(this);
-        void OnDisable() => Todos.Remove(this);
+
+        void OnDisable()
+        {
+            Todos.Remove(this);
+            Soltar();
+        }
+
+        void OnDestroy()
+        {
+            if (mano != null) Destroy(mano.gameObject);
+            if (brazo != null) Destroy(brazo.gameObject);
+        }
 
         void Start()
         {
@@ -200,7 +221,8 @@ namespace BichoShow
             if (accionLanzarse != null && accionLanzarse.WasPressedThisFrame())
                 lanzarsePendiente = true;
 
-            if (accionAgarrar != null && !accionAgarrar.IsPressed())
+            pulsandoAgarrar = accionAgarrar != null && accionAgarrar.IsPressed();
+            if (!pulsandoAgarrar)
                 agarreBloqueado = false;
 
             if (transform.position.y < alturaCaidaMortal)
@@ -209,6 +231,8 @@ namespace BichoShow
                 Reaparecer();
             }
         }
+
+        void LateUpdate() => ActualizarManoVisual();
 
         // ---------------------------------------------------------------------
         // FixedUpdate: toda la física
@@ -266,6 +290,8 @@ namespace BichoShow
             Vector3 velocidadDeseada = direccion * velocidadMaxima;
 
             float acel = aceleracion * (EnSuelo ? 1f : controlEnAire);
+            // Si me tienen agarrado, forcejeo pero con poca fuerza: así quien agarra me puede arrastrar.
+            if (TeTienenAgarrado) acel *= fuerzaSiTeAgarran;
             Vector3 cambio = Vector3.ClampMagnitude((velocidadDeseada - velocidadActual) / Time.fixedDeltaTime, acel);
 
             // Empujar un poco por encima del centro de masas hace que se incline al arrancar y frenar.
@@ -329,26 +355,26 @@ namespace BichoShow
 
         void Agarrar()
         {
-            bool pulsado = accionAgarrar != null && accionAgarrar.IsPressed();
-
-            if (!pulsado || Tumbado)
+            if (!pulsandoAgarrar || Tumbado)
             {
                 Soltar();
                 return;
             }
             if (agarre != null || agarreBloqueado) return;
 
-            Vector3 centro = rb.worldCenterOfMass + direccionMirada * alcanceAgarre;
+            Vector3 centro = PuntoAlcance();
             int n = Physics.OverlapSphereNonAlloc(centro, radioAgarre, candidatosAgarre, ~0, QueryTriggerInteraction.Ignore);
 
+            // Preferimos lo que se mueve (bichos, cajas, pelota) antes que el escenario.
             Collider mejor = null;
-            float mejorDistancia = float.MaxValue;
+            float mejorPuntuacion = float.MaxValue;
             for (int i = 0; i < n; i++)
             {
                 var c = candidatosAgarre[i];
                 if (c.attachedRigidbody == rb) continue;
-                float d = (c.ClosestPointOnBounds(centro) - centro).sqrMagnitude;
-                if (d < mejorDistancia) { mejorDistancia = d; mejor = c; }
+                float puntuacion = (c.ClosestPointOnBounds(centro) - centro).sqrMagnitude;
+                if (c.attachedRigidbody == null) puntuacion += 100f;
+                if (puntuacion < mejorPuntuacion) { mejorPuntuacion = puntuacion; mejor = c; }
             }
             if (mejor == null) return;
 
@@ -359,13 +385,25 @@ namespace BichoShow
             agarre.breakForce = fuerzaRoturaAgarre;
             agarre.breakTorque = fuerzaRoturaAgarre;
             agarre.enableCollision = true;
+
+            bichoAgarrado = mejor.attachedRigidbody != null
+                ? mejor.attachedRigidbody.GetComponent<ControladorBicho>()
+                : null;
+            if (bichoAgarrado != null) bichoAgarrado.agarradoPor++;
         }
 
         void Soltar()
         {
-            if (agarre == null) return;
-            Destroy(agarre);
+            if (agarre != null) Destroy(agarre);
             agarre = null;
+            LiberarBichoAgarrado();
+        }
+
+        void LiberarBichoAgarrado()
+        {
+            if (bichoAgarrado == null) return;
+            bichoAgarrado.agarradoPor = Mathf.Max(0, bichoAgarrado.agarradoPor - 1);
+            bichoAgarrado = null;
         }
 
         void OnJointBreak(float fuerza)
@@ -373,6 +411,54 @@ namespace BichoShow
             // Unity destruye el joint solo; obligamos a soltar el botón para volver a agarrar.
             agarre = null;
             agarreBloqueado = true;
+            LiberarBichoAgarrado();
+        }
+
+        /// <summary>Centro de la esfera donde se busca qué agarrar: delante del bicho, a la altura del pecho.</summary>
+        Vector3 PuntoAlcance() => rb.worldCenterOfMass + direccionMirada * alcanceAgarre;
+
+        // ---------------------------------------------------------------------
+        // Mano visible: se ve dónde intentas agarrar y qué tienes agarrado
+        // ---------------------------------------------------------------------
+
+        void CrearManoVisual()
+        {
+            mano = PiezaVisual(PrimitiveType.Sphere, "Mano");
+            brazo = PiezaVisual(PrimitiveType.Cylinder, "Brazo");
+            mano.localScale = Vector3.one * 0.24f;
+        }
+
+        Transform PiezaVisual(PrimitiveType tipo, string nombre)
+        {
+            var go = GameObject.CreatePrimitive(tipo);
+            go.name = $"{name} {nombre}";
+            Destroy(go.GetComponent<Collider>());
+            if (renderersColor != null && renderersColor.Length > 0 && renderersColor[0] != null)
+                go.GetComponent<Renderer>().sharedMaterial = renderersColor[0].sharedMaterial;
+            go.SetActive(false);
+            return go.transform;
+        }
+
+        void ActualizarManoVisual()
+        {
+            if (mano == null || brazo == null) return;
+
+            bool visible = agarre != null || (pulsandoAgarrar && !Tumbado && !agarreBloqueado);
+            mano.gameObject.SetActive(visible);
+            brazo.gameObject.SetActive(visible);
+            if (!visible) return;
+
+            // Con el joint, la mano va al punto agarrado; si no, estira el brazo hacia delante.
+            Vector3 hombro = transform.TransformPoint(new Vector3(0f, 0.7f, 0.25f));
+            Vector3 puntoMano = agarre != null
+                ? transform.TransformPoint(agarre.anchor)
+                : transform.position + Vector3.up * 0.6f + direccionMirada * (alcanceAgarre + radioAgarre * 0.5f);
+
+            mano.position = puntoMano;
+            Vector3 tramo = puntoMano - hombro;
+            brazo.position = hombro + tramo * 0.5f;
+            brazo.rotation = tramo.sqrMagnitude > 1e-6f ? Quaternion.FromToRotation(Vector3.up, tramo) : Quaternion.identity;
+            brazo.localScale = new Vector3(0.11f, tramo.magnitude * 0.5f, 0.11f); // el cilindro mide 2 de alto
         }
 
         void GravedadExtra()
@@ -438,6 +524,14 @@ namespace BichoShow
                 var mat = r.material; // instancia propia para este bicho
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
                 else mat.color = color;
+            }
+
+            // La mano y el brazo comparten el material ya teñido del cuerpo.
+            if (renderersColor.Length > 0 && renderersColor[0] != null)
+            {
+                var matCuerpo = renderersColor[0].sharedMaterial;
+                if (mano != null) mano.GetComponent<Renderer>().sharedMaterial = matCuerpo;
+                if (brazo != null) brazo.GetComponent<Renderer>().sharedMaterial = matCuerpo;
             }
         }
 

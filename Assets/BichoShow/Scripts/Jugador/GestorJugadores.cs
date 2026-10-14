@@ -98,7 +98,9 @@ namespace BichoShow
             foreach (var bicho in jugadores)
             {
                 if (bicho == null) continue;
-                string estado = bicho.Tumbado ? "¡al suelo!" : bicho.Agarrando ? "agarrando" : "";
+                string estado = bicho.Tumbado ? "¡al suelo!"
+                    : bicho.TeTienenAgarrado ? "¡atrapado!"
+                    : bicho.Agarrando ? "agarrando" : "";
                 Etiqueta(ref y, $"{bicho.name}  {estado}", bicho.ColorJugador);
             }
 

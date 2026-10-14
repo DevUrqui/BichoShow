@@ -244,8 +244,8 @@ MonoBehaviour:
   anguloTumbado: 60
   fuerzaLevantarse: 2.5
   duracionLevantarse: 0.5
-  alcanceAgarre: 0.75
-  radioAgarre: 0.4
+  alcanceAgarre: 0.8
+  radioAgarre: 0.5
   fuerzaRoturaAgarre: 2500
   impulsoLanzarse: 7
   impulsoLanzarseArriba: 2.5
