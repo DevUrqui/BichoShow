@@ -12415,7 +12415,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BichoShow.CamaraGrupo
   direccion: {x: 0, y: 1.25, z: -1}
   distanciaMinima: 13
-  distanciaMaxima: 32
+  distanciaMaxima: 45
   factorSeparacion: 0.9
   suavizado: 0.35
   centroSinJugadores: {x: 0, y: 0, z: -27}

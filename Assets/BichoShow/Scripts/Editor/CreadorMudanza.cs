@@ -241,8 +241,7 @@ namespace BichoShow.Herramientas
             var camara = camGo.AddComponent<CamaraGrupo>();
             camara.direccion = new Vector3(0f, 1.25f, -1f);
             camara.distanciaMinima = 13f;
-            camara.distanciaMaxima = 32f;
-            camara.factorSeparacion = 0.9f;
+            camara.distanciaMaxima = 45f;
             camara.centroSinJugadores = new Vector3(0f, 0f, -27f);
             camara.ColocarAlInstante();
 
