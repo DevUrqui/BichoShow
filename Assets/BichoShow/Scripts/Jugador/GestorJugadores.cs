@@ -104,8 +104,8 @@ namespace BichoShow
                 Etiqueta(ref y, $"{bicho.name}  {estado}", bicho.ColorJugador);
             }
 
-            Etiqueta(ref y, "Mando: stick mover · A saltar · gatillos agarrar · X lanzarse", new Color(1f, 1f, 1f, 0.7f));
-            Etiqueta(ref y, "Teclado: WASD mover · Espacio saltar · E agarrar · Q lanzarse", new Color(1f, 1f, 1f, 0.7f));
+            Etiqueta(ref y, "Mando: stick mover · A saltar · gatillos agarrar · X lanzarse (o lanzar lo agarrado)", new Color(1f, 1f, 1f, 0.7f));
+            Etiqueta(ref y, "Teclado: WASD mover · Espacio saltar · E agarrar · Q lanzarse (o lanzar lo agarrado)", new Color(1f, 1f, 1f, 0.7f));
         }
 
         void Etiqueta(ref float y, string texto, Color color)

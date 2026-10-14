@@ -72,6 +72,16 @@ namespace BichoShow
         [Tooltip("Fracción de su fuerza que conserva un bicho mientras otro lo tiene agarrado.")]
         [Range(0f, 1f)] public float fuerzaSiTeAgarran = 0.3f;
 
+        [Header("Lanzar lo agarrado (botón de lanzarse con algo agarrado)")]
+        [Tooltip("Velocidad hacia delante que recibe lo lanzado (m/s).")]
+        public float velocidadLanzarAdelante = 5f;
+        [Tooltip("Velocidad hacia arriba que recibe lo lanzado (m/s). Da el arco.")]
+        public float velocidadLanzarArriba = 4f;
+        [Tooltip("Si lanzas a otro bicho, cuánto tiempo va dando tumbos (s).")]
+        public float duracionVueloLanzado = 0.8f;
+        [Tooltip("Pequeño empujón hacia atrás que recibe quien lanza (m/s).")]
+        public float retrocesoAlLanzar = 1f;
+
         [Header("Lanzarse (placaje)")]
         public float impulsoLanzarse = 7f;
         public float impulsoLanzarseArriba = 2.5f;
@@ -320,6 +330,13 @@ namespace BichoShow
             if (Time.time - ultimoLanzamiento < enfriamientoLanzarse) return;
             ultimoLanzamiento = Time.time;
 
+            // Con algo agarrado, el botón lanza lo agarrado en vez de tirarte en plancha.
+            if (agarre != null)
+            {
+                LanzarAgarrado();
+                return;
+            }
+
             Vector3 adelante = direccionMirada;
             rb.AddForce(adelante * impulsoLanzarse + Vector3.up * impulsoLanzarseArriba, ForceMode.VelocityChange);
             // Un empujoncito de giro para que caiga de morros.
@@ -390,6 +407,27 @@ namespace BichoShow
                 ? mejor.attachedRigidbody.GetComponent<ControladorBicho>()
                 : null;
             if (bichoAgarrado != null) bichoAgarrado.agarradoPor++;
+        }
+
+        void LanzarAgarrado()
+        {
+            Rigidbody objetivo = agarre.connectedBody;
+            ControladorBicho bicho = bichoAgarrado;
+
+            Soltar();
+            agarreBloqueado = true; // que no lo vuelva a agarrar al instante si sigues con el gatillo
+            if (objetivo == null) return; // agarrado al escenario: no hay nada que lanzar
+
+            // Lo que pesa más que yo sale con menos fuerza.
+            float factorMasa = Mathf.Clamp(rb.mass / objetivo.mass, 0.3f, 1f);
+            Vector3 adelante = direccionMirada;
+            Vector3 velocidad = adelante * velocidadLanzarAdelante + Vector3.up * velocidadLanzarArriba;
+
+            objetivo.AddForce(velocidad * factorMasa, ForceMode.VelocityChange);
+            objetivo.AddTorque(Vector3.Cross(Vector3.up, adelante) * 5f, ForceMode.VelocityChange); // que vaya dando vueltas
+            rb.AddForce(-adelante * retrocesoAlLanzar, ForceMode.VelocityChange);
+
+            if (bicho != null) bicho.Tropezar(duracionVueloLanzado);
         }
 
         void Soltar()
