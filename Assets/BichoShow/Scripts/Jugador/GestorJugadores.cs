@@ -62,6 +62,17 @@ namespace BichoShow
             }
 
             int indice = entrada.playerIndex;
+            Preparar(bicho, indice, $"Bicho {indice + 1} ({entrada.currentControlScheme})");
+        }
+
+        void AlSalir(PlayerInput entrada)
+        {
+            var bicho = entrada.GetComponent<ControladorBicho>();
+            if (bicho != null) jugadores.Remove(bicho);
+        }
+
+        void Preparar(ControladorBicho bicho, int indice, string nombre)
+        {
             Transform punto = puntosAparicion != null && puntosAparicion.Length > 0
                 ? puntosAparicion[indice % puntosAparicion.Length]
                 : transform;
@@ -70,14 +81,63 @@ namespace BichoShow
             if (colores != null && colores.Length > 0)
                 bicho.AsignarColor(colores[indice % colores.Length]);
 
-            entrada.gameObject.name = $"Bicho {indice + 1} ({entrada.currentControlScheme})";
+            bicho.gameObject.name = nombre;
             jugadores.Add(bicho);
         }
 
-        void AlSalir(PlayerInput entrada)
+        // ---------------------------------------------------------------------
+        // Bots
+        // ---------------------------------------------------------------------
+
+        readonly List<ControladorBicho> bots = new List<ControladorBicho>();
+        public IReadOnlyList<ControladorBicho> Bots => bots;
+
+        /// <summary>Jugadores con mando o teclado.</summary>
+        public int NumeroHumanos => PlayerInput.all.Count;
+
+        /// <summary>
+        /// Crea un bicho controlado por la máquina con el componente T (que debe implementar
+        /// IEntradaBicho). Usa el mismo prefab que los jugadores, pero sin PlayerInput, para
+        /// que no se quede con ningún mando ni cuente como jugador del PlayerInputManager.
+        /// </summary>
+        public T CrearBot<T>(int indice) where T : Component, IEntradaBicho
         {
-            var bicho = entrada.GetComponent<ControladorBicho>();
-            if (bicho != null) jugadores.Remove(bicho);
+            var prefab = manager.playerPrefab;
+            if (prefab == null) return null;
+
+            // Se crea dentro de un objeto desactivado para quitar el PlayerInput antes de que se active.
+            var contenedor = new GameObject("CreandoBot");
+            contenedor.SetActive(false);
+            var go = Instantiate(prefab, contenedor.transform);
+            var entrada = go.GetComponent<PlayerInput>();
+            if (entrada != null) DestroyImmediate(entrada);
+            var cerebro = go.AddComponent<T>();
+            go.transform.SetParent(null, false); // aquí se activa
+            Destroy(contenedor);
+
+            var bicho = go.GetComponent<ControladorBicho>();
+            bicho.AsignarIndice(indice);
+            Preparar(bicho, indice, $"Bot {indice + 1}");
+            bots.Add(bicho);
+            return cerebro;
+        }
+
+        public void EliminarBots()
+        {
+            foreach (var bot in bots)
+            {
+                if (bot == null) continue;
+                jugadores.Remove(bot);
+                Destroy(bot.gameObject);
+            }
+            bots.Clear();
+        }
+
+        /// <summary>Abre o cierra la entrada de jugadores nuevos (se cierra durante la ronda con bots).</summary>
+        public void PermitirUnirse(bool permitir)
+        {
+            if (permitir) manager.EnableJoining();
+            else manager.DisableJoining();
         }
 
         void OnGUI()

@@ -304,16 +304,42 @@ namespace BichoShow.Herramientas
             var rondaGo = new GameObject("RondaMudanza");
             var ronda = rondaGo.AddComponent<RondaMudanza>();
             ronda.secuenciaObjetos = objetos;
+            ronda.gestor = gestor;
             ronda.equipos = new[]
             {
-                new RondaMudanza.Equipo { nombre = "Rojo", color = ColorRojo, casa = casaRoja, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoRojo", -5f) },
-                new RondaMudanza.Equipo { nombre = "Azul", color = ColorAzul, casa = casaAzul, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoAzul", 5f) },
+                new RondaMudanza.Equipo { nombre = "Rojo", color = ColorRojo, casa = casaRoja, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoRojo", -5f), rutaBots = RutaBots(rondaGo.transform, "RutaRojo", -1f) },
+                new RondaMudanza.Equipo { nombre = "Azul", color = ColorAzul, casa = casaAzul, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoAzul", 5f), rutaBots = RutaBots(rondaGo.transform, "RutaAzul", 1f) },
             };
 
             EditorSceneManager.SaveScene(escena, RutaEscena);
             E.AnadirAlBuild(RutaEscena);
             AssetDatabase.SaveAssets();
             Selection.activeGameObject = rondaGo;
+        }
+
+        /// <summary>
+        /// Ruta de los bots para un equipo (lado = -1 rojo, +1 azul). Siempre avanza en +Z:
+        /// salida → su plataforma basculante (por el centro, donde menos se inclina) →
+        /// calle de empujadores (cerca del centro, donde casi no llegan) → puerta → alfombra.
+        /// </summary>
+        static Transform[] RutaBots(Transform padre, string nombre, float lado)
+        {
+            Vector2[] puntos =
+            {
+                new Vector2(5f, -24f), new Vector2(6f, -17.3f), new Vector2(6f, -12f), new Vector2(6f, -6.8f),
+                new Vector2(2.5f, -3f), new Vector2(2.5f, 6f), new Vector2(2.5f, 16f),
+                new Vector2(5f, 21f), new Vector2(5f, 28.6f),
+            };
+            var grupo = new GameObject(nombre).transform;
+            grupo.SetParent(padre, false);
+            var ruta = new Transform[puntos.Length];
+            for (int i = 0; i < puntos.Length; i++)
+            {
+                ruta[i] = new GameObject($"Punto{i + 1}").transform;
+                ruta[i].SetParent(grupo, false);
+                ruta[i].position = new Vector3(puntos[i].x * lado, 0f, puntos[i].y);
+            }
+            return ruta;
         }
 
         static Transform PuntoObjeto(Transform padre, string nombre, float x)

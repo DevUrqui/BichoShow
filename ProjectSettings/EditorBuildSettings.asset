@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/BichoShow/Escenas/Mudanza.unity
+    guid: 81f443cac19b4064f8fefa2f1199892d
+  - enabled: 1
     path: Assets/BichoShow/Escenas/PruebaBicho.unity
     guid: d9cc9fd3724040648bf18eecd6f03789
   - enabled: 1

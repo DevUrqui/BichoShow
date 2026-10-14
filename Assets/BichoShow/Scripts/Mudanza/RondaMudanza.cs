@@ -21,6 +21,8 @@ namespace BichoShow
             [Tooltip("Donde aparece cada objeto nuevo (en la puerta del camión).")]
             public Transform aparicionObjeto;
             public ZonaEntrega casa;
+            [Tooltip("Puntos que siguen los bots con el objeto, en orden desde el camión hasta la casa.")]
+            public Transform[] rutaBots;
 
             [HideInInspector] public int puntos;
             [HideInInspector] public int entregas;
@@ -38,6 +40,13 @@ namespace BichoShow
         [Tooltip("Puntos mínimos por entregar algo, aunque llegue hecho polvo.")]
         public int puntosMinimos = 10;
 
+        [Header("Bots")]
+        [Tooltip("Al empezar, rellenar con bots los huecos hasta llegar a 'Jugadores Con Bots'.")]
+        public bool rellenarConBots = true;
+        [Range(2, 4)] public int jugadoresConBots = 4;
+        [Range(0f, 1f)] public float habilidadBots = 0.55f;
+        public GestorJugadores gestor;
+
         [Header("Equipos y objetos")]
         public Equipo[] equipos = new Equipo[2];
         [Tooltip("Orden de objetos que le toca a cada equipo. Al romperse, se repite el mismo.")]
@@ -52,6 +61,7 @@ namespace BichoShow
 
         void Start()
         {
+            if (gestor == null) gestor = FindAnyObjectByType<GestorJugadores>();
             foreach (var e in equipos)
                 if (e.casa != null) e.casa.AlEntrarObjeto += AlEntrarObjeto;
         }
@@ -128,7 +138,31 @@ namespace BichoShow
                 e.entregas = 0;
                 e.siguienteObjetoEn = -1f;
             }
+
+            RellenarConBots();
             foreach (var b in ControladorBicho.Todos) b.Reaparecer();
+        }
+
+        void RellenarConBots()
+        {
+            if (gestor == null) return;
+            gestor.EliminarBots();
+            if (!rellenarConBots)
+            {
+                gestor.PermitirUnirse(true);
+                return;
+            }
+
+            // Los humanos ocupan los primeros números; los bots, el resto.
+            int humanos = gestor.NumeroHumanos;
+            for (int i = humanos; i < jugadoresConBots; i++)
+            {
+                var bot = gestor.CrearBot<BotMudanza>(i);
+                if (bot != null) bot.Configurar(this, habilidadBots);
+            }
+
+            // Con bots en la partida, nadie más puede unirse hasta el final (le tocaría su número).
+            gestor.PermitirUnirse(humanos >= jugadoresConBots);
         }
 
         void EmpezarRonda()
@@ -145,6 +179,9 @@ namespace BichoShow
             EstadoActual = Estado.Fin;
             TiempoRestante = 0f;
             foreach (var e in equipos) e.siguienteObjetoEn = -1f;
+
+            // Se puede volver a unir gente; los bots se rehacen al empezar la siguiente ronda.
+            if (gestor != null) gestor.PermitirUnirse(true);
         }
 
         // ---------------------------------------------------------------------
@@ -212,6 +249,8 @@ namespace BichoShow
                     Texto(new Rect(0, h * 0.12f, w, h * 0.1f), "MUDANZA FRÁGIL", estiloGrande, Color.white);
                     Texto(new Rect(0, h * 0.23f, w, h * 0.05f), "Llevad cada objeto de vuestro camión a vuestra casa… sin romperlo", estiloPequeno, Color.white);
                     Texto(new Rect(0, h * 0.30f, w, h * 0.05f), "Pulsa cualquier botón para unirte   ·   Jugadores 1 y 3: equipo " + equipos[0].nombre + "   ·   2 y 4: equipo " + equipos[1].nombre, estiloPequeno, new Color(1f, 1f, 1f, 0.85f));
+                    if (rellenarConBots && ControladorBicho.Todos.Count < jugadoresConBots)
+                        Texto(new Rect(0, h * 0.35f, w, h * 0.05f), $"Los huecos hasta {jugadoresConBots} jugadores los ocupará la máquina", estiloPequeno, new Color(0.8f, 0.95f, 1f, 0.9f));
                     if (ControladorBicho.Todos.Count > 0)
                         Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para empezar", estiloMedio, Parpadeo(Color.yellow));
                     Texto(new Rect(0, h * 0.88f, w, h * 0.05f), "Stick mover · A saltar · Gatillo agarrar · X lanzarse / lanzar lo agarrado", estiloPequeno, new Color(1f, 1f, 1f, 0.7f));

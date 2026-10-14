@@ -106,7 +106,11 @@ namespace BichoShow
         public bool Agarrando => agarre != null;
         /// <summary>Otro bicho me tiene agarrado.</summary>
         public bool TeTienenAgarrado => agarradoPor > 0;
-        public int IndiceJugador => playerInput != null ? playerInput.playerIndex : 0;
+        public int IndiceJugador => playerInput != null ? playerInput.playerIndex : indiceSinMando;
+        /// <summary>Lo controla la máquina (o cualquier fuente que no sea un mando).</summary>
+        public bool EsBot => entradaExterna != null || GetComponent<IEntradaBicho>() != null;
+        /// <summary>Lo que tengo agarrado, si es algo con Rigidbody.</summary>
+        public Rigidbody CuerpoAgarrado => agarre != null ? agarre.connectedBody : null;
         public Color ColorJugador { get; private set; } = Color.white;
         public Rigidbody Cuerpo => rb;
 
@@ -119,6 +123,8 @@ namespace BichoShow
         CapsuleCollider capsula;
         PlayerInput playerInput;
         InputAction accionMover, accionSaltar, accionAgarrar, accionLanzarse;
+        IEntradaBicho entradaExterna;
+        int indiceSinMando;
 
         Vector2 entradaMover;
         Vector3 direccionMirada;
@@ -205,6 +211,9 @@ namespace BichoShow
         {
             if (Camera.main != null) camara = Camera.main.transform;
 
+            entradaExterna = GetComponent<IEntradaBicho>();
+            if (entradaExterna != null) return; // lo controla un bot u otra fuente
+
             if (playerInput != null && playerInput.actions != null)
             {
                 var acciones = playerInput.actions;
@@ -224,15 +233,26 @@ namespace BichoShow
         // ---------------------------------------------------------------------
         void Update()
         {
-            entradaMover = accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
+            if (entradaExterna != null)
+            {
+                entradaMover = Vector2.ClampMagnitude(entradaExterna.Mover, 1f);
+                if (entradaExterna.ConsumirSaltar()) ultimoSaltoPulsado = Time.time;
+                if (entradaExterna.ConsumirLanzarse()) lanzarsePendiente = true;
+                pulsandoAgarrar = entradaExterna.Agarrar;
+            }
+            else
+            {
+                entradaMover = accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
 
-            if (accionSaltar != null && accionSaltar.WasPressedThisFrame())
-                ultimoSaltoPulsado = Time.time;
+                if (accionSaltar != null && accionSaltar.WasPressedThisFrame())
+                    ultimoSaltoPulsado = Time.time;
 
-            if (accionLanzarse != null && accionLanzarse.WasPressedThisFrame())
-                lanzarsePendiente = true;
+                if (accionLanzarse != null && accionLanzarse.WasPressedThisFrame())
+                    lanzarsePendiente = true;
 
-            pulsandoAgarrar = accionAgarrar != null && accionAgarrar.IsPressed();
+                pulsandoAgarrar = accionAgarrar != null && accionAgarrar.IsPressed();
+            }
+
             if (!pulsandoAgarrar)
                 agarreBloqueado = false;
 
@@ -576,6 +596,9 @@ namespace BichoShow
             Teletransportar(puntoReaparicion, rotacionReaparicion);
             direccionMirada = Aplanar(rotacionReaparicion * Vector3.forward);
         }
+
+        /// <summary>Número de jugador para los bichos sin mando (bots). Los de mando usan el de PlayerInput.</summary>
+        public void AsignarIndice(int indice) => indiceSinMando = indice;
 
         public void AsignarColor(Color color)
         {
