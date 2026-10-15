@@ -27,7 +27,7 @@ namespace BichoShow.Herramientas
         class Mats
         {
             public E.Materiales basicos;
-            public Material agua, madera, camion, rueda, cono, peligro, linea, cristal, marcador,
+            public Material agua, madera, camion, rueda, sabotaje, cono, peligro, linea, cristal, marcador,
                 tele, pantalla, jarron, tallo, flor, sofa, cojin, particula,
                 rojo, azul, paredRoja, paredAzul;
         }
@@ -85,6 +85,7 @@ namespace BichoShow.Herramientas
                 madera = E.CrearMaterial("Madera", new Color(0.62f, 0.43f, 0.26f), 0.15f),
                 camion = E.CrearMaterial("Camion", new Color(0.95f, 0.95f, 0.92f), 0.4f),
                 rueda = E.CrearMaterial("Rueda", new Color(0.12f, 0.12f, 0.14f), 0.2f),
+                sabotaje = E.CrearMaterial("Sabotaje", new Color(0.62f, 0.3f, 0.9f), 0.5f),
                 cono = E.CrearMaterial("Cono", new Color(1f, 0.5f, 0.1f), 0.3f),
                 peligro = E.CrearMaterial("Peligro", new Color(1f, 0.82f, 0.15f), 0.3f),
                 linea = E.CrearMaterial("Linea", Color.white, 0.1f),
@@ -254,6 +255,7 @@ namespace BichoShow.Herramientas
                 Decorado(PrimitiveType.Cube, "Linea", mapa, new Vector3(0f, 0.01f, z), new Vector3(0.25f, 0.02f, 1.2f), m.linea);
 
             CrearSalida(mapa, m);
+            var zonaSaboteadores = CrearCabinaSaboteador(mapa, m);
             CrearBarredora(mapa, m);
             var zonasMortales = CrearRio(mapa, m);
             CrearEmpujadores(mapa, m);
@@ -304,6 +306,7 @@ namespace BichoShow.Herramientas
             var ronda = rondaGo.AddComponent<RondaMudanza>();
             ronda.secuenciaObjetos = objetos;
             ronda.gestor = gestor;
+            ronda.zonaSaboteadores = zonaSaboteadores;
             ronda.equipos = new[]
             {
                 new RondaMudanza.Equipo { nombre = "Rojo", color = ColorRojo, casa = casaRoja, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoRojo", -5f), rutaBots = RutaBots(rondaGo.transform, "RutaRojo", -1f) },
@@ -392,9 +395,34 @@ namespace BichoShow.Herramientas
             barredora.transform.SetParent(mapa, false);
             barredora.transform.position = new Vector3(0f, 0f, -20f);
             barredora.AddComponent<Rigidbody>().isKinematic = true;
-            barredora.AddComponent<BarraGiratoria>().velocidadGiro = 65f;
+            var giro = barredora.AddComponent<BarraGiratoria>();
+            giro.velocidadGiro = 65f;
             E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.8f, 0.6f, 0.8f), m.peligro, conCollider: true);
-            E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(14f, 0.4f, 0.4f), m.basicos.obstaculo, local: true);
+            var brazo = E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(14f, 0.4f, 0.4f), m.basicos.obstaculo, local: true);
+
+            giro.nombreTrampa = "Barredora";
+            giro.enfriamiento = 8f;
+            giro.radioEfecto = 8f;
+            giro.alturaMarcador = 3.5f;
+            giro.renderersAviso = new[] { brazo.GetComponent<Renderer>() };
+        }
+
+        // --- Plataforma de saboteadores, entre los camiones ---
+        static Collider CrearCabinaSaboteador(Transform mapa, Mats m)
+        {
+            var cabina = Grupo(mapa, "CabinaSaboteador");
+            Decorado(PrimitiveType.Cube, "Plataforma", cabina, new Vector3(0f, 0.03f, -34.5f), new Vector3(3.2f, 0.06f, 3.2f), m.sabotaje);
+            Decorado(PrimitiveType.Cube, "Poste", cabina, new Vector3(0f, 1.3f, -36.2f), new Vector3(0.15f, 2.6f, 0.15f), m.rueda);
+            Decorado(PrimitiveType.Cube, "Cartel", cabina, new Vector3(0f, 2.9f, -36.2f), new Vector3(3.4f, 0.8f, 0.12f), m.sabotaje);
+            Cartel(cabina, "SABOTEADOR", new Vector3(0f, 2.9f, -36.3f), 0.5f, Color.white);
+
+            var zona = new GameObject("ZonaSaboteadores");
+            zona.transform.SetParent(cabina, false);
+            zona.transform.position = new Vector3(0f, 1.5f, -34.5f);
+            var caja = zona.AddComponent<BoxCollider>();
+            caja.isTrigger = true;
+            caja.size = new Vector3(3.2f, 3f, 3.2f);
+            return caja;
         }
 
         // --- Zona 3: el río ---
@@ -426,6 +454,13 @@ namespace BichoShow.Herramientas
                 bisagra.limits = new JointLimits { min = -20f, max = 20f };
                 bisagra.useSpring = true;
                 bisagra.spring = new JointSpring { spring = 400f, damper = 60f, targetPosition = 0f };
+
+                var basculante = plataforma.AddComponent<PlataformaBasculante>();
+                basculante.nombreTrampa = x < 0 ? "Plataforma izquierda" : "Plataforma derecha";
+                basculante.enfriamiento = 7f;
+                basculante.radioEfecto = 5f;
+                basculante.alturaMarcador = 2.5f;
+                basculante.renderersAviso = new[] { plataforma.GetComponent<Renderer>() };
             }
 
             var salpicadura = Particulas("Salpicadura", rio, new Vector3(0f, -3f, -12f),
@@ -454,8 +489,10 @@ namespace BichoShow.Herramientas
 
             // (z, lado del que sale, desfase)
             (float z, float lado, float desfase)[] empujadores = { (1f, -1f, 0f), (5.5f, 1f, 1.3f), (10f, -1f, 2.6f) };
+            int numero = 0;
             foreach (var e in empujadores)
             {
+                numero++;
                 var go = E.Bloque(e.lado < 0 ? "EmpujadorIzq" : "EmpujadorDer", calle,
                     new Vector3(9f * e.lado, 0.7f, e.z), new Vector3(2f, 1.4f, 2.5f), m.peligro);
                 go.AddComponent<Rigidbody>().isKinematic = true;
@@ -464,6 +501,10 @@ namespace BichoShow.Herramientas
                 empujador.periodo = 4f;
                 empujador.desfase = e.desfase;
                 empujador.cuerpoVisible = go.GetComponent<Renderer>();
+                empujador.nombreTrampa = $"Empujador {numero}";
+                empujador.enfriamiento = 4f;
+                empujador.radioEfecto = 4.5f;
+                empujador.alturaMarcador = 2.5f;
                 // Carcasa detrás, para que se vea de dónde sale.
                 E.Bloque("Carcasa", calle, new Vector3(10.4f * e.lado, 0.9f, e.z), new Vector3(0.8f, 1.8f, 3f), m.rueda);
             }
@@ -491,14 +532,23 @@ namespace BichoShow.Herramientas
             puerta.transform.SetParent(casa, false);
             puerta.transform.position = new Vector3(cx, 0f, frente);
             puerta.AddComponent<Rigidbody>().isKinematic = true;
-            puerta.AddComponent<BarraGiratoria>().velocidadGiro = giroPuerta;
+            var giro = puerta.AddComponent<BarraGiratoria>();
+            giro.velocidadGiro = giroPuerta;
+            giro.multiplicadorTurbo = -3f;
+            giro.nombreTrampa = equipo == 0 ? "Puerta giratoria roja" : "Puerta giratoria azul";
+            giro.enfriamiento = 7f;
+            giro.radioEfecto = 4f;
+            giro.alturaMarcador = 5.5f;
             E.Pieza(PrimitiveType.Cylinder, "Columna", puerta.transform, new Vector3(0f, 1.25f, 0f), new Vector3(0.35f, 1.25f, 0.35f), m.rueda, conCollider: true);
+            var hojas = new Renderer[4];
             for (int i = 0; i < 4; i++)
             {
                 var rot = Quaternion.Euler(0f, 90f * i, 0f);
                 var hoja = E.Pieza(PrimitiveType.Cube, "Hoja", puerta.transform, rot * new Vector3(1.15f, 1.2f, 0f), new Vector3(2.05f, 2.3f, 0.12f), m.cristal, conCollider: true);
                 hoja.transform.localRotation = rot;
+                hojas[i] = hoja.GetComponent<Renderer>();
             }
+            giro.renderersAviso = hojas;
 
             // Zona de entrega dentro de la casa
             Decorado(PrimitiveType.Cube, "Alfombra", casa, new Vector3(cx, 0.02f, 28.6f), new Vector3(6f, 0.04f, 5f), colorEquipo);

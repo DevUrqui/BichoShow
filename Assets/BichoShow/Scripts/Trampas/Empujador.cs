@@ -6,10 +6,14 @@ namespace BichoShow
     /// Bloque que sale de golpe, se queda un momento y vuelve despacio. Antes de empujar
     /// parpadea para avisar: así el golpe se ve venir y da risa en vez de rabia.
     /// Usa un Rigidbody cinemático para empujar bien a bichos y objetos.
+    ///
+    /// Con saboteadores en juego (TrampaSaboteable.ModoManual) deja de ir solo: sale cuando
+    /// lo activan, tras un aviso más corto.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
-    public class Empujador : MonoBehaviour
+    public class Empujador : TrampaSaboteable
     {
+        [Header("Movimiento")]
         [Tooltip("Hacia dónde sale, en coordenadas del mundo, y cuánto (m).")]
         public Vector3 recorrido = new Vector3(4.5f, 0f, 0f);
         [Tooltip("Duración de un ciclo completo (s).")]
@@ -26,9 +30,17 @@ namespace BichoShow
         public float tiempoAviso = 0.6f;
         public Renderer cuerpoVisible;
         public Color colorAviso = Color.white;
+        [Tooltip("Con saboteador: segundos de parpadeo entre activarlo y que salga.")]
+        public float avisoManual = 0.35f;
 
         Rigidbody rb;
         Vector3 inicio;
+        float inicioManual = -100f;
+
+        public override Vector3 CentroEfecto =>
+            (Application.isPlaying ? inicio : transform.position) + recorrido * 0.5f;
+
+        protected override void AlActivar() => inicioManual = Time.time + avisoManual;
         Material material;
         Color colorNormal;
 
@@ -50,17 +62,32 @@ namespace BichoShow
 
         void FixedUpdate()
         {
-            float fase = Fase(Time.time);
-            rb.MovePosition(inicio + recorrido * Extension(fase));
+            float extension = ModoManual ? ExtensionManual() : Extension(Fase(Time.time));
+            rb.MovePosition(inicio + recorrido * extension);
         }
 
-        void Update()
+        float ExtensionManual()
         {
+            float fase = (Time.time - inicioManual) / Mathf.Max(0.1f, periodo);
+            return fase < 0f || fase >= 1f ? 0f : Extension(fase);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
             if (material == null) return;
 
-            // Parpadeo en los últimos segundos antes de salir.
-            float tiempoParaSalir = (1f - Fase(Time.time)) * periodo;
-            bool avisando = tiempoParaSalir < tiempoAviso;
+            // Parpadeo justo antes de salir.
+            bool avisando;
+            if (ModoManual)
+            {
+                avisando = Time.time < inicioManual;
+            }
+            else
+            {
+                float tiempoParaSalir = (1f - Fase(Time.time)) * periodo;
+                avisando = tiempoParaSalir < tiempoAviso;
+            }
             Color c = avisando && Mathf.Repeat(Time.time * 8f, 1f) < 0.5f ? colorAviso : colorNormal;
             if (material.HasProperty(IdBaseColor)) material.SetColor(IdBaseColor, c);
             else material.color = c;

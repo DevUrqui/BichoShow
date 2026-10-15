@@ -21,6 +21,9 @@ namespace BichoShow
         /// <summary>Todos los bichos activos en la escena (lo usa la cámara, entre otros).</summary>
         public static readonly List<ControladorBicho> Todos = new List<ControladorBicho>();
 
+        /// <summary>Algún bicho ha tropezado por un golpe (no por lanzarse él mismo).</summary>
+        public static event System.Action<ControladorBicho> AlgunoDerribado;
+
         [Header("Movimiento")]
         [Tooltip("Velocidad máxima corriendo (m/s).")]
         public float velocidadMaxima = 6f;
@@ -102,6 +105,8 @@ namespace BichoShow
 
         // --- Estado público (lo usarán las pruebas, la cámara y los efectos) ---
         public bool EnSuelo { get; private set; }
+        /// <summary>Fuera del juego (su jugador está saboteando).</summary>
+        public bool Retirado { get; private set; }
         public bool Tumbado => Time.time < finTumbado;
         public bool Agarrando => agarre != null;
         /// <summary>Otro bicho me tiene agarrado.</summary>
@@ -153,7 +158,11 @@ namespace BichoShow
 
         // Con "Enter Play Mode Options" sin recarga de dominio, los estáticos sobreviven entre partidas.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void LimpiarEstaticos() => Todos.Clear();
+        static void LimpiarEstaticos()
+        {
+            Todos.Clear();
+            AlgunoDerribado = null;
+        }
 
         void Awake() => Inicializar();
 
@@ -233,6 +242,8 @@ namespace BichoShow
         // ---------------------------------------------------------------------
         void Update()
         {
+            if (Retirado) return;
+
             if (entradaExterna != null)
             {
                 entradaMover = Vector2.ClampMagnitude(entradaExterna.Mover, 1f);
@@ -263,13 +274,17 @@ namespace BichoShow
             }
         }
 
-        void LateUpdate() => ActualizarManoVisual();
+        void LateUpdate()
+        {
+            if (!Retirado) ActualizarManoVisual();
+        }
 
         // ---------------------------------------------------------------------
         // FixedUpdate: toda la física
         // ---------------------------------------------------------------------
         void FixedUpdate()
         {
+            if (Retirado) return;
             ComprobarSuelo();
 
             Vector3 direccion = DireccionDesdeCamara(entradaMover);
@@ -558,7 +573,11 @@ namespace BichoShow
 
             float cambioVelocidad = choque.impulse.magnitude / rb.mass;
             if (cambioVelocidad >= golpeParaTropezar)
+            {
+                bool yaEstaba = Tumbado;
                 Tropezar(duracionTropiezo);
+                if (!yaEstaba) AlgunoDerribado?.Invoke(this);
+            }
         }
 
         // ---------------------------------------------------------------------
@@ -586,6 +605,39 @@ namespace BichoShow
             rotacionReaparicion = rotacion;
             direccionMirada = Aplanar(rotacion * Vector3.forward);
             Teletransportar(posicion, rotacion);
+        }
+
+        /// <summary>
+        /// Saca al bicho del juego sin destruirlo (invisible, sin física ni colisiones), por
+        /// ejemplo mientras su jugador hace de saboteador. Al volver, reaparece en su sitio.
+        /// </summary>
+        public void Retirar(bool retirar)
+        {
+            Inicializar();
+            if (Retirado == retirar) return;
+            Retirado = retirar;
+            Soltar();
+            entradaMover = Vector2.zero;
+            pulsandoAgarrar = false;
+
+            foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = !retirar;
+            foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = !retirar;
+            if (mano != null) mano.gameObject.SetActive(false);
+            if (brazo != null) brazo.gameObject.SetActive(false);
+
+            if (retirar)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+                Todos.Remove(this);
+            }
+            else
+            {
+                rb.isKinematic = false;
+                if (!Todos.Contains(this)) Todos.Add(this);
+                Reaparecer();
+            }
         }
 
         public void Reaparecer()

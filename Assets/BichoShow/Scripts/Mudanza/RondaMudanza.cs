@@ -47,6 +47,19 @@ namespace BichoShow
         [Range(0f, 1f)] public float habilidadBots = 0.55f;
         public GestorJugadores gestor;
 
+        [Header("Saboteadores")]
+        [Tooltip("Quien esté dentro de esta zona al pulsar START será saboteador esa ronda.")]
+        public Collider zonaSaboteadores;
+        [Tooltip("Si nadie quiere sabotear, la máquina activa trampas.")]
+        public bool saboteadorMaquina = true;
+        [Range(0f, 1f)] public float agresividadMaquina = 0.5f;
+        [Tooltip("Puntos para el saboteador cuando su trampa rompe un objeto.")]
+        public int puntosRotura = 40;
+        [Tooltip("Puntos para el saboteador por cada bicho que su trampa tira al suelo.")]
+        public int puntosDerribo = 5;
+        [Tooltip("Lo que pase hasta estos segundos después de activar una trampa cuenta para el saboteador.")]
+        public float segundosAtribucion = 4f;
+
         [Header("Equipos y objetos")]
         public Equipo[] equipos = new Equipo[2];
         [Tooltip("Orden de objetos que le toca a cada equipo. Al romperse, se repite el mismo.")]
@@ -57,6 +70,7 @@ namespace BichoShow
 
         float finCuentaAtras;
         readonly List<(string texto, Color color, float hasta)> mensajes = new List<(string, Color, float)>();
+        readonly List<Saboteador> saboteadores = new List<Saboteador>();
         GUIStyle estiloGrande, estiloMedio, estiloPequeno;
 
         void Start()
@@ -64,12 +78,15 @@ namespace BichoShow
             if (gestor == null) gestor = FindAnyObjectByType<GestorJugadores>();
             foreach (var e in equipos)
                 if (e.casa != null) e.casa.AlEntrarObjeto += AlEntrarObjeto;
+            ControladorBicho.AlgunoDerribado += AlDerribar;
         }
 
         void OnDestroy()
         {
             foreach (var e in equipos)
                 if (e != null && e.casa != null) e.casa.AlEntrarObjeto -= AlEntrarObjeto;
+            ControladorBicho.AlgunoDerribado -= AlDerribar;
+            TrampaSaboteable.ModoManual = false;
         }
 
         public static int EquipoDe(ControladorBicho bicho) => bicho.IndiceJugador % 2;
@@ -139,30 +156,117 @@ namespace BichoShow
                 e.siguienteObjetoEn = -1f;
             }
 
-            RellenarConBots();
+            PrepararSaboteadores();
+            bool hayBots = RellenarConBots();
+            if (saboteadores.Count == 0 && saboteadorMaquina) CrearSaboteadorMaquina();
+            TrampaSaboteable.ModoManual = saboteadores.Count > 0;
+
+            // Con bots o saboteadores en juego, nadie más puede unirse hasta el final
+            // (le tocaría el número de otro).
+            if (gestor != null) gestor.PermitirUnirse(!hayBots && saboteadores.Count == 0);
+
             foreach (var b in ControladorBicho.Todos) b.Reaparecer();
         }
 
-        void RellenarConBots()
+        /// <summary>Crea bots en los números de jugador que no ocupa ningún humano. Devuelve si creó alguno.</summary>
+        bool RellenarConBots()
         {
-            if (gestor == null) return;
+            if (gestor == null) return false;
             gestor.EliminarBots();
-            if (!rellenarConBots)
-            {
-                gestor.PermitirUnirse(true);
-                return;
-            }
+            if (!rellenarConBots) return false;
 
-            // Los humanos ocupan los primeros números; los bots, el resto.
-            int humanos = gestor.NumeroHumanos;
-            for (int i = humanos; i < jugadoresConBots; i++)
+            var ocupados = new HashSet<int>();
+            foreach (var b in ControladorBicho.Todos)
+                if (!b.EsBot) ocupados.Add(b.IndiceJugador);
+
+            bool creados = false;
+            for (int i = 0; i < jugadoresConBots; i++)
             {
+                if (ocupados.Contains(i)) continue;
                 var bot = gestor.CrearBot<BotMudanza>(i);
                 if (bot != null) bot.Configurar(this, habilidadBots);
+                creados = true;
             }
+            return creados;
+        }
 
-            // Con bots en la partida, nadie más puede unirse hasta el final (le tocaría su número).
-            gestor.PermitirUnirse(humanos >= jugadoresConBots);
+        // ---------------------------------------------------------------------
+        // Saboteadores
+        // ---------------------------------------------------------------------
+
+        bool EnZonaSaboteadores(ControladorBicho b) =>
+            zonaSaboteadores != null && zonaSaboteadores.bounds.Contains(b.transform.position + Vector3.up * 0.5f);
+
+        /// <summary>Quita los saboteadores de la ronda anterior y convierte en saboteador a quien esté en la plataforma.</summary>
+        void PrepararSaboteadores()
+        {
+            foreach (var s in saboteadores)
+            {
+                if (s == null) continue;
+                if (s.EsMaquina) Destroy(s.gameObject);
+                else
+                {
+                    var bichoAnterior = s.GetComponent<ControladorBicho>();
+                    if (bichoAnterior != null) bichoAnterior.Retirar(false);
+                    Destroy(s);
+                }
+            }
+            saboteadores.Clear();
+
+            var elegidos = new List<ControladorBicho>();
+            foreach (var b in ControladorBicho.Todos)
+                if (!b.EsBot && EnZonaSaboteadores(b)) elegidos.Add(b);
+
+            foreach (var b in elegidos)
+            {
+                var s = b.gameObject.AddComponent<Saboteador>();
+                s.Configurar(this, b.GetComponent<PlayerInput>(), b.ColorJugador, $"Saboteador J{b.IndiceJugador + 1}",
+                             agresividadMaquina, saboteadores.Count);
+                b.Retirar(true);
+                saboteadores.Add(s);
+            }
+        }
+
+        void CrearSaboteadorMaquina()
+        {
+            var go = new GameObject("SaboteadorMaquina");
+            var s = go.AddComponent<Saboteador>();
+            s.Configurar(this, null, new Color(0.8f, 0.45f, 1f), "Saboteador máquina", agresividadMaquina, 0);
+            saboteadores.Add(s);
+        }
+
+        /// <summary>El saboteador cuya trampa, activada hace poco, tiene este punto dentro de su alcance.</summary>
+        Saboteador Responsable(Vector3 punto)
+        {
+            Saboteador mejor = null;
+            float mejorDistancia = float.MaxValue;
+            foreach (var t in TrampaSaboteable.Todas)
+            {
+                if (t.UltimoSaboteador == null || Time.time - t.UltimoUso > segundosAtribucion) continue;
+                Vector3 d = t.CentroEfecto - punto;
+                d.y = 0f;
+                float distancia = d.magnitude;
+                if (distancia < t.radioEfecto && distancia < mejorDistancia)
+                {
+                    mejorDistancia = distancia;
+                    mejor = t.UltimoSaboteador;
+                }
+            }
+            return mejor;
+        }
+
+        void AlDanarObjeto(ObjetoFragil objeto, float dano)
+        {
+            if (EstadoActual != Estado.Jugando) return;
+            var s = Responsable(objeto.transform.position);
+            if (s != null) s.SumarPuntos(Mathf.CeilToInt(dano), "de daño");
+        }
+
+        void AlDerribar(ControladorBicho bicho)
+        {
+            if (EstadoActual != Estado.Jugando) return;
+            var s = Responsable(bicho.transform.position);
+            if (s != null) s.SumarPuntos(puntosDerribo, "¡al suelo!");
         }
 
         void EmpezarRonda()
@@ -182,6 +286,15 @@ namespace BichoShow
 
             // Se puede volver a unir gente; los bots se rehacen al empezar la siguiente ronda.
             if (gestor != null) gestor.PermitirUnirse(true);
+
+            // Los saboteadores humanos recuperan su bicho (su marcador sigue en pantalla).
+            TrampaSaboteable.ModoManual = false;
+            foreach (var s in saboteadores)
+            {
+                if (s == null || s.EsMaquina) continue;
+                var bicho = s.GetComponent<ControladorBicho>();
+                if (bicho != null) bicho.Retirar(false);
+            }
         }
 
         // ---------------------------------------------------------------------
@@ -198,6 +311,7 @@ namespace BichoShow
             var objeto = Instantiate(prefab, e.aparicionObjeto.position, e.aparicionObjeto.rotation);
             objeto.AsignarEquipo(indiceEquipo, e.color);
             objeto.AlRomperse += (o, motivo) => AlRomperse(indiceEquipo, o, motivo);
+            objeto.AlRecibirDano += AlDanarObjeto;
             e.objetoActual = objeto;
         }
 
@@ -226,7 +340,14 @@ namespace BichoShow
             if (e.objetoActual == objeto) e.objetoActual = null;
             if (EstadoActual != Estado.Jugando) return;
 
-            Mensaje($"¡CRASH! {Mayuscula(objeto.nombreObjeto)} del equipo {e.nombre} {motivo}", e.color, 3f);
+            var culpable = Responsable(objeto.transform.position);
+            string autoria = "";
+            if (culpable != null)
+            {
+                culpable.SumarPuntos(puntosRotura, "¡ROTO!");
+                autoria = $"  (obra de {culpable.Etiqueta})";
+            }
+            Mensaje($"¡CRASH! {Mayuscula(objeto.nombreObjeto)} del equipo {e.nombre} {motivo}{autoria}", e.color, 3f);
             e.siguienteObjetoEn = Time.time + esperaNuevoObjeto;
         }
 
@@ -251,6 +372,16 @@ namespace BichoShow
                     Texto(new Rect(0, h * 0.30f, w, h * 0.05f), "Pulsa cualquier botón para unirte   ·   Jugadores 1 y 3: equipo " + equipos[0].nombre + "   ·   2 y 4: equipo " + equipos[1].nombre, estiloPequeno, new Color(1f, 1f, 1f, 0.85f));
                     if (rellenarConBots && ControladorBicho.Todos.Count < jugadoresConBots)
                         Texto(new Rect(0, h * 0.35f, w, h * 0.05f), $"Los huecos hasta {jugadoresConBots} jugadores los ocupará la máquina", estiloPequeno, new Color(0.8f, 0.95f, 1f, 0.9f));
+                    if (zonaSaboteadores != null)
+                    {
+                        string enPlataforma = "";
+                        foreach (var b in ControladorBicho.Todos)
+                            if (!b.EsBot && EnZonaSaboteadores(b)) enPlataforma += $" J{b.IndiceJugador + 1}";
+                        string linea = enPlataforma.Length > 0
+                            ? $"Serán SABOTEADORES:{enPlataforma}"
+                            : "Súbete a la plataforma morada entre los camiones para ser SABOTEADOR";
+                        Texto(new Rect(0, h * 0.40f, w, h * 0.05f), linea, estiloPequeno, new Color(0.85f, 0.6f, 1f));
+                    }
                     if (ControladorBicho.Todos.Count > 0)
                         Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para empezar", estiloMedio, Parpadeo(Color.yellow));
                     Texto(new Rect(0, h * 0.88f, w, h * 0.05f), "Stick mover · A saltar · Gatillo agarrar · X lanzarse / lanzar lo agarrado", estiloPequeno, new Color(1f, 1f, 1f, 0.7f));
