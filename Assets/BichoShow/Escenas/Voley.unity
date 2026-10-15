@@ -1332,7 +1332,7 @@ MonoBehaviour:
   tamanoZona: {x: 10, y: 6, z: 12}
   duracion: 2
   fuerzaPelota: 8
-  fuerzaBichos: 18
+  fuerzaBichos: 11
   aspas: {fileID: 1137700530}
 --- !u!23 &213238410
 MeshRenderer:
@@ -1740,7 +1740,7 @@ MonoBehaviour:
   tamanoZona: {x: 10, y: 6, z: 12}
   duracion: 2
   fuerzaPelota: 8
-  fuerzaBichos: 18
+  fuerzaBichos: 11
   aspas: {fileID: 1766129189}
 --- !u!23 &251625588
 MeshRenderer:

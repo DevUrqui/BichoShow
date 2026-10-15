@@ -20,7 +20,7 @@ namespace BichoShow
         [Tooltip("Aceleración que recibe la pelota (m/s²).")]
         public float fuerzaPelota = 8f;
         [Tooltip("Aceleración que reciben los bichos (m/s²).")]
-        public float fuerzaBichos = 18f;
+        public float fuerzaBichos = 11f;
         [Tooltip("Aspas que giran mientras sopla (opcional).")]
         public Transform aspas;
 
@@ -56,7 +56,7 @@ namespace BichoShow
                 {
                     var bicho = rb.GetComponent<ControladorBicho>();
                     if (bicho == null) continue;
-                    bicho.Resbalar(0.4f, 0.15f);
+                    bicho.Resbalar(0.55f, 0.15f);
                     rb.AddForce(dir * fuerzaBichos, ForceMode.Acceleration);
                 }
             }

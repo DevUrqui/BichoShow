@@ -27,6 +27,8 @@ namespace BichoShow
         public float alturaSaque = 5f;
         [Tooltip("Espera entre un punto y el siguiente saque (s).")]
         public float esperaSaque = 1.8f;
+        [Tooltip("Un bicho por debajo de esta altura se ha caído de la plataforma y reaparece (aunque la goma lo tenga colgando).")]
+        public float alturaRescate = -1.2f;
 
         [Header("Goma elástica")]
         [Tooltip("Largo de la goma sin estirar (m).")]
@@ -150,6 +152,23 @@ namespace BichoShow
         protected override void ActualizarJugando()
         {
             if (Pelota == null && siguienteSaque >= 0f && Time.time >= siguienteSaque) Sacar();
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            RescatarCaidos();
+        }
+
+        /// <summary>
+        /// Con la goma, un bicho que se cae por el borde puede quedarse colgando sin llegar al
+        /// agua (y su pareja, arrastrada hacia el borde sin poder volver). Se le devuelve a su sitio.
+        /// </summary>
+        void RescatarCaidos()
+        {
+            var bichos = ControladorBicho.Todos;
+            for (int i = bichos.Count - 1; i >= 0; i--)
+                if (bichos[i].transform.position.y < alturaRescate) bichos[i].Reaparecer();
         }
 
         protected override bool PuedeTerminar()
