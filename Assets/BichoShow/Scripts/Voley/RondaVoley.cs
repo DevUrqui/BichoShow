@@ -22,6 +22,8 @@ namespace BichoShow
         public Vector2 tamanoCampo = new Vector2(10f, 12f);
         [Tooltip("Pared invisible sobre la red: frena a los bichos pero no a la pelota.")]
         public Collider barreraRed;
+        [Tooltip("Altura del borde de arriba de la red (m). Los golpes se calculan para pasar por encima.")]
+        public float alturaRed = 2.4f;
         public float alturaSaque = 5f;
         [Tooltip("Espera entre un punto y el siguiente saque (s).")]
         public float esperaSaque = 1.8f;

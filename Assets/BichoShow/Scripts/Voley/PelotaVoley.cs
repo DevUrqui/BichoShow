@@ -16,20 +16,25 @@ namespace BichoShow
         public enum Tipo { Normal, Rayo, Aceite, Gigante }
 
         [Header("Vuelo")]
-        public float escalaGravedad = 0.45f;
+        [Tooltip("Fracción de la gravedad normal. Más bajo = flota más.")]
+        public float escalaGravedad = 0.42f;
         public float velocidadMaxima = 22f;
 
         [Header("Toque con el cuerpo")]
         [Tooltip("Velocidad hacia arriba mínima al tocarla con el cuerpo.")]
-        public float subidaToque = 7f;
+        public float subidaToque = 6.5f;
         [Tooltip("Velocidad hacia el campo rival al tocarla con el cuerpo.")]
-        public float avanceToque = 1.8f;
+        public float avanceToque = 2.4f;
 
         [Header("Golpe con el botón")]
-        [Tooltip("Tiempo de vuelo de un golpe normal (s). Más = más bombeado.")]
-        public float tiempoGolpe = 1.25f;
-        [Tooltip("Tiempo de vuelo de un remate (s).")]
-        public float tiempoRemate = 0.55f;
+        [Tooltip("Cuánto sube un golpe normal por encima de la red (m). Más = más bombeado.")]
+        public float alturaSobreRed = 1.6f;
+        [Tooltip("Lo mismo para un remate que no puede ir tenso (golpeado desde lejos).")]
+        public float alturaSobreRedRemateBajo = 0.9f;
+        [Tooltip("Tiempo de vuelo de un remate tenso (s). Menos = más rápido.")]
+        public float tiempoRemate = 0.5f;
+        [Tooltip("Tras un golpe, los roces con el cuerpo no cuentan durante este tiempo (s).")]
+        public float ignorarToquesTrasGolpe = 0.3f;
 
         public Tipo TipoPelota { get; private set; } = Tipo.Normal;
         /// <summary>Equipo que la tocó por última vez (-1 si nadie).</summary>
@@ -47,6 +52,9 @@ namespace BichoShow
         Color colorBase;
         float ultimoToque = -10f;
         float ultimoCharco = -10f;
+        float ignorarToquesHasta = -10f;
+        float inicioBoing = -10f;
+        Vector3 escalaBase = Vector3.one;
         readonly RaycastHit[] impactos = new RaycastHit[8];
 
         static readonly int IdBaseColor = Shader.PropertyToID("_BaseColor");
@@ -106,6 +114,7 @@ namespace BichoShow
                 escalaGravedad *= 0.7f;
             }
 
+            escalaBase = transform.localScale;
             CrearSombra();
         }
 
@@ -149,6 +158,7 @@ namespace BichoShow
         void Toque(ControladorBicho bicho)
         {
             if (Time.time - ultimoToque < 0.12f) return;
+            if (Time.time < ignorarToquesHasta) return;
             if (ronda == null) return;
 
             int equipo = RondaBase.EquipoDe(bicho);
@@ -156,6 +166,7 @@ namespace BichoShow
             Vector3 horizontal = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z) * 0.3f + haciaRival * avanceToque;
             rb.linearVelocity = horizontal + Vector3.up * Mathf.Max(rb.linearVelocity.y, subidaToque);
 
+            inicioBoing = Time.time;
             RegistrarToque(bicho, equipo);
         }
 
@@ -165,18 +176,59 @@ namespace BichoShow
 
             int equipo = RondaBase.EquipoDe(quien);
             Vector3 objetivo = ronda.PuntoDeGolpe(equipo, direccion, enElAire);
-            float t = enElAire ? tiempoRemate : tiempoGolpe;
-
-            // Parábola: llegar a "objetivo" en t segundos con la gravedad de la pelota.
             Vector3 desde = rb.position;
-            float g = GravedadEfectiva;
-            Vector3 v = (objetivo - desde) / t;
-            v.y += 0.5f * g * t;
+
+            Vector3 v;
+            if (enElAire && RemateLimpio(equipo, desde, objetivo, out Vector3 vRemate))
+                v = vRemate;
+            else
+                v = VelocidadEnArco(desde, objetivo, ronda.alturaRed + (enElAire ? alturaSobreRedRemateBajo : alturaSobreRed));
+
             rb.linearVelocity = v;
             rb.angularVelocity = Random.insideUnitSphere * 8f;
+            ignorarToquesHasta = Time.time + ignorarToquesTrasGolpe;
+            inicioBoing = Time.time;
 
             RegistrarToque(quien, equipo);
             return true;
+        }
+
+        /// <summary>
+        /// Velocidad para un arco que sube hasta "apice" (o un poco por encima de donde está la
+        /// pelota, si ya está más alta) y baja en "objetivo". Calcularlo por altura asegura que
+        /// pasa por encima de la red y que el vuelo se ve y se puede seguir.
+        /// </summary>
+        Vector3 VelocidadEnArco(Vector3 desde, Vector3 objetivo, float apice)
+        {
+            float g = GravedadEfectiva;
+            apice = Mathf.Max(apice, desde.y + 0.5f, objetivo.y + 0.5f);
+            float vy = Mathf.Sqrt(2f * g * (apice - desde.y));
+            float tiempo = vy / g + Mathf.Sqrt(2f * (apice - objetivo.y) / g);
+            Vector3 horizontal = new Vector3(objetivo.x - desde.x, 0f, objetivo.z - desde.z) / tiempo;
+            return horizontal + Vector3.up * vy;
+        }
+
+        /// <summary>
+        /// Remate tenso: llega al objetivo en poco tiempo. Solo vale si al cruzar la red va por
+        /// encima de ella; si no (rematando desde lejos), devuelve false y se usa un arco bajo.
+        /// </summary>
+        bool RemateLimpio(int equipo, Vector3 desde, Vector3 objetivo, out Vector3 velocidad)
+        {
+            float g = GravedadEfectiva;
+            float t = tiempoRemate;
+            velocidad = (objetivo - desde) / t;
+            velocidad.y += 0.5f * g * t;
+
+            Vector3 adelante = ronda.HaciaRival(equipo);
+            Vector3 red = (ronda.CentroCampo(0) + ronda.CentroCampo(1)) * 0.5f;
+            float hastaRed = Vector3.Dot(red - desde, adelante);
+            float hastaObjetivo = Vector3.Dot(objetivo - desde, adelante);
+            if (hastaRed <= 0f) return true;               // ya está pasada la red
+            if (hastaObjetivo <= hastaRed) return false;
+
+            float tRed = t * hastaRed / hastaObjetivo;
+            float alturaEnRed = desde.y + velocidad.y * tRed - 0.5f * g * tRed * tRed;
+            return alturaEnRed > ronda.alturaRed + 0.25f;
         }
 
         void RegistrarToque(ControladorBicho bicho, int equipo)
@@ -232,6 +284,11 @@ namespace BichoShow
         {
             if (TipoPelota == Tipo.Rayo && material != null)
                 Escribir(material, Mathf.Repeat(Time.time * 10f, 1f) < 0.5f ? colorBase : Color.white);
+
+            // "Boing" al golpearla: se aplasta y recupera en un instante.
+            float tb = Time.time - inicioBoing;
+            float onda = tb < 0.3f ? Mathf.Sin(tb * 40f) * Mathf.Exp(-tb * 12f) * 0.3f : 0f;
+            transform.localScale = new Vector3(escalaBase.x * (1f + onda), escalaBase.y * (1f - onda), escalaBase.z * (1f + onda));
 
             if (sombra == null) return;
 

@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/BichoShow/Escenas/Voley.unity
+    guid: b8f22917ce9c9004ba58b4b97e93d1f9
+  - enabled: 1
     path: Assets/BichoShow/Escenas/Mudanza.unity
     guid: 81f443cac19b4064f8fefa2f1199892d
   - enabled: 1
