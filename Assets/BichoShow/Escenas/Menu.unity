@@ -3071,8 +3071,8 @@ MonoBehaviour:
   - escena: Voley
     nombre: Voley atados
     multiplicador: 1
-  - escena: Mudanza
-    nombre: "LA GRAN FINAL: Mudanza fr\xE1gil"
+  - escena: Final
+    nombre: "LA GRAN FINAL: Juntos o nada"
     multiplicador: 2
   escenaMenu: Menu
   duracionPresentacion: 2.5

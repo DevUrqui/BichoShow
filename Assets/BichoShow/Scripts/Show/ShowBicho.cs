@@ -36,7 +36,7 @@ namespace BichoShow
         {
             new Prueba { escena = "Mudanza", nombre = "Mudanza frágil", multiplicador = 1 },
             new Prueba { escena = "Voley", nombre = "Voley atados", multiplicador = 1 },
-            new Prueba { escena = "Mudanza", nombre = "LA GRAN FINAL: Mudanza frágil", multiplicador = 2 },
+            new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2 },
         };
         public string escenaMenu = "Menu";
         [Tooltip("Segundos del cartel de presentación antes de cada ronda.")]

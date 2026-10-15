@@ -107,6 +107,10 @@ namespace BichoShow
             }
         }
 
+        /// <summary>Punto de aparición de ese número de jugador en la escena actual (puede ser null).</summary>
+        public Transform PuntoAparicion(int indice) =>
+            puntosAparicion != null && puntosAparicion.Length > 0 ? puntosAparicion[indice % puntosAparicion.Length] : null;
+
         public Color ColorDe(int indice) =>
             colores != null && colores.Length > 0 ? colores[indice % colores.Length] : Color.white;
 

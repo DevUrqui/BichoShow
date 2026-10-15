@@ -654,6 +654,14 @@ namespace BichoShow
             if (!yaEstabaTumbado) AlTropezar?.Invoke(this);
         }
 
+        /// <summary>Cambia dónde reaparece si se cae (puntos de control), sin moverlo ahora.</summary>
+        public void FijarPuntoReaparicion(Vector3 posicion, Quaternion rotacion)
+        {
+            Inicializar();
+            puntoReaparicion = posicion;
+            rotacionReaparicion = rotacion;
+        }
+
         /// <summary>Coloca al bicho en un punto y lo guarda como punto de reaparición.</summary>
         public void Colocar(Vector3 posicion, Quaternion rotacion)
         {
