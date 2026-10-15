@@ -47,6 +47,9 @@ namespace BichoShow
         public EstadoShow Estado { get; private set; } = EstadoShow.Inactivo;
         public int RondaActual { get; private set; }
 
+        /// <summary>El show tapa la pantalla (marcador, podio…): la ronda no debe dibujar la suya encima.</summary>
+        public bool TapaLaPantalla => Estado == EstadoShow.Marcador || Estado == EstadoShow.Final || Estado == EstadoShow.Cargando;
+
         // Opciones del show (las pone el menú)
         bool conBots = true;
         float habilidad = 0.55f;

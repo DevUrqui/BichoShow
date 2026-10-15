@@ -73,6 +73,12 @@ namespace BichoShow
         /// <summary>Toma los puntos de aparición y colores de la escena nueva y recoloca a los jugadores.</summary>
         void AdoptarEscena(GestorJugadores deLaEscena)
         {
+            // Los puntos de aparición son hijos del gestor de la escena, que se va a borrar:
+            // se sacan antes para que sigan existiendo (se quedan en su escena y se van con ella).
+            if (deLaEscena.puntosAparicion != null)
+                foreach (var punto in deLaEscena.puntosAparicion)
+                    if (punto != null && punto.IsChildOf(deLaEscena.transform)) punto.SetParent(null, true);
+
             puntosAparicion = deLaEscena.puntosAparicion;
             if (deLaEscena.colores != null && deLaEscena.colores.Length > 0) colores = deLaEscena.colores;
             mostrarAyuda = deLaEscena.mostrarAyuda;
@@ -149,9 +155,19 @@ namespace BichoShow
         {
             Transform punto = puntosAparicion != null && puntosAparicion.Length > 0
                 ? puntosAparicion[indice % puntosAparicion.Length]
-                : transform;
+                : null;
 
-            bicho.Colocar(punto.position, punto.rotation);
+            if (punto != null)
+            {
+                bicho.Colocar(punto.position, punto.rotation);
+            }
+            else
+            {
+                // Sin punto válido: no cortar (antes esto dejaba la ronda sin bots); colocarlo en fila.
+                Debug.LogWarning($"Bicho Show: no hay punto de aparición para el jugador {indice + 1}.", this);
+                bicho.Colocar(new Vector3(indice * 2f - 3f, 1f, 0f), Quaternion.identity);
+            }
+
             if (colores != null && colores.Length > 0)
                 bicho.AsignarColor(colores[indice % colores.Length]);
         }

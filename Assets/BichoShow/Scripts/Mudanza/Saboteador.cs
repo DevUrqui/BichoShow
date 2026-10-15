@@ -290,6 +290,7 @@ namespace BichoShow
         void OnGUI()
         {
             if (ronda == null || ronda.EstadoActual == RondaBase.Estado.Esperando) return;
+            if (ShowBicho.Instancia != null && ShowBicho.Instancia.TapaLaPantalla) return;
 
             if (estilo == null)
                 estilo = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };

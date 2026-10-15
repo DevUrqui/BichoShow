@@ -334,6 +334,7 @@ namespace BichoShow
 
         protected virtual void OnGUI()
         {
+            if (ControladaPorShow && ShowBicho.Instancia != null && ShowBicho.Instancia.TapaLaPantalla) return;
             PrepararEstilos();
             float w = Screen.width, h = Screen.height;
 
