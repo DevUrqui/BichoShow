@@ -8,10 +8,24 @@ namespace BichoShow
     /// Va junto al PlayerInputManager. Cada vez que alguien pulsa un botón en un mando
     /// (o en el teclado) nuevo, el PlayerInputManager crea un bicho; aquí lo colocamos
     /// en su punto de aparición y le damos su color.
+    ///
+    /// En el menú es "persistente": los jugadores sobreviven a los cambios de escena. Cada
+    /// prueba tiene su propio GestorJugadores (para poder jugarla suelta); si al cargarla ya
+    /// existe uno persistente, este le pasa sus puntos de aparición y colores y se retira.
     /// </summary>
+    [DefaultExecutionOrder(-1000)] // antes que el PlayerInputManager, para retirarse sin que se active
     [RequireComponent(typeof(PlayerInputManager))]
     public class GestorJugadores : MonoBehaviour
     {
+        /// <summary>El gestor activo (el persistente, si venimos del menú).</summary>
+        public static GestorJugadores Instancia { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void LimpiarEstaticos() => Instancia = null;
+
+        [Tooltip("Los jugadores (y este gestor) sobreviven a los cambios de escena. Activado en el menú.")]
+        public bool persistente;
+
         [Tooltip("Un punto por jugador. Si hay menos puntos que jugadores, se reutilizan.")]
         public Transform[] puntosAparicion;
 
@@ -35,19 +49,71 @@ namespace BichoShow
 
         void Awake()
         {
+            if (Instancia != null && Instancia != this)
+            {
+                // Venimos del menú con jugadores: que el gestor persistente use esta escena.
+                Instancia.AdoptarEscena(this);
+                gameObject.SetActive(false);
+                Destroy(gameObject);
+                return;
+            }
+
+            Instancia = this;
             manager = GetComponent<PlayerInputManager>();
             // Necesario para que funcionen los eventos onPlayerJoined / onPlayerLeft de C#.
             manager.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
+            if (persistente) DontDestroyOnLoad(gameObject);
         }
+
+        void OnDestroy()
+        {
+            if (Instancia == this) Instancia = null;
+        }
+
+        /// <summary>Toma los puntos de aparición y colores de la escena nueva y recoloca a los jugadores.</summary>
+        void AdoptarEscena(GestorJugadores deLaEscena)
+        {
+            puntosAparicion = deLaEscena.puntosAparicion;
+            if (deLaEscena.colores != null && deLaEscena.colores.Length > 0) colores = deLaEscena.colores;
+            mostrarAyuda = deLaEscena.mostrarAyuda;
+
+            jugadores.RemoveAll(j => j == null);
+            bots.Clear(); // se destruyeron con la escena anterior
+            foreach (var j in jugadores)
+            {
+                j.Retirar(false);
+                Recolocar(j, j.IndiceJugador);
+            }
+        }
+
+        /// <summary>
+        /// Antes de cambiar de escena: quita bots y roles de la ronda anterior (saboteadores…)
+        /// para que los jugadores lleguen limpios a la siguiente.
+        /// </summary>
+        public void PrepararCambioEscena()
+        {
+            EliminarBots();
+            jugadores.RemoveAll(j => j == null);
+            foreach (var j in jugadores)
+            {
+                foreach (var s in j.GetComponents<Saboteador>()) Destroy(s);
+                j.Retirar(false);
+            }
+        }
+
+        public Color ColorDe(int indice) =>
+            colores != null && colores.Length > 0 ? colores[indice % colores.Length] : Color.white;
 
         void OnEnable()
         {
+            if (manager == null) return;
             manager.onPlayerJoined += AlUnirse;
             manager.onPlayerLeft += AlSalir;
         }
 
         void OnDisable()
         {
+            if (manager == null) return;
             manager.onPlayerJoined -= AlUnirse;
             manager.onPlayerLeft -= AlSalir;
         }
@@ -62,7 +128,8 @@ namespace BichoShow
             }
 
             int indice = entrada.playerIndex;
-            Preparar(bicho, indice, $"Bicho {indice + 1} ({entrada.currentControlScheme})");
+            if (persistente) DontDestroyOnLoad(entrada.gameObject);
+            Preparar(bicho, indice, $"J{indice + 1} ({entrada.currentControlScheme})");
         }
 
         void AlSalir(PlayerInput entrada)
@@ -73,6 +140,13 @@ namespace BichoShow
 
         void Preparar(ControladorBicho bicho, int indice, string nombre)
         {
+            Recolocar(bicho, indice);
+            bicho.gameObject.name = nombre;
+            jugadores.Add(bicho);
+        }
+
+        void Recolocar(ControladorBicho bicho, int indice)
+        {
             Transform punto = puntosAparicion != null && puntosAparicion.Length > 0
                 ? puntosAparicion[indice % puntosAparicion.Length]
                 : transform;
@@ -80,9 +154,6 @@ namespace BichoShow
             bicho.Colocar(punto.position, punto.rotation);
             if (colores != null && colores.Length > 0)
                 bicho.AsignarColor(colores[indice % colores.Length]);
-
-            bicho.gameObject.name = nombre;
-            jugadores.Add(bicho);
         }
 
         // ---------------------------------------------------------------------

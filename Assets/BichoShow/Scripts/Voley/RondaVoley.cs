@@ -40,6 +40,10 @@ namespace BichoShow
         public int puntosAntesDeEspeciales = 2;
         [Range(0f, 1f)] public float probabilidadEspecial = 0.5f;
 
+        [Header("Sabotaje")]
+        [Tooltip("Puntos para el saboteador si su trampa provoca el punto.")]
+        public int puntosPuntoProvocado = 25;
+
         [Header("Aspecto")]
         public Material materialPelota;
         public Material materialSombra;
@@ -55,12 +59,17 @@ namespace BichoShow
         float siguienteSaque = -1f;
         bool puntoDeOro;
 
-        protected override string Titulo => "VOLEY ATADOS";
+        public override string Titulo => "VOLEY ATADOS";
         protected override string Descripcion => "Que la pelota caiga en el campo rival… atados a tu pareja con una goma";
         protected override string Controles => "Stick mover · A saltar · X golpear (en el aire: ¡remate!) · Tocarla con el cuerpo la levanta";
         public override string NombreEquipo(int equipo) => nombres[equipo];
         public override Color ColorEquipo(int equipo) => colores[equipo];
         public override int PuntosEquipo(int equipo) => puntos[equipo];
+
+        public override IEnumerable<Vector3> ObjetivosSabotaje()
+        {
+            if (Pelota != null) yield return Pelota.transform.position;
+        }
 
         // ---------------------------------------------------------------------
         // Pista
@@ -163,8 +172,9 @@ namespace BichoShow
             QuitarGomas(); // libres para pasearse por la pista
         }
 
-        void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
             QuitarPelota();
             QuitarGomas();
         }
@@ -230,7 +240,14 @@ namespace BichoShow
             pelota.PuntoResuelto = true;
             puntos[ganador]++;
             puntosJugados++;
-            Mensaje($"¡Punto para el equipo {nombres[ganador]}! {como}", colores[ganador], 2.5f);
+            var culpable = Responsable(pelota.transform.position);
+            string autoria = "";
+            if (culpable != null)
+            {
+                culpable.SumarPuntos(puntosPuntoProvocado, "¡punto provocado!");
+                autoria = $"  (obra de {culpable.Etiqueta})";
+            }
+            Mensaje($"¡Punto para el equipo {nombres[ganador]}! {como}{autoria}", colores[ganador], 2.5f);
 
             if (confeti != null)
             {

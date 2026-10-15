@@ -16,9 +16,11 @@ namespace BichoShow
         public string Etiqueta { get; private set; } = "Saboteador";
         public Color ColorSaboteador { get; private set; } = new Color(0.75f, 0.4f, 1f);
         public bool EsMaquina => entrada == null;
+        /// <summary>Número del jugador que sabotea (-1 si es la máquina).</summary>
+        public int IndiceJugador { get; private set; } = -1;
         public TrampaSaboteable Seleccionada => seleccionada;
 
-        RondaMudanza ronda;
+        RondaBase ronda;
         PlayerInput entrada;
         InputAction accionMover, accionSaltar, accionAgarrar;
         float agresividad = 0.5f;
@@ -42,11 +44,12 @@ namespace BichoShow
 
         static readonly int IdBaseColor = Shader.PropertyToID("_BaseColor");
 
-        public void Configurar(RondaMudanza rondaMudanza, PlayerInput mando, Color color, string etiqueta,
-                               float agresividadMaquina, int fila)
+        public void Configurar(RondaBase rondaActual, PlayerInput mando, Color color, string etiqueta,
+                               float agresividadMaquina, int fila, int indiceJugador)
         {
-            ronda = rondaMudanza;
+            ronda = rondaActual;
             entrada = mando;
+            IndiceJugador = indiceJugador;
             ColorSaboteador = color;
             Etiqueta = etiqueta;
             agresividad = agresividadMaquina;
@@ -84,7 +87,7 @@ namespace BichoShow
             if (rayo != null) rayo.gameObject.SetActive(false);
         }
 
-        bool Jugando => ronda != null && ronda.EstadoActual == RondaMudanza.Estado.Jugando;
+        bool Jugando => ronda != null && ronda.EstadoActual == RondaBase.Estado.Jugando;
 
         void Update()
         {
@@ -195,12 +198,9 @@ namespace BichoShow
                 float puntuacion = 0f;
                 Vector3 centro = t.CentroEfecto;
 
-                foreach (var equipo in ronda.equipos)
-                {
-                    var objeto = equipo.objetoActual;
-                    if (objeto != null && Plano(objeto.transform.position - centro).magnitude < t.radioEfecto * 0.7f)
+                foreach (var objetivo in ronda.ObjetivosSabotaje())
+                    if (Plano(objetivo - centro).magnitude < t.radioEfecto * 0.7f)
                         puntuacion += 3f;
-                }
                 foreach (var b in ControladorBicho.Todos)
                     if (Plano(b.transform.position - centro).magnitude < t.radioEfecto * 0.6f)
                         puntuacion += 1f;
@@ -289,7 +289,7 @@ namespace BichoShow
 
         void OnGUI()
         {
-            if (ronda == null || ronda.EstadoActual == RondaMudanza.Estado.Esperando) return;
+            if (ronda == null || ronda.EstadoActual == RondaBase.Estado.Esperando) return;
 
             if (estilo == null)
                 estilo = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
@@ -300,9 +300,9 @@ namespace BichoShow
             float y = h * 0.93f - filaHud * (alto * 1.1f);
 
             string trampa = "";
-            if (seleccionada != null && ronda.EstadoActual == RondaMudanza.Estado.Jugando)
+            if (seleccionada != null && ronda.EstadoActual == RondaBase.Estado.Jugando)
                 trampa = seleccionada.Lista ? $"{seleccionada.Nombre}: ¡LISTA!" : $"{seleccionada.Nombre}: {seleccionada.TiempoParaLista:0.0}s";
-            string ayuda = EsMaquina || ronda.EstadoActual != RondaMudanza.Estado.Jugando ? "" : "   ·   Stick: elegir   ·   A: ¡activar!";
+            string ayuda = EsMaquina || ronda.EstadoActual != RondaBase.Estado.Jugando ? "" : "   ·   Stick: elegir   ·   A: ¡activar!";
             string texto = $"{Etiqueta.ToUpper()}  {Puntos} pts   ·   {trampa}{ayuda}";
             if (Time.time < finMensaje) texto += $"   {mensaje}";
 

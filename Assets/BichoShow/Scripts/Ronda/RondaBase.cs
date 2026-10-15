@@ -6,14 +6,23 @@ namespace BichoShow
 {
     /// <summary>
     /// Lo común a todas las pruebas del show: estados (Esperando → CuentaAtras → Jugando → Fin),
-    /// START para empezar, reloj, rellenar con bots, mensajes y marcador en pantalla.
+    /// START para empezar, reloj, rellenar con bots, saboteadores, mensajes y marcador.
     ///
     /// Equipos: jugadores 1 y 3 son el equipo 0; jugadores 2 y 4, el equipo 1.
     /// Cada prueba hereda de aquí y rellena los huecos (qué pasa al empezar, al jugar, al acabar).
+    ///
+    /// Se puede jugar suelta (START para empezar) o dentro del Show, que la configura y la
+    /// arranca él (ConfigurarDesdeShow / IniciarDesdeShow).
     /// </summary>
     public abstract class RondaBase : MonoBehaviour
     {
         public enum Estado { Esperando, CuentaAtras, Jugando, Fin }
+
+        /// <summary>Se lanza al terminar cualquier ronda (lo escucha el Show).</summary>
+        public static event System.Action<RondaBase> AlTerminarAlguna;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void LimpiarEstaticos() => AlTerminarAlguna = null;
 
         [Header("Ronda")]
         public float duracionRonda = 90f;
@@ -26,18 +35,34 @@ namespace BichoShow
         [Range(0f, 1f)] public float habilidadBots = 0.55f;
         public GestorJugadores gestor;
 
+        [Header("Saboteadores")]
+        [Tooltip("Quien esté dentro de esta zona al pulsar START será saboteador esa ronda.")]
+        public Collider zonaSaboteadores;
+        [Tooltip("Si nadie quiere sabotear, la máquina activa trampas.")]
+        public bool saboteadorMaquina = true;
+        [Range(0f, 1f)] public float agresividadMaquina = 0.5f;
+        [Tooltip("Puntos para el saboteador por cada bicho que su trampa tira al suelo.")]
+        public int puntosDerribo = 5;
+        [Tooltip("Lo que pase hasta estos segundos después de activar una trampa cuenta para el saboteador.")]
+        public float segundosAtribucion = 4f;
+
         public Estado EstadoActual { get; private set; } = Estado.Esperando;
         public float TiempoRestante { get; protected set; }
+        /// <summary>La controla el Show: no espera a START ni ofrece repetir.</summary>
+        public bool ControladaPorShow { get; private set; }
+        public IReadOnlyList<Saboteador> Saboteadores => saboteadores;
 
         protected float finCuentaAtras;
         protected GUIStyle estiloGrande, estiloMedio, estiloPequeno;
+        protected readonly List<Saboteador> saboteadores = new List<Saboteador>();
         readonly List<(string texto, Color color, float hasta)> mensajes = new List<(string, Color, float)>();
+        HashSet<int> saboteadoresForzados;
 
         // ---------------------------------------------------------------------
         // Lo que cada prueba tiene que decir
         // ---------------------------------------------------------------------
 
-        protected abstract string Titulo { get; }
+        public abstract string Titulo { get; }
         protected abstract string Descripcion { get; }
         protected virtual string Controles => "Stick mover · A saltar · Gatillo agarrar · X lanzarse / lanzar lo agarrado";
         public abstract string NombreEquipo(int equipo);
@@ -47,12 +72,10 @@ namespace BichoShow
         /// <summary>Crea un bot en ese número de jugador (con el cerebro que toque en esta prueba).</summary>
         protected abstract void CrearBot(int indice);
 
-        /// <summary>Al pulsar START: limpiar la ronda anterior y preparar roles (antes de crear bots).</summary>
+        /// <summary>Al pulsar START: limpiar la ronda anterior (antes de saboteadores y bots).</summary>
         protected virtual void AlPrepararRonda() { }
-        /// <summary>Después de crear los bots, antes de recolocar a todos.</summary>
+        /// <summary>Después de crear bots y saboteadores, antes de recolocar a todos.</summary>
         protected virtual void AlDespuesDeBots() { }
-        /// <summary>Si es true, nadie puede unirse durante la ronda aunque no haya bots.</summary>
-        protected virtual bool BloquearUniones => false;
         /// <summary>Al acabar la cuenta atrás.</summary>
         protected abstract void AlEmpezarRonda();
         /// <summary>Cada frame mientras se juega.</summary>
@@ -61,13 +84,47 @@ namespace BichoShow
         protected virtual bool PuedeTerminar() => true;
         protected virtual void AlTerminarRonda() { }
 
+        /// <summary>Puntos "jugosos" para que la máquina saboteadora apunte (objetos, pelota…).</summary>
+        public virtual IEnumerable<Vector3> ObjetivosSabotaje() { yield break; }
+
+        // ---------------------------------------------------------------------
+        // Show
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// El Show configura la ronda antes de arrancarla: bots, habilidad, duración y quién
+        /// sabotea (por número de jugador; null = los de la plataforma, como jugando suelta).
+        /// </summary>
+        public void ConfigurarDesdeShow(bool bots, float habilidad, float duracion, ICollection<int> forzarSaboteadores)
+        {
+            ControladaPorShow = true;
+            rellenarConBots = bots;
+            habilidadBots = habilidad;
+            duracionRonda = duracion;
+            jugadoresConBots = 4;
+            saboteadoresForzados = forzarSaboteadores != null ? new HashSet<int>(forzarSaboteadores) : new HashSet<int>();
+        }
+
+        public void IniciarDesdeShow()
+        {
+            if (EstadoActual == Estado.Esperando) EmpezarCuentaAtras();
+        }
+
         // ---------------------------------------------------------------------
         // Bucle
         // ---------------------------------------------------------------------
 
         protected virtual void Start()
         {
+            if (GestorJugadores.Instancia != null) gestor = GestorJugadores.Instancia;
             if (gestor == null) gestor = FindAnyObjectByType<GestorJugadores>();
+            ControladorBicho.AlgunoDerribado += AlDerribar;
+        }
+
+        protected virtual void OnDestroy()
+        {
+            ControladorBicho.AlgunoDerribado -= AlDerribar;
+            TrampaSaboteable.ModoManual = false;
         }
 
         protected virtual void Update()
@@ -76,7 +133,7 @@ namespace BichoShow
             {
                 case Estado.Esperando:
                 case Estado.Fin:
-                    if (ControladorBicho.Todos.Count > 0 && AlguienPulsoEmpezar())
+                    if (!ControladaPorShow && ControladorBicho.Todos.Count > 0 && AlguienPulsoEmpezar())
                         EmpezarCuentaAtras();
                     break;
 
@@ -111,12 +168,15 @@ namespace BichoShow
             finCuentaAtras = Time.time + duracionCuentaAtras;
 
             AlPrepararRonda();
+            PrepararSaboteadores();
             bool hayBots = RellenarConBots();
+            if (saboteadores.Count == 0 && saboteadorMaquina && TrampaSaboteable.Todas.Count > 0) CrearSaboteadorMaquina();
+            TrampaSaboteable.ModoManual = saboteadores.Count > 0;
             AlDespuesDeBots();
 
-            // Con bots (o roles especiales) en juego, nadie más puede unirse hasta el final:
-            // le tocaría el número de otro.
-            if (gestor != null) gestor.PermitirUnirse(!hayBots && !BloquearUniones);
+            // Con bots o saboteadores en juego, nadie más puede unirse hasta el final:
+            // le tocaría el número de otro. En el Show, nunca durante las pruebas.
+            if (gestor != null) gestor.PermitirUnirse(!ControladaPorShow && !hayBots && saboteadores.Count == 0);
 
             foreach (var b in ControladorBicho.Todos) b.Reaparecer();
         }
@@ -154,9 +214,20 @@ namespace BichoShow
             if (EstadoActual != Estado.Jugando) return;
             EstadoActual = Estado.Fin;
             TiempoRestante = 0f;
+
+            // Los saboteadores humanos recuperan su bicho (su marcador sigue en pantalla).
+            TrampaSaboteable.ModoManual = false;
+            foreach (var s in saboteadores)
+            {
+                if (s == null || s.EsMaquina) continue;
+                var bicho = s.GetComponent<ControladorBicho>();
+                if (bicho != null) bicho.Retirar(false);
+            }
+
             // Se puede volver a unir gente; los bots se rehacen al empezar la siguiente ronda.
-            if (gestor != null) gestor.PermitirUnirse(true);
+            if (gestor != null && !ControladaPorShow) gestor.PermitirUnirse(true);
             AlTerminarRonda();
+            AlTerminarAlguna?.Invoke(this);
         }
 
         // ---------------------------------------------------------------------
@@ -171,6 +242,86 @@ namespace BichoShow
             foreach (var b in ControladorBicho.Todos)
                 if (EquipoDe(b) == equipo) n++;
             return n;
+        }
+
+        // ---------------------------------------------------------------------
+        // Saboteadores
+        // ---------------------------------------------------------------------
+
+        protected bool EnZonaSaboteadores(ControladorBicho b) =>
+            zonaSaboteadores != null && zonaSaboteadores.bounds.Contains(b.transform.position + Vector3.up * 0.5f);
+
+        /// <summary>
+        /// Quita los saboteadores de la ronda anterior y elige los nuevos: los que mande el Show
+        /// o, jugando suelta, quien esté en la plataforma de saboteadores.
+        /// </summary>
+        void PrepararSaboteadores()
+        {
+            foreach (var s in saboteadores)
+            {
+                if (s == null) continue;
+                if (s.EsMaquina) Destroy(s.gameObject);
+                else
+                {
+                    var bichoAnterior = s.GetComponent<ControladorBicho>();
+                    if (bichoAnterior != null) bichoAnterior.Retirar(false);
+                    Destroy(s);
+                }
+            }
+            saboteadores.Clear();
+            if (TrampaSaboteable.Todas.Count == 0) return; // esta prueba no tiene trampas
+
+            var elegidos = new List<ControladorBicho>();
+            foreach (var b in ControladorBicho.Todos)
+            {
+                if (b.EsBot) continue;
+                bool elegido = saboteadoresForzados != null ? saboteadoresForzados.Contains(b.IndiceJugador) : EnZonaSaboteadores(b);
+                if (elegido) elegidos.Add(b);
+            }
+
+            foreach (var b in elegidos)
+            {
+                var s = b.gameObject.AddComponent<Saboteador>();
+                s.Configurar(this, b.GetComponent<PlayerInput>(), b.ColorJugador, $"Saboteador J{b.IndiceJugador + 1}",
+                             agresividadMaquina, saboteadores.Count, b.IndiceJugador);
+                b.Retirar(true);
+                saboteadores.Add(s);
+            }
+        }
+
+        void CrearSaboteadorMaquina()
+        {
+            var go = new GameObject("SaboteadorMaquina");
+            var s = go.AddComponent<Saboteador>();
+            s.Configurar(this, null, new Color(0.8f, 0.45f, 1f), "Saboteador máquina", agresividadMaquina, 0, -1);
+            saboteadores.Add(s);
+        }
+
+        /// <summary>El saboteador cuya trampa, activada hace poco, tiene este punto dentro de su alcance.</summary>
+        protected Saboteador Responsable(Vector3 punto)
+        {
+            Saboteador mejor = null;
+            float mejorDistancia = float.MaxValue;
+            foreach (var t in TrampaSaboteable.Todas)
+            {
+                if (t.UltimoSaboteador == null || Time.time - t.UltimoUso > segundosAtribucion) continue;
+                Vector3 d = t.CentroEfecto - punto;
+                d.y = 0f;
+                float distancia = d.magnitude;
+                if (distancia < t.radioEfecto && distancia < mejorDistancia)
+                {
+                    mejorDistancia = distancia;
+                    mejor = t.UltimoSaboteador;
+                }
+            }
+            return mejor;
+        }
+
+        void AlDerribar(ControladorBicho bicho)
+        {
+            if (EstadoActual != Estado.Jugando) return;
+            var s = Responsable(bicho.transform.position);
+            if (s != null) s.SumarPuntos(puntosDerribo, "¡al suelo!");
         }
 
         // ---------------------------------------------------------------------
@@ -189,6 +340,7 @@ namespace BichoShow
             switch (EstadoActual)
             {
                 case Estado.Esperando:
+                    if (ControladaPorShow) break; // el Show pone su propio cartel
                     Texto(new Rect(0, h * 0.12f, w, h * 0.1f), Titulo, estiloGrande, Color.white);
                     Texto(new Rect(0, h * 0.23f, w, h * 0.05f), Descripcion, estiloPequeno, Color.white);
                     Texto(new Rect(0, h * 0.30f, w, h * 0.05f),
@@ -196,7 +348,16 @@ namespace BichoShow
                         estiloPequeno, new Color(1f, 1f, 1f, 0.85f));
                     if (rellenarConBots && ControladorBicho.Todos.Count < jugadoresConBots)
                         Texto(new Rect(0, h * 0.35f, w, h * 0.05f), $"Los huecos hasta {jugadoresConBots} jugadores los ocupará la máquina", estiloPequeno, new Color(0.8f, 0.95f, 1f, 0.9f));
-                    DibujarEsperandoExtra(w, h);
+                    if (zonaSaboteadores != null)
+                    {
+                        string enPlataforma = "";
+                        foreach (var b in ControladorBicho.Todos)
+                            if (!b.EsBot && EnZonaSaboteadores(b)) enPlataforma += $" J{b.IndiceJugador + 1}";
+                        string linea = enPlataforma.Length > 0
+                            ? $"Serán SABOTEADORES:{enPlataforma}"
+                            : "Súbete a la plataforma morada para ser SABOTEADOR";
+                        Texto(new Rect(0, h * 0.40f, w, h * 0.05f), linea, estiloPequeno, new Color(0.85f, 0.6f, 1f));
+                    }
                     if (ControladorBicho.Todos.Count > 0)
                         Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para empezar", estiloMedio, Parpadeo(Color.yellow));
                     Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.7f));
@@ -206,6 +367,7 @@ namespace BichoShow
                     int n = Mathf.CeilToInt(finCuentaAtras - Time.time);
                     float pulso = 1f - Mathf.Repeat(finCuentaAtras - Time.time, 1f);
                     Texto(new Rect(0, h * 0.3f, w, h * 0.25f), n.ToString(), estiloGrande, new Color(1f, 1f, 1f, 1f - pulso * 0.6f));
+                    Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.7f));
                     break;
 
                 case Estado.Jugando:
@@ -220,7 +382,8 @@ namespace BichoShow
                         ganador < 0 ? "¡EMPATE!" : $"¡GANA EL EQUIPO {NombreEquipo(ganador).ToUpper()}!",
                         estiloGrande, ganador < 0 ? Color.white : ColorEquipo(ganador));
                     Texto(new Rect(0, h * 0.42f, w, h * 0.06f), $"{NombreEquipo(0)} {p0}  —  {p1} {NombreEquipo(1)}", estiloMedio, Color.white);
-                    Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para otra ronda", estiloMedio, Parpadeo(Color.yellow));
+                    if (!ControladaPorShow)
+                        Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para otra ronda", estiloMedio, Parpadeo(Color.yellow));
                     break;
             }
 
@@ -234,9 +397,6 @@ namespace BichoShow
                 y += h * 0.045f;
             }
         }
-
-        /// <summary>Líneas extra en la pantalla de espera (por debajo de la de bots).</summary>
-        protected virtual void DibujarEsperandoExtra(float w, float h) { }
 
         /// <summary>Texto grande arriba en el centro. Por defecto, el reloj.</summary>
         protected virtual string TextoReloj
@@ -290,7 +450,7 @@ namespace BichoShow
             estiloPequeno.fontSize = Mathf.RoundToInt(tamano * 0.8f);
         }
 
-        protected static void Texto(Rect r, string texto, GUIStyle estilo, Color color)
+        public static void Texto(Rect r, string texto, GUIStyle estilo, Color color)
         {
             var sombra = new Color(0f, 0f, 0f, 0.65f * color.a);
             estilo.normal.textColor = sombra;
@@ -300,7 +460,7 @@ namespace BichoShow
             GUI.Label(r, texto, estilo);
         }
 
-        protected static void Barra(Rect r, float valor, Color color)
+        public static void Barra(Rect r, float valor, Color color)
         {
             var antes = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.5f);
@@ -310,6 +470,6 @@ namespace BichoShow
             GUI.color = antes;
         }
 
-        protected static Color Parpadeo(Color c) => Mathf.Repeat(Time.time * 2f, 1f) < 0.6f ? c : new Color(c.r, c.g, c.b, 0.35f);
+        public static Color Parpadeo(Color c) => Mathf.Repeat(Time.time * 2f, 1f) < 0.6f ? c : new Color(c.r, c.g, c.b, 0.35f);
     }
 }

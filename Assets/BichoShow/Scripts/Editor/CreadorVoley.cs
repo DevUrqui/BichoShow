@@ -146,6 +146,9 @@ namespace BichoShow.Herramientas
             var vacio = M.ZonaTrigger<ZonaMortal>("ZonaAgua", mapa, new Vector3(0f, -8f, 0f), new Vector3(220f, 4f, 220f));
             vacio.motivoObjeto = "se ha caído al agua";
 
+            // --- Trampas de playa (las activa el saboteador) ---
+            var zonaSaboteadores = CrearTrampasYCabina(mapa, agua);
+
             // --- Jugadores: 1 y 3 en el campo rojo, 2 y 4 en el azul ---
             var jugadoresGo = new GameObject("Jugadores");
             var manager = jugadoresGo.AddComponent<PlayerInputManager>();
@@ -185,6 +188,9 @@ namespace BichoShow.Herramientas
             ronda.centrosCampo = new[] { Punto(rondaGo.transform, "CentroRojo", new Vector3(-5f, 0f, 0f)), Punto(rondaGo.transform, "CentroAzul", new Vector3(5f, 0f, 0f)) };
             ronda.tamanoCampo = new Vector2(10f, 12f);
             ronda.barreraRed = cajaBarrera;
+            ronda.zonaSaboteadores = zonaSaboteadores;
+            ronda.saboteadorMaquina = true;
+            ronda.agresividadMaquina = 0.35f;
             ronda.materialPelota = pelota;
             ronda.materialSombra = sombra;
             ronda.materialCharco = charco;
@@ -195,6 +201,102 @@ namespace BichoShow.Herramientas
             E.AnadirAlBuild(RutaEscena);
             AssetDatabase.SaveAssets();
             Selection.activeGameObject = rondaGo;
+        }
+
+        /// <summary>
+        /// En cada campo: un cangrejo que lo cruza, un ventilador que sopla a lo ancho y una
+        /// ola que lo encharca. Y la plataforma morada para elegir saboteador jugando suelto.
+        /// </summary>
+        static Collider CrearTrampasYCabina(Transform mapa, Material agua)
+        {
+            var cangrejoMat = E.CrearMaterial("Cangrejo", new Color(0.95f, 0.32f, 0.2f), 0.45f);
+            var ojo = E.CrearMaterial("Ojo", Color.white, 0.8f);
+            var pupila = E.CrearMaterial("Pupila", new Color(0.08f, 0.08f, 0.1f), 0.9f);
+            var metal = E.CrearMaterial("Ventilador", new Color(0.55f, 0.58f, 0.62f), 0.7f);
+            var sabotaje = E.CrearMaterial("Sabotaje", new Color(0.62f, 0.3f, 0.9f), 0.5f);
+
+            var trampas = M.Grupo(mapa, "TrampasPlaya");
+            for (int equipo = 0; equipo < 2; equipo++)
+            {
+                float cx = equipo == 0 ? -5f : 5f;
+                string campo = equipo == 0 ? "campo rojo" : "campo azul";
+
+                // Cangrejo: cruza el campo de fondo a fondo y se entierra en la arena de fuera.
+                var cangrejoGo = new GameObject($"Cangrejo ({campo})");
+                cangrejoGo.transform.SetParent(trampas, false);
+                cangrejoGo.transform.position = new Vector3(cx, -1.6f, -8.5f);
+                cangrejoGo.AddComponent<Rigidbody>().isKinematic = true;
+                var caja = cangrejoGo.AddComponent<BoxCollider>();
+                caja.size = new Vector3(1.8f, 0.8f, 1.2f);
+                caja.center = new Vector3(0f, 0.4f, 0f);
+                var cuerpo = new GameObject("Cuerpo").transform;
+                cuerpo.SetParent(cangrejoGo.transform, false);
+                var caparazon = E.Pieza(PrimitiveType.Sphere, "Caparazon", cuerpo, new Vector3(0f, 0.45f, 0f), new Vector3(1.6f, 0.7f, 1.1f), cangrejoMat);
+                foreach (float lado in new[] { -1f, 1f })
+                {
+                    E.Pieza(PrimitiveType.Cube, "Pinza", cuerpo, new Vector3(0.95f * lado, 0.5f, 0.55f), new Vector3(0.5f, 0.35f, 0.35f), cangrejoMat);
+                    E.Pieza(PrimitiveType.Cylinder, "Tallo", cuerpo, new Vector3(0.25f * lado, 0.85f, 0.35f), new Vector3(0.06f, 0.15f, 0.06f), cangrejoMat);
+                    var o = E.Pieza(PrimitiveType.Sphere, "Ojo", cuerpo, new Vector3(0.25f * lado, 1.05f, 0.35f), Vector3.one * 0.22f, ojo);
+                    E.Pieza(PrimitiveType.Sphere, "Pupila", o.transform, new Vector3(0f, 0f, 0.38f), Vector3.one * 0.5f, pupila);
+                }
+                var cangrejo = cangrejoGo.AddComponent<Cangrejo>();
+                cangrejo.desde = new Vector3(cx, 0f, -8.5f);
+                cangrejo.hasta = new Vector3(cx, 0f, 8.5f);
+                cangrejo.cuerpo = cuerpo;
+                cangrejo.nombreTrampa = $"Cangrejo ({campo})";
+                cangrejo.enfriamiento = 9f;
+                cangrejo.radioEfecto = 9f;
+                cangrejo.alturaMarcador = 2.5f;
+                cangrejo.renderersAviso = new[] { caparazon.GetComponent<Renderer>() };
+
+                // Ventilador: en la arena de atrás, sopla a lo ancho del campo.
+                var base_ = E.Bloque($"Ventilador ({campo})", trampas, new Vector3(cx, 0.8f, -10f), new Vector3(1.2f, 1.6f, 0.6f), metal);
+                var aspas = new GameObject("Aspas").transform;
+                aspas.SetParent(trampas, false);
+                aspas.position = new Vector3(cx, 1.9f, -9.6f);
+                M.Decorado(PrimitiveType.Cube, "Aspa", aspas, new Vector3(cx, 1.9f, -9.6f), new Vector3(2.4f, 0.28f, 0.05f), metal);
+                var aspa2 = M.Decorado(PrimitiveType.Cube, "Aspa", aspas, new Vector3(cx, 1.9f, -9.6f), new Vector3(2.4f, 0.28f, 0.05f), metal);
+                aspa2.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+                var viento = base_.AddComponent<RafagaViento>();
+                viento.direccion = Vector3.forward;
+                viento.centroZona = new Vector3(cx, 3f, 0f);
+                viento.tamanoZona = new Vector3(10f, 6f, 12f);
+                viento.aspas = aspas;
+                viento.nombreTrampa = $"Viento ({campo})";
+                viento.enfriamiento = 8f;
+                viento.radioEfecto = 7f;
+                viento.alturaMarcador = 0f;
+                viento.renderersAviso = new[] { base_.GetComponent<Renderer>() };
+
+                // Ola: entra desde el mar (el lado de fuera) y encharca el campo.
+                var olaGo = new GameObject($"Ola ({campo})");
+                olaGo.transform.SetParent(trampas, false);
+                olaGo.transform.position = new Vector3(cx, 0f, 0f);
+                var lamina = M.Decorado(PrimitiveType.Cube, "Agua", olaGo.transform, new Vector3(cx, -0.2f, 0f), new Vector3(10f, 0.08f, 12f), agua);
+                lamina.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+                lamina.SetActive(false);
+                var ola = olaGo.AddComponent<Ola>();
+                ola.centroZona = new Vector3(cx, 0f, 0f);
+                ola.tamano = new Vector2(10f, 12f);
+                ola.direccion = equipo == 0 ? Vector3.right : Vector3.left;
+                ola.agua = lamina.transform;
+                ola.nombreTrampa = $"Ola ({campo})";
+                ola.enfriamiento = 10f;
+                ola.radioEfecto = 7f;
+                ola.alturaMarcador = 3f;
+            }
+
+            // Plataforma de saboteador (para jugar el voley suelto): en una esquina de la arena.
+            var cabina = M.Grupo(mapa, "CabinaSaboteador");
+            M.Decorado(PrimitiveType.Cube, "Plataforma", cabina, new Vector3(-12.5f, 0.03f, -8.5f), new Vector3(3f, 0.06f, 3f), sabotaje);
+            M.Cartel(cabina, "SABOTEADOR", new Vector3(-12.5f, 2.2f, -8.5f), 0.5f, Color.white);
+            var zona = new GameObject("ZonaSaboteadores");
+            zona.transform.SetParent(cabina, false);
+            zona.transform.position = new Vector3(-12.5f, 1.5f, -8.5f);
+            var trigger = zona.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(3f, 3f, 3f);
+            return trigger;
         }
 
         static void Suelo(string nombre, Transform padre, Vector3 posicion, Vector3 escala, Material material, int equipo)

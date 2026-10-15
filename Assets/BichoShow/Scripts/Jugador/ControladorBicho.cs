@@ -24,6 +24,9 @@ namespace BichoShow
         /// <summary>Algún bicho ha tropezado por un golpe (no por lanzarse él mismo).</summary>
         public static event System.Action<ControladorBicho> AlgunoDerribado;
 
+        /// <summary>Mientras es true, ningún bicho hace caso a su mando (menús, marcadores entre rondas).</summary>
+        public static bool EntradaBloqueada;
+
         [Header("Movimiento")]
         [Tooltip("Velocidad máxima corriendo (m/s).")]
         public float velocidadMaxima = 6f;
@@ -170,6 +173,7 @@ namespace BichoShow
         {
             Todos.Clear();
             AlgunoDerribado = null;
+            EntradaBloqueada = false;
         }
 
         void Awake() => Inicializar();
@@ -251,6 +255,13 @@ namespace BichoShow
         void Update()
         {
             if (Retirado) return;
+
+            if (EntradaBloqueada)
+            {
+                entradaMover = Vector2.zero;
+                pulsandoAgarrar = false;
+                return;
+            }
 
             if (entradaExterna != null)
             {
@@ -578,6 +589,8 @@ namespace BichoShow
             if (renderersColor != null && renderersColor.Length > 0 && renderersColor[0] != null)
                 go.GetComponent<Renderer>().sharedMaterial = renderersColor[0].sharedMaterial;
             go.SetActive(false);
+            // Hijo del bicho para que viaje con él entre escenas (su posición se fija cada frame).
+            go.transform.SetParent(transform, false);
             return go.transform;
         }
 
@@ -735,6 +748,8 @@ namespace BichoShow
             if (entrada.sqrMagnitude < 0.0001f) return Vector3.zero;
 
             Vector3 adelante = Vector3.forward, derecha = Vector3.right;
+            // La cámara cambia con cada escena: si la anterior ya no existe, buscar la nueva.
+            if (camara == null && Camera.main != null) camara = Camera.main.transform;
             if (camara != null)
             {
                 adelante = Aplanar(camara.forward).normalized;
