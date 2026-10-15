@@ -91,6 +91,12 @@ namespace BichoShow
         public float duracionLanzarse = 0.8f;
         public float enfriamientoLanzarse = 1.2f;
 
+        [Header("Golpear (pelota, etc.)")]
+        [Tooltip("Distancia desde el pecho a la que el botón de lanzarse golpea algo golpeable.")]
+        public float alcanceGolpe = 1.8f;
+        [Tooltip("Espera tras un golpe antes de poder volver a golpear o lanzarse (s).")]
+        public float enfriamientoGolpe = 0.4f;
+
         [Header("Material físico del cuerpo")]
         [Tooltip("Rozamiento bajo para que no se quede pegado a las paredes.")]
         public float rozamientoCuerpo = 0.2f;
@@ -139,6 +145,8 @@ namespace BichoShow
         float finTumbado = -10f;
         float finLevantarse = -10f;
         bool lanzarsePendiente;
+        float finResbalon = -10f;
+        float factorResbalon = 1f;
         bool agarreBloqueado; // tras soltarse a la fuerza, hay que volver a pulsar
         bool pulsandoAgarrar;
         FixedJoint agarre;
@@ -338,6 +346,8 @@ namespace BichoShow
             float acel = aceleracion * (EnSuelo ? 1f : controlEnAire);
             // Si me tienen agarrado, forcejeo pero con poca fuerza: así quien agarra me puede arrastrar.
             if (TeTienenAgarrado) acel *= fuerzaSiTeAgarran;
+            // Sobre aceite (u otra cosa resbaladiza) casi no hay agarre: ni para arrancar ni para frenar.
+            if (Time.time < finResbalon) acel *= factorResbalon;
             Vector3 cambio = Vector3.ClampMagnitude((velocidadDeseada - velocidadActual) / Time.fixedDeltaTime, acel);
 
             // Empujar un poco por encima del centro de masas hace que se incline al arrancar y frenar.
@@ -370,6 +380,13 @@ namespace BichoShow
             if (agarre != null)
             {
                 LanzarAgarrado();
+                return;
+            }
+
+            // Con algo golpeable cerca (la pelota), el botón golpea en vez de tirarte.
+            if (IntentarGolpear())
+            {
+                ultimoLanzamiento = Time.time - enfriamientoLanzarse + enfriamientoGolpe;
                 return;
             }
 
@@ -425,6 +442,7 @@ namespace BichoShow
             {
                 var c = candidatosAgarre[i];
                 if (c.attachedRigidbody == rb) continue;
+                if (c.attachedRigidbody != null && c.attachedRigidbody.GetComponent<NoAgarrable>() != null) continue;
                 float puntuacion = (c.ClosestPointOnBounds(centro) - centro).sqrMagnitude;
                 if (c.attachedRigidbody == null) puntuacion += 100f;
                 if (puntuacion < mejorPuntuacion) { mejorPuntuacion = puntuacion; mejor = c; }
@@ -444,6 +462,32 @@ namespace BichoShow
                 ? mejor.attachedRigidbody.GetComponent<ControladorBicho>()
                 : null;
             if (bichoAgarrado != null) bichoAgarrado.agarradoPor++;
+        }
+
+        bool IntentarGolpear()
+        {
+            int n = Physics.OverlapSphereNonAlloc(rb.worldCenterOfMass, alcanceGolpe, candidatosAgarre, ~0, QueryTriggerInteraction.Ignore);
+            IGolpeable mejor = null;
+            float mejorDistancia = float.MaxValue;
+            for (int i = 0; i < n; i++)
+            {
+                var c = candidatosAgarre[i];
+                if (c.attachedRigidbody == rb) continue;
+                var golpeable = c.attachedRigidbody != null
+                    ? c.attachedRigidbody.GetComponent<IGolpeable>()
+                    : c.GetComponent<IGolpeable>();
+                if (golpeable == null) continue;
+                float d = (c.ClosestPointOnBounds(rb.worldCenterOfMass) - rb.worldCenterOfMass).sqrMagnitude;
+                if (d < mejorDistancia) { mejorDistancia = d; mejor = golpeable; }
+            }
+            return mejor != null && mejor.Golpear(this, direccionMirada, !EnSuelo);
+        }
+
+        /// <summary>Durante un rato el bicho casi no tiene agarre (aceite, hielo…). factor 0 = patinar del todo.</summary>
+        public void Resbalar(float factor, float duracion)
+        {
+            factorResbalon = Mathf.Clamp01(factor);
+            finResbalon = Mathf.Max(finResbalon, Time.time + duracion);
         }
 
         void LanzarAgarrado()

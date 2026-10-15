@@ -563,7 +563,7 @@ namespace BichoShow.Herramientas
         // Utilidades
         // ------------------------------------------------------------------
 
-        static Transform Grupo(Transform padre, string nombre)
+        internal static Transform Grupo(Transform padre, string nombre)
         {
             var t = new GameObject(nombre).transform;
             t.SetParent(padre, false);
@@ -571,7 +571,7 @@ namespace BichoShow.Herramientas
         }
 
         /// <summary>Pieza solo visual (sin collider).</summary>
-        static GameObject Decorado(PrimitiveType tipo, string nombre, Transform padre, Vector3 posicion, Vector3 escala,
+        internal static GameObject Decorado(PrimitiveType tipo, string nombre, Transform padre, Vector3 posicion, Vector3 escala,
                                    Material material, bool local = false)
         {
             if (material == null) return null;
@@ -586,7 +586,7 @@ namespace BichoShow.Herramientas
             return go;
         }
 
-        static T ZonaTrigger<T>(string nombre, Transform padre, Vector3 posicion, Vector3 tamano) where T : Component
+        internal static T ZonaTrigger<T>(string nombre, Transform padre, Vector3 posicion, Vector3 tamano) where T : Component
         {
             var go = new GameObject(nombre);
             go.transform.SetParent(padre, false);
@@ -597,7 +597,7 @@ namespace BichoShow.Herramientas
             return go.AddComponent<T>();
         }
 
-        static void Cartel(Transform padre, string texto, Vector3 posicion, float altura, Color color)
+        internal static void Cartel(Transform padre, string texto, Vector3 posicion, float altura, Color color)
         {
             var go = new GameObject($"Cartel {texto}");
             go.transform.SetParent(padre, false);
@@ -615,7 +615,7 @@ namespace BichoShow.Herramientas
             if (fuente != null) go.GetComponent<MeshRenderer>().sharedMaterial = fuente.material;
         }
 
-        static ParticleSystem Particulas(string nombre, Transform padre, Vector3 posicion, Color colorA, Color colorB,
+        internal static ParticleSystem Particulas(string nombre, Transform padre, Vector3 posicion, Color colorA, Color colorB,
                                          short cantidad, float velocidadMin, float velocidadMax, Material material)
         {
             var go = new GameObject(nombre);
