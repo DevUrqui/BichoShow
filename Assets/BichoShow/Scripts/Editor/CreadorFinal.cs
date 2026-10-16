@@ -193,8 +193,8 @@ namespace BichoShow.Herramientas
             // --- 1. El bloque: pasillo estrecho con foso ---
             var p1 = M.Grupo(carril, "1 Bloque");
             E.Bloque("PasilloA", p1, new Vector3(lx, -1f, -27.8f), new Vector3(3f, 2f, 6.4f), m.suelo);
-            E.Bloque("FondoFoso", p1, new Vector3(lx, -3.2f, -23.3f), new Vector3(3f, 1.6f, 2.6f), m.oscuro);
-            E.Bloque("PasilloB", p1, new Vector3(lx, -1f, -21f), new Vector3(3f, 2f, 2f), m.suelo);
+            E.Bloque("FondoFoso", p1, new Vector3(lx, -3.2f, -23.0f), new Vector3(3f, 1.6f, 3.2f), m.oscuro); // 3.2 m: holgura para que el bloque (2.4) vuelque y caiga sin encallarse
+            E.Bloque("PasilloB", p1, new Vector3(lx, -1f, -20.7f), new Vector3(3f, 2f, 1.4f), m.suelo);
             foreach (float lado in new[] { -1f, 1f })
                 E.Bloque("ParedPasillo", p1, new Vector3(lx + 1.7f * lado, 0.3f, -25.5f), new Vector3(0.4f, 5.4f, 11f), m.pared);
             var bloque = E.Bloque("Bloque", p1, new Vector3(lx, 1.2f, -28f), new Vector3(2.8f, 2.4f, 2.4f), m.bloque);
@@ -208,10 +208,11 @@ namespace BichoShow.Herramientas
             var paso1 = p1.gameObject.AddComponent<PasoBloque>();
             paso1.equipo = equipo;
             paso1.pista = "¡Empujad el bloque juntos!";
-            paso1.zFin = -21.5f;
+            paso1.zFin = -20.5f;
             paso1.bloque = rbBloque;
             paso1.adelante = Vector3.forward;
             paso1.salida = new Vector3(lx, 0f, -18.5f);
+            paso1.centroFoso = new Vector3(lx, 0f, -23.0f);
 
             // --- 2. El puente levadizo ---
             var p2 = M.Grupo(carril, "2 Puente");
