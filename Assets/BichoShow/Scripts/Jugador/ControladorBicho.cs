@@ -111,6 +111,13 @@ namespace BichoShow
         [Header("Aspecto")]
         [Tooltip("Renderers que se tiñen con el color del jugador.")]
         public Renderer[] renderersColor;
+        [Tooltip("Mano y brazo sencillos (esfera y cilindro) al agarrar. Desactivar si el aspecto del personaje anima los suyos.")]
+        public bool manoSimple = true;
+
+        /// <summary>El bicho está estirando la mano (agarrando o intentándolo).</summary>
+        public bool ManoEstirada { get; private set; }
+        /// <summary>Dónde está (o hacia dónde se estira) la mano, en el mundo.</summary>
+        public Vector3 PuntoMano { get; private set; }
 
         // --- Estado público (lo usarán las pruebas, la cámara y los efectos) ---
         public bool EnSuelo { get; private set; }
@@ -579,6 +586,7 @@ namespace BichoShow
 
         void CrearManoVisual()
         {
+            if (!manoSimple) return; // el aspecto del personaje anima sus propios brazos
             mano = PiezaVisual(PrimitiveType.Sphere, "Mano");
             brazo = PiezaVisual(PrimitiveType.Cylinder, "Brazo");
             mano.localScale = Vector3.one * 0.24f;
@@ -599,18 +607,21 @@ namespace BichoShow
 
         void ActualizarManoVisual()
         {
-            if (mano == null || brazo == null) return;
+            // Dónde va la mano (lo usa también el aspecto del personaje, si anima sus propios brazos).
+            ManoEstirada = agarre != null || (pulsandoAgarrar && !Tumbado && !agarreBloqueado);
+            PuntoMano = agarre != null
+                ? transform.TransformPoint(agarre.anchor)
+                : transform.position + Vector3.up * 0.6f + direccionMirada * (alcanceAgarre + radioAgarre * 0.5f);
 
-            bool visible = agarre != null || (pulsandoAgarrar && !Tumbado && !agarreBloqueado);
+            if (mano == null || brazo == null) return;
+            bool visible = ManoEstirada;
             mano.gameObject.SetActive(visible);
             brazo.gameObject.SetActive(visible);
             if (!visible) return;
 
             // Con el joint, la mano va al punto agarrado; si no, estira el brazo hacia delante.
             Vector3 hombro = transform.TransformPoint(new Vector3(0f, 0.7f, 0.25f));
-            Vector3 puntoMano = agarre != null
-                ? transform.TransformPoint(agarre.anchor)
-                : transform.position + Vector3.up * 0.6f + direccionMirada * (alcanceAgarre + radioAgarre * 0.5f);
+            Vector3 puntoMano = PuntoMano;
 
             mano.position = puntoMano;
             Vector3 tramo = puntoMano - hombro;

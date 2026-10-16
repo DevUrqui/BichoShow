@@ -49,3 +49,7 @@ crashlytics-buildid.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Copias de seguridad de Blender
+*.blend1
+*.blend2
