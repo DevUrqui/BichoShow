@@ -17,6 +17,8 @@ namespace BichoShow
         public float masaEnPareja = 45f;
         [Tooltip("Masa si el equipo es de un solo jugador.")]
         public float masaEnSolitario = 22f;
+        [Tooltip("Rozamiento del bloque con el suelo. Con 45 kg y 0.45, uno solo no puede y dos sí, con margen.")]
+        public float rozamiento = 0.45f;
 
         Vector3 posicionInicial;
         Quaternion rotacionInicial;
@@ -24,7 +26,20 @@ namespace BichoShow
 
         bool Caido => bloque != null && bloque.position.y < -1f;
 
-        void Awake() => Guardar();
+        void Awake()
+        {
+            Guardar();
+            var col = bloque != null ? bloque.GetComponent<Collider>() : null;
+            if (col != null)
+            {
+                col.sharedMaterial = new PhysicsMaterial("Bloque")
+                {
+                    dynamicFriction = rozamiento,
+                    staticFriction = rozamiento,
+                    frictionCombine = PhysicsMaterialCombine.Minimum,
+                };
+            }
+        }
 
         void Guardar()
         {
@@ -48,6 +63,15 @@ namespace BichoShow
             bloque.position = posicionInicial;
             bloque.rotation = rotacionInicial;
             bloque.transform.SetPositionAndRotation(posicionInicial, rotacionInicial);
+        }
+
+        public override bool HaciendoFuerza(ControladorBicho bot)
+        {
+            if (bloque == null || Caido) return false;
+            Vector3 adelantePlano = Plano(adelante).normalized;
+            Vector3 relativo = Plano(bot.transform.position - bloque.position);
+            // Pegado a la cara de atrás del bloque.
+            return Vector3.Dot(relativo, adelantePlano) < -1.1f && relativo.magnitude < 2.6f;
         }
 
         public override Vector3 ObjetivoBot(ControladorBicho bot, int rol, ControladorBicho companero, out float intensidad)

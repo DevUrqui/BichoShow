@@ -108,6 +108,10 @@ namespace BichoShow
             float avance = Plano(ahora - posicionControl).magnitude;
             posicionControl = ahora;
 
+            // Empujando el bloque se avanza poco (o nada, hasta que llega el compañero): no es un atasco.
+            var paso = ronda.PasoActual(RondaBase.EquipoDe(bicho));
+            if (paso != null && paso.HaciendoFuerza(bicho)) return;
+
             bool deberiaMoverse = intensidad > 0.1f && Plano(objetivo - ahora).magnitude > 1.8f;
             if (deberiaMoverse && avance < 0.3f)
             {

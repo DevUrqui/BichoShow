@@ -27,6 +27,12 @@ namespace BichoShow
         /// <summary>Vuelve a dejar el paso como al principio (para repetir la ronda).</summary>
         public virtual void Reiniciar() { }
 
+        /// <summary>
+        /// El bot está haciendo fuerza contra algo a propósito (empujar el bloque): que no lo
+        /// tome por un atasco y se ponga a saltar.
+        /// </summary>
+        public virtual bool HaciendoFuerza(ControladorBicho bot) => false;
+
         /// <summary>Punto al que debe ir el bot y con qué intensidad de stick (0 = quieto).</summary>
         public abstract Vector3 ObjetivoBot(ControladorBicho bot, int rol, ControladorBicho companero, out float intensidad);
 
