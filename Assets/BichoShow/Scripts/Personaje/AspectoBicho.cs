@@ -14,6 +14,20 @@ namespace BichoShow
     [RequireComponent(typeof(ControladorBicho))]
     public class AspectoBicho : MonoBehaviour
     {
+        [Header("Orientación del dibujo (separada de la física)")]
+        [Tooltip("Objeto que contiene todo el aspecto (\"Aspecto\"). Se orienta aparte de la cápsula de física.")]
+        public Transform raizVisual;
+        [Tooltip("Cuánta inclinación de la física se copia (0 = siempre derecho, 1 = igual que la cápsula).")]
+        [Range(0f, 1f)] public float inclinacionFisica = 0.3f;
+        [Tooltip("Inclinación máxima del dibujo de pie (grados).")]
+        public float inclinacionMaxima = 15f;
+        [Tooltip("Inclinación hacia delante al correr a tope (grados).")]
+        public float inclinacionCorriendo = 8f;
+        [Tooltip("Rapidez con la que el dibujo gira hacia donde va (más alto = más rápido).")]
+        public float suavizadoGiro = 10f;
+        [Tooltip("Centro de la cápsula, en local: el dibujo se coloca centrado ahí.")]
+        public Vector3 centroLocal = new Vector3(0f, 0.7f, 0f);
+
         [Header("Piezas (las coloca la herramienta)")]
         public Transform torso;
         public Transform manoIzq, manoDer;
@@ -47,11 +61,15 @@ namespace BichoShow
         Vector3[] escalaOjos;
         float fase;
         float siguienteParpadeo, finParpadeo;
+        Quaternion rotacionVisual;
+        Vector3 ultimoAdelante = Vector3.forward;
 
         void Awake()
         {
             bicho = GetComponent<ControladorBicho>();
             rb = GetComponent<Rigidbody>();
+            if (raizVisual == null) raizVisual = transform.Find("Aspecto");
+            rotacionVisual = transform.rotation;
 
             if (manoIzq != null) manoIzqReposo = manoIzq.localPosition;
             if (manoDer != null) manoDerReposo = manoDer.localPosition;
@@ -89,13 +107,16 @@ namespace BichoShow
             float dt = Time.deltaTime;
             float k = 1f - Mathf.Exp(-suavizado * dt);
 
-            Vector3 velocidadLocal = transform.InverseTransformDirection(rb != null ? rb.linearVelocity : Vector3.zero);
-            float rapidez = new Vector2(velocidadLocal.x, velocidadLocal.z).magnitude;
+            Vector3 velocidadMundo = rb != null ? rb.linearVelocity : Vector3.zero;
+            float rapidez = new Vector2(velocidadMundo.x, velocidadMundo.z).magnitude;
             float amplitud = Mathf.Clamp01(rapidez / 4f);
             fase += rapidez * ritmoPaso * dt;
 
             bool enSuelo = bicho.EnSuelo;
             bool tumbado = bicho.Tumbado;
+
+            OrientarDibujo(tumbado, rapidez, dt);
+            Transform marco = raizVisual != null ? raizVisual : transform;
 
             // --- Torso: rebota un poco con cada paso ---
             Vector3 botTorso = Vector3.zero;
@@ -113,7 +134,7 @@ namespace BichoShow
             if (bicho.ManoEstirada)
             {
                 // Las dos manoplas al punto de agarre, una a cada lado.
-                Vector3 punto = transform.InverseTransformPoint(bicho.PuntoMano);
+                Vector3 punto = marco.InverseTransformPoint(bicho.PuntoMano);
                 Vector3 lado = Vector3.right * 0.14f;
                 if (manoIzq != null) manoIzq.localPosition = Vector3.Lerp(manoIzq.localPosition, punto - lado, k);
                 if (manoDer != null) manoDer.localPosition = Vector3.Lerp(manoDer.localPosition, punto + lado, k);
@@ -131,6 +152,46 @@ namespace BichoShow
             ActualizarPierna(tuboPiernaDer, 1f, pieDer, botTorso);
 
             Parpadear();
+        }
+
+        /// <summary>
+        /// El dibujo no copia tal cual la cápsula de física (que se tambalea y gira de golpe):
+        /// mira suavemente hacia donde va el bicho, se inclina solo un poco con la física y algo
+        /// hacia delante al correr. Tumbado, sí sigue la física por completo (el porrazo se ve).
+        /// </summary>
+        void OrientarDibujo(bool tumbado, float rapidez, float dt)
+        {
+            if (raizVisual == null) return;
+
+            Quaternion objetivo;
+            if (tumbado)
+            {
+                objetivo = transform.rotation;
+            }
+            else
+            {
+                Vector3 adelante = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+                if (adelante.sqrMagnitude > 0.01f) ultimoAdelante = adelante.normalized;
+                Quaternion rumbo = Quaternion.LookRotation(ultimoAdelante, Vector3.up);
+
+                // Parte pequeña (y con tope) de la inclinación de la física.
+                Quaternion inclinacion = Quaternion.FromToRotation(Vector3.up, transform.up);
+                inclinacion.ToAngleAxis(out float angulo, out Vector3 eje);
+                if (angulo > 180f) angulo -= 360f;
+                float anguloVisual = Mathf.Clamp(angulo * inclinacionFisica, -inclinacionMaxima, inclinacionMaxima);
+                Quaternion inclinacionVisual = Quaternion.AngleAxis(anguloVisual, eje);
+
+                // Un poco hacia delante al correr.
+                Quaternion carrera = Quaternion.AngleAxis(Mathf.Clamp01(rapidez / 6f) * inclinacionCorriendo, Vector3.right);
+
+                objetivo = inclinacionVisual * rumbo * carrera;
+            }
+
+            rotacionVisual = Quaternion.Slerp(rotacionVisual, objetivo, 1f - Mathf.Exp(-suavizadoGiro * dt));
+            raizVisual.rotation = rotacionVisual;
+            // Centrado en la cápsula, aunque esta se incline.
+            Vector3 centroFisico = transform.TransformPoint(centroLocal);
+            raizVisual.position = centroFisico - rotacionVisual * centroLocal;
         }
 
         void MoverPie(Transform pie, Vector3 reposo, float fasePie, bool enSuelo, bool tumbado, float amplitud, float lado, float k)
