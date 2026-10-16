@@ -10,6 +10,11 @@ namespace BichoShow
     public class BotFinal : MonoBehaviour, IEntradaBicho
     {
         [Range(0f, 1f)] public float habilidad = 0.55f;
+        [Tooltip("Muestra encima del bot lo que está haciendo (para probar la final).")]
+        public bool mostrarEstado = true;
+
+        float siguienteSaltito;
+        GUIStyle estiloEstado;
 
         public Vector2 Mover { get; private set; }
         public bool Agarrar => false;
@@ -68,6 +73,42 @@ namespace BichoShow
 
             Conducir();
             ComprobarAtasco();
+            PedirAyuda();
+        }
+
+        /// <summary>Listo y esperando al compañero: saltitos para llamar su atención.</summary>
+        void PedirAyuda()
+        {
+            var paso = ronda.PasoActual(RondaBase.EquipoDe(bicho));
+            if (paso == null || !paso.EsperandoCompanero(bicho)) return;
+            if (Time.time >= siguienteSaltito && bicho.EnSuelo)
+            {
+                saltarPendiente = true;
+                siguienteSaltito = Time.time + Random.Range(1.2f, 1.8f);
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Etiqueta de depuración encima del bot (se puede apagar en el Inspector)
+        // ---------------------------------------------------------------------
+
+        void OnGUI()
+        {
+            if (!mostrarEstado || ronda == null || bicho == null || ronda.EstadoActual != RondaBase.Estado.Jugando) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+            Vector3 p = cam.WorldToScreenPoint(transform.position + Vector3.up * 2f);
+            if (p.z < 0f) return;
+
+            var paso = ronda.PasoActual(RondaBase.EquipoDe(bicho));
+            string texto = $"{bicho.name}: {(paso != null ? paso.Estado(bicho) : "en la meta")}";
+            if (estiloEstado == null)
+                estiloEstado = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.Max(11, Screen.height / 55) };
+            var r = new Rect(p.x - 150f, Screen.height - p.y - 12f, 300f, 24f);
+            estiloEstado.normal.textColor = Color.black;
+            GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), texto, estiloEstado);
+            estiloEstado.normal.textColor = bicho.ColorJugador;
+            GUI.Label(r, texto, estiloEstado);
         }
 
         void Pensar()

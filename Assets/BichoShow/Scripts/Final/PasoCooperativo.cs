@@ -33,6 +33,12 @@ namespace BichoShow
         /// </summary>
         public virtual bool HaciendoFuerza(ControladorBicho bot) => false;
 
+        /// <summary>El bot está listo y solo falta su compañero (lo pide dando saltitos).</summary>
+        public virtual bool EsperandoCompanero(ControladorBicho bot) => false;
+
+        /// <summary>Qué está haciendo el bot, para la etiqueta de depuración.</summary>
+        public virtual string Estado(ControladorBicho bot) => pista;
+
         /// <summary>Punto al que debe ir el bot y con qué intensidad de stick (0 = quieto).</summary>
         public abstract Vector3 ObjetivoBot(ControladorBicho bot, int rol, ControladorBicho companero, out float intensidad);
 
