@@ -116,6 +116,8 @@ namespace BichoShow
         public bool EnSuelo { get; private set; }
         /// <summary>Fuera del juego (su jugador está saboteando).</summary>
         public bool Retirado { get; private set; }
+        /// <summary>Hacia dónde quiere ir ahora mismo (en el suelo, longitud 0-1 según el stick).</summary>
+        public Vector3 Intencion { get; private set; }
         public bool Tumbado => Time.time < finTumbado;
         public bool Agarrando => agarre != null;
         /// <summary>Otro bicho me tiene agarrado.</summary>
@@ -307,6 +309,7 @@ namespace BichoShow
             ComprobarSuelo();
 
             Vector3 direccion = DireccionDesdeCamara(entradaMover);
+            Intencion = Tumbado ? Vector3.zero : direccion;
             if (direccion.sqrMagnitude > 0.01f)
                 direccionMirada = direccion.normalized;
 

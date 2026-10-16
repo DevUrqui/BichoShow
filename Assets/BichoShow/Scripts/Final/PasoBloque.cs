@@ -23,8 +23,10 @@ namespace BichoShow
         [Header("Empuje asistido")]
         [Tooltip("Con toda la pareja pegada detrás, el bloque avanza a esta velocidad (m/s) pase lo que pase con la física.")]
         public float velocidadEmpujado = 1.6f;
-        [Tooltip("Profundidad de la zona detrás del bloque donde se cuenta a quién empuja (m).")]
-        public float zonaEmpuje = 1.6f;
+        [Tooltip("Hasta qué distancia de la cara de atrás cuenta un bicho como 'pegado' (m, desde su centro).")]
+        public float profundidadEmpuje = 0.9f;
+        [Tooltip("Cuánto tiene que apuntar el stick hacia delante para contar como que empuja (0-1).")]
+        [Range(0f, 1f)] public float intencionMinima = 0.35f;
         public Color colorFaltaUno = new Color(1f, 0.6f, 0.2f);
         public Color colorEmpujando = new Color(0.45f, 0.95f, 0.5f);
 
@@ -47,11 +49,7 @@ namespace BichoShow
             // El pasillo deja solo 10 cm por lado: si el bloque gira un poco al empujarlo
             // desequilibrado, las esquinas se clavan en las paredes y se queda encajado.
             // Que solo pueda avanzar recto (y caer al foso).
-            if (bloque != null)
-            {
-                bloque.constraints = RigidbodyConstraints.FreezeRotation |
-                                     (Mathf.Abs(adelante.x) < 0.5f ? RigidbodyConstraints.FreezePositionX : RigidbodyConstraints.FreezePositionZ);
-            }
+            if (bloque != null) bloque.constraints = RestriccionesNormales;
 
             var col = bloque != null ? bloque.GetComponent<Collider>() : null;
             if (col != null)
@@ -82,24 +80,99 @@ namespace BichoShow
         void FixedUpdate()
         {
             if (bloque == null) return;
-            if (Caido) { Empujando = 0; return; }
+            if (Caido || soltando) { Empujando = 0; return; }
 
-            // Contar a los de la pareja pegados a la cara de atrás.
-            Vector3 adelantePlano = Plano(adelante).normalized;
-            float medioLargo = bloque.transform.lossyScale.z * 0.5f;
-            Vector3 centroZona = bloque.position - adelantePlano * (medioLargo + zonaEmpuje * 0.5f);
-            centroZona.y = bloque.position.y - bloque.transform.lossyScale.y * 0.5f + 1f;
-            var mitad = new Vector3(bloque.transform.lossyScale.x * 0.5f + 0.2f, 1f, zonaEmpuje * 0.5f);
-            Empujando = PlacaPresion.Contar(centroZona, mitad, equipo);
+            // Toda la base sobre el foso: dejar de avanzar y caer recto (aunque sigan empujando).
+            if (SinSueloDetras())
+            {
+                Soltar();
+                return;
+            }
+
+            Empujando = ContarEmpujando();
 
             // Con todos los necesarios detrás, avanza a ritmo fijo (no depende de cuánto apriete la física).
             if (Empujando >= Necesarios())
             {
+                Vector3 adelantePlano = Plano(adelante).normalized;
                 float actual = Vector3.Dot(bloque.linearVelocity, adelantePlano);
                 if (actual < velocidadEmpujado)
                     bloque.AddForce(adelantePlano * (velocidadEmpujado - actual) / Time.fixedDeltaTime * 0.3f, ForceMode.Acceleration);
             }
         }
+
+        // ---------------------------------------------------------------------
+        // Quién empuja
+        // ---------------------------------------------------------------------
+
+        static readonly Collider[] Encontrados = new Collider[16];
+        static readonly System.Collections.Generic.HashSet<ControladorBicho> Vistos = new System.Collections.Generic.HashSet<ControladorBicho>();
+
+        /// <summary>Los de la pareja pegados a la cara de atrás y empujando de verdad hacia delante.</summary>
+        int ContarEmpujando()
+        {
+            Vector3 adelantePlano = Plano(adelante).normalized;
+            Vector3 escala = bloque.transform.lossyScale;
+            float medioLargo = escala.z * 0.5f;
+            Vector3 centroZona = bloque.position - adelantePlano * (medioLargo + profundidadEmpuje * 0.5f);
+            centroZona.y = bloque.position.y - escala.y * 0.5f + 1f;
+            var mitad = new Vector3(escala.x * 0.5f + 0.2f, 1f, profundidadEmpuje * 0.5f);
+
+            int n = Physics.OverlapBoxNonAlloc(centroZona, mitad, Encontrados, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
+            Vistos.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                var rb = Encontrados[i].attachedRigidbody;
+                var b = rb != null ? rb.GetComponent<ControladorBicho>() : null;
+                if (b == null || b.Retirado || RondaBase.EquipoDe(b) != equipo) continue;
+                if (Vector3.Dot(b.Intencion, adelantePlano) < intencionMinima) continue; // detrás pero sin empujar
+                Vistos.Add(b);
+            }
+            return Vistos.Count;
+        }
+
+        // ---------------------------------------------------------------------
+        // Caída al foso
+        // ---------------------------------------------------------------------
+
+        bool soltando;
+        static readonly RaycastHit[] Impactos = new RaycastHit[8];
+
+        /// <summary>¿Ya no hay suelo bajo la parte de atrás? Entonces toda la base está sobre el foso.</summary>
+        bool SinSueloDetras()
+        {
+            Vector3 adelantePlano = Plano(adelante).normalized;
+            Vector3 escala = bloque.transform.lossyScale;
+            Vector3 origen = bloque.position - adelantePlano * (escala.z * 0.5f - 0.05f);
+            origen.y = bloque.position.y - escala.y * 0.5f + 0.1f;
+
+            int n = Physics.RaycastNonAlloc(origen, Vector3.down, Impactos, 0.35f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var rb = Impactos[i].collider.attachedRigidbody;
+                if (rb == bloque) continue;
+                if (rb != null && rb.GetComponent<ControladorBicho>() != null) continue;
+                return false; // hay suelo
+            }
+            return true;
+        }
+
+        void Soltar()
+        {
+            soltando = true;
+            Empujando = 0;
+            // Un empujoncito para que la cara de atrás no quede rozando el borde del foso.
+            bloque.position += Plano(adelante).normalized * 0.1f;
+            // Que no avance más: cae recto y encaja en el foso.
+            bloque.constraints |= Mathf.Abs(adelante.x) < 0.5f ? RigidbodyConstraints.FreezePositionZ : RigidbodyConstraints.FreezePositionX;
+            var v = bloque.linearVelocity;
+            bloque.linearVelocity = new Vector3(0f, Mathf.Min(v.y, 0f), 0f);
+            bloque.AddForce(Vector3.down * 6f, ForceMode.VelocityChange);
+        }
+
+        RigidbodyConstraints RestriccionesNormales =>
+            RigidbodyConstraints.FreezeRotation |
+            (Mathf.Abs(adelante.x) < 0.5f ? RigidbodyConstraints.FreezePositionX : RigidbodyConstraints.FreezePositionZ);
 
         void Update()
         {
@@ -128,6 +201,8 @@ namespace BichoShow
         {
             Guardar();
             if (bloque == null) return;
+            soltando = false;
+            bloque.constraints = RestriccionesNormales;
             bloque.linearVelocity = Vector3.zero;
             bloque.angularVelocity = Vector3.zero;
             bloque.position = posicionInicial;
