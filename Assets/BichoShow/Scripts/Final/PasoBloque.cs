@@ -80,10 +80,21 @@ namespace BichoShow
         void FixedUpdate()
         {
             if (bloque == null) return;
+            if (soltando && !Caido && Time.time - inicioSoltar > 1.2f)
+            {
+                // Se ha quedado enganchado por milímetros: encajarlo en el foso directamente.
+                Debug.LogWarning($"Bicho Show: el bloque del equipo {equipo} se enganchó al caer; lo encajo en el foso.", this);
+                var p = bloque.position;
+                bloque.position = new Vector3(p.x, posicionInicial.y - bloque.transform.lossyScale.y, p.z);
+                bloque.linearVelocity = Vector3.zero;
+            }
             if (Caido || soltando) { Empujando = 0; return; }
 
+            Vector3 adelantePlano = Plano(adelante).normalized;
+            float medioLargo = bloque.transform.lossyScale.z * 0.5f;
+
             // Toda la base sobre el foso: dejar de avanzar y caer recto (aunque sigan empujando).
-            if (SinSueloDetras())
+            if (!HaySueloBajo(-(medioLargo - 0.05f)))
             {
                 Soltar();
                 return;
@@ -91,15 +102,25 @@ namespace BichoShow
 
             Empujando = ContarEmpujando();
 
-            // Con todos los necesarios detrás, avanza a ritmo fijo (no depende de cuánto apriete la física).
-            if (Empujando >= Necesarios())
+            // Con el centro ya sobre el foso, el bloque se desliza solo hasta caer: no depende de
+            // que sigan empujando justo hasta el borde.
+            bool deslizandoSolo = !HaySueloBajo(0f);
+            if (deslizandoSolo && !avisoDeslizando)
             {
-                Vector3 adelantePlano = Plano(adelante).normalized;
+                avisoDeslizando = true;
+                Debug.Log($"Bicho Show: el bloque del equipo {equipo} se desliza al foso.", this);
+            }
+
+            // Con todos los necesarios detrás (o deslizándose), avanza a ritmo fijo.
+            if (deslizandoSolo || Empujando >= Necesarios())
+            {
                 float actual = Vector3.Dot(bloque.linearVelocity, adelantePlano);
                 if (actual < velocidadEmpujado)
                     bloque.AddForce(adelantePlano * (velocidadEmpujado - actual) / Time.fixedDeltaTime * 0.3f, ForceMode.Acceleration);
             }
         }
+
+        bool avisoDeslizando;
 
         // ---------------------------------------------------------------------
         // Quién empuja
@@ -136,14 +157,18 @@ namespace BichoShow
         // ---------------------------------------------------------------------
 
         bool soltando;
+        float inicioSoltar;
         static readonly RaycastHit[] Impactos = new RaycastHit[8];
 
-        /// <summary>¿Ya no hay suelo bajo la parte de atrás? Entonces toda la base está sobre el foso.</summary>
-        bool SinSueloDetras()
+        /// <summary>
+        /// ¿Hay suelo justo debajo de la base, a esta distancia del centro a lo largo de "adelante"?
+        /// (0 = bajo el centro; negativo = hacia atrás). Sin suelo detrás = toda la base sobre el foso.
+        /// </summary>
+        bool HaySueloBajo(float desplazamiento)
         {
             Vector3 adelantePlano = Plano(adelante).normalized;
             Vector3 escala = bloque.transform.lossyScale;
-            Vector3 origen = bloque.position - adelantePlano * (escala.z * 0.5f - 0.05f);
+            Vector3 origen = bloque.position + adelantePlano * desplazamiento;
             origen.y = bloque.position.y - escala.y * 0.5f + 0.1f;
 
             int n = Physics.RaycastNonAlloc(origen, Vector3.down, Impactos, 0.35f, ~0, QueryTriggerInteraction.Ignore);
@@ -152,15 +177,17 @@ namespace BichoShow
                 var rb = Impactos[i].collider.attachedRigidbody;
                 if (rb == bloque) continue;
                 if (rb != null && rb.GetComponent<ControladorBicho>() != null) continue;
-                return false; // hay suelo
+                return true; // hay suelo
             }
-            return true;
+            return false;
         }
 
         void Soltar()
         {
             soltando = true;
+            inicioSoltar = Time.time;
             Empujando = 0;
+            Debug.Log($"Bicho Show: el bloque del equipo {equipo} cae al foso.", this);
             // Un empujoncito para que la cara de atrás no quede rozando el borde del foso.
             bloque.position += Plano(adelante).normalized * 0.1f;
             // Que no avance más: cae recto y encaja en el foso.
@@ -202,6 +229,7 @@ namespace BichoShow
             Guardar();
             if (bloque == null) return;
             soltando = false;
+            avisoDeslizando = false;
             bloque.constraints = RestriccionesNormales;
             bloque.linearVelocity = Vector3.zero;
             bloque.angularVelocity = Vector3.zero;
