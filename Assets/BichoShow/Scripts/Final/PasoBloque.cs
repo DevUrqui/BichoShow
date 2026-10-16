@@ -5,15 +5,15 @@ namespace BichoShow
 {
     /// <summary>
     /// Paso 1: un bloque enorme tapa un pasillo estrecho. Pesa demasiado para uno solo; entre
-    /// los dos se empuja hasta un foso. En cuanto su centro pasa el borde, vuelca hacia delante
-    /// y cae; al asentarse se queda fijo y centrado, a ras del suelo, como puente.
+    /// los dos se empuja hasta un foso. Al llegar al borde sigue un poco por inercia (sin girar)
+    /// hasta quedar sobre el centro del foso y cae recto; abajo se queda fijo, a ras del suelo.
     ///
     /// Empuje asistido: con toda la pareja pegada detrás y empujando hacia delante, avanza a
     /// ritmo fijo (no depende de la física fina del contacto). Naranja = falta uno; verde = ¡vamos!
     /// </summary>
     public class PasoBloque : PasoCooperativo
     {
-        enum Fase { Empujable, Cayendo, Asentado }
+        enum Fase { Empujable, Deslizando, Cayendo, Asentado }
 
         public Rigidbody bloque;
         [Tooltip("Hacia dónde hay que empujarlo.")]
@@ -66,11 +66,9 @@ namespace BichoShow
             // El pasillo deja poca holgura: si gira, las esquinas se clavan en las paredes.
             RigidbodyConstraints.FreezeRotation | (HaciaZ ? RigidbodyConstraints.FreezePositionX : RigidbodyConstraints.FreezePositionZ);
 
-        RigidbodyConstraints RestriccionesVolcando =>
-            // Puede girar solo hacia delante (volcar al foso), sin salirse del pasillo.
-            HaciaZ
-                ? RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ
-                : RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationX;
+        RigidbodyConstraints RestriccionesCayendo =>
+            // Solo puede bajar: ni girar ni moverse en el suelo.
+            RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
 
         void Awake()
         {
@@ -142,10 +140,10 @@ namespace BichoShow
             switch (fase)
             {
                 case Fase.Empujable:
-                    // El centro ya ha pasado el borde del foso: ¡que vuelque!
-                    if (!HaySueloBajoElCentro())
+                    // El centro ya ha pasado el borde del foso: sigue solo por inercia hasta caer.
+                    if (!HaySueloBajo(0f))
                     {
-                        Volcar();
+                        fase = Fase.Deslizando;
                         return;
                     }
 
@@ -158,6 +156,18 @@ namespace BichoShow
                     }
                     break;
 
+                case Fase.Deslizando:
+                    Empujando = 0;
+                    if (ListoParaCaer())
+                    {
+                        CaerRecto();
+                        return;
+                    }
+                    float vel = Vector3.Dot(bloque.linearVelocity, AdelantePlano);
+                    if (vel < velocidadEmpujado)
+                        bloque.AddForce(AdelantePlano * (velocidadEmpujado - vel) / Time.fixedDeltaTime * 0.3f, ForceMode.Acceleration);
+                    break;
+
                 case Fase.Cayendo:
                     Empujando = 0;
                     bool quieto = bloque.linearVelocity.magnitude < 0.15f && bloque.angularVelocity.magnitude < 0.25f;
@@ -168,17 +178,34 @@ namespace BichoShow
             }
         }
 
-        void Volcar()
+        /// <summary>
+        /// ¿Puede caer ya recto sin rozar? Con el centro del foso conocido, al llegar a él; si no,
+        /// en cuanto la parte de atrás ha pasado el borde.
+        /// </summary>
+        bool ListoParaCaer()
+        {
+            if (centroFoso != Vector3.zero)
+                return Vector3.Dot(Plano(bloque.position - centroFoso), AdelantePlano) >= 0f;
+            float medioLargo = (HaciaZ ? bloque.transform.lossyScale.z : bloque.transform.lossyScale.x) * 0.5f;
+            return !HaySueloBajo(-(medioLargo + 0.05f));
+        }
+
+        void CaerRecto()
         {
             fase = Fase.Cayendo;
             inicioCaida = Time.time;
             quietoDesde = Time.time;
             Empujando = 0;
-            bloque.constraints = RestriccionesVolcando;
-            // Un empujoncito de giro hacia delante para que vuelque decidido.
-            Vector3 eje = Vector3.Cross(Vector3.up, AdelantePlano);
-            bloque.AddTorque(eje * 1.2f, ForceMode.VelocityChange);
-            bloque.AddForce(AdelantePlano * 0.6f, ForceMode.VelocityChange);
+
+            // Justo sobre el centro del foso (corrige los pocos centímetros del último paso).
+            if (centroFoso != Vector3.zero)
+            {
+                Vector3 p = bloque.position;
+                bloque.position = HaciaZ ? new Vector3(p.x, p.y, centroFoso.z) : new Vector3(centroFoso.x, p.y, p.z);
+            }
+            bloque.constraints = RestriccionesCayendo;
+            bloque.linearVelocity = new Vector3(0f, Mathf.Min(bloque.linearVelocity.y, 0f), 0f);
+            bloque.angularVelocity = Vector3.zero;
         }
 
         /// <summary>Lo deja fijo, recto y centrado en el foso, a ras del suelo: un puente estable.</summary>
@@ -202,9 +229,10 @@ namespace BichoShow
             bloque.transform.SetPositionAndRotation(posicion, rotacion);
         }
 
-        bool HaySueloBajoElCentro()
+        /// <summary>¿Hay suelo bajo la base, a esta distancia del centro a lo largo de "adelante" (negativo = atrás)?</summary>
+        bool HaySueloBajo(float desplazamiento)
         {
-            Vector3 origen = bloque.position;
+            Vector3 origen = bloque.position + AdelantePlano * desplazamiento;
             origen.y = bloque.position.y - bloque.transform.lossyScale.y * 0.5f + 0.1f;
 
             int n = Physics.RaycastNonAlloc(origen, Vector3.down, Impactos, 0.35f, ~0, QueryTriggerInteraction.Ignore);
@@ -271,7 +299,7 @@ namespace BichoShow
         {
             if (bloque == null) return "sin bloque";
             if (fase == Fase.Asentado) return "bloque en el foso: ¡adelante!";
-            if (fase == Fase.Cayendo) return "¡el bloque cae al foso!";
+            if (fase == Fase.Cayendo || fase == Fase.Deslizando) return "¡el bloque cae al foso!";
             return HaciendoFuerza(bot) ? $"empujando ({Empujando}/{Necesarios()})" : "yendo detrás del bloque";
         }
 
@@ -285,7 +313,7 @@ namespace BichoShow
             Vector3 detras = centro - AdelantePlano * 2f + lateral;
 
             // Cayendo: esperar detrás, sin meterse en el foso.
-            if (fase == Fase.Cayendo)
+            if (fase == Fase.Cayendo || fase == Fase.Deslizando)
             {
                 Vector3 espera = Plano(posicionInicial) + AdelantePlano * 1.5f + lateral;
                 intensidad = Plano(bot.transform.position - espera).magnitude < 0.5f ? 0f : 1f;
