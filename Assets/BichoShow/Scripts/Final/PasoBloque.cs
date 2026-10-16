@@ -29,6 +29,16 @@ namespace BichoShow
         void Awake()
         {
             Guardar();
+
+            // El pasillo deja solo 10 cm por lado: si el bloque gira un poco al empujarlo
+            // desequilibrado, las esquinas se clavan en las paredes y se queda encajado.
+            // Que solo pueda avanzar recto (y caer al foso).
+            if (bloque != null)
+            {
+                bloque.constraints = RigidbodyConstraints.FreezeRotation |
+                                     (Mathf.Abs(adelante.x) < 0.5f ? RigidbodyConstraints.FreezePositionX : RigidbodyConstraints.FreezePositionZ);
+            }
+
             var col = bloque != null ? bloque.GetComponent<Collider>() : null;
             if (col != null)
             {
