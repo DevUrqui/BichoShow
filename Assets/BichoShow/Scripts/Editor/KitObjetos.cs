@@ -14,10 +14,15 @@ namespace BichoShow.Herramientas
     public static class KitObjetos
     {
         public const string KitBarrio = E.Raiz + "/Modelos/KitBarrio.fbx";
+        public const string KitPlaya = E.Raiz + "/Modelos/KitPlaya.fbx";
         const string CarpetaMateriales = E.CarpetaMateriales + "/Kit";
 
         static readonly HashSet<string> Emisivos = new HashSet<string> { "Faro", "Luz" };
-        static readonly HashSet<string> Brillantes = new HashSet<string> { "Cristal", "Ventana", "Pantalla", "Metal", "Llanta" };
+        static readonly HashSet<string> Brillantes = new HashSet<string>
+        {
+            "Cristal", "Ventana", "Pantalla", "Metal", "Llanta",
+            "Botella", "BotellaAmbar", "FlotadorRojo", "PatoAmarillo", "OjoBlanco", "PupilaNegra",
+        };
         static readonly Dictionary<string, Material> Cache = new Dictionary<string, Material>();
 
         /// <summary>

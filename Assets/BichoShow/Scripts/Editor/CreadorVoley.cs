@@ -62,8 +62,6 @@ namespace BichoShow.Herramientas
             var red = E.CrearMaterial("Red", new Color(0.92f, 0.92f, 0.95f), 0.2f);
             var poste = E.CrearMaterial("Poste", new Color(0.35f, 0.35f, 0.4f), 0.4f);
             var agua = E.CrearMaterial("Agua", new Color(0.25f, 0.55f, 0.95f), 0.9f);
-            var tronco = E.CrearMaterial("Tronco", new Color(0.55f, 0.38f, 0.22f), 0.1f);
-            var hojas = E.CrearMaterial("Hojas", new Color(0.3f, 0.75f, 0.35f), 0.2f);
             var pelota = E.CrearMaterial("Pelota", Color.white, 0.5f);
             var sombra = E.CrearMaterial("SombraPelota", new Color(0.12f, 0.1f, 0.12f), 0f);
             var charco = E.CrearMaterial("Aceite", new Color(0.08f, 0.06f, 0.05f), 0.98f);
@@ -137,11 +135,14 @@ namespace BichoShow.Herramientas
             var cajaBarrera = barrera.AddComponent<BoxCollider>();
             cajaBarrera.size = new Vector3(0.3f, 14f, 22f);
 
-            // --- Decorado: mar, palmeras y cartel ---
+            // --- Decorado: mar, palmeras en las esquinas, cartel e islas alrededor ---
             M.Decorado(PrimitiveType.Cube, "Mar", mapa, new Vector3(0f, -3f, 0f), new Vector3(220f, 0.2f, 220f), agua);
-            foreach (var p in new[] { new Vector3(-14f, 0f, -10f), new Vector3(14f, 0f, -10f), new Vector3(-14f, 0f, 10f), new Vector3(14f, 0f, 10f) })
-                Palmera(mapa, p, tronco, hojas);
+            var esquinas = M.Grupo(mapa, "Palmeras");
+            int n = 0;
+            foreach (var p in new[] { new Vector3(-14.3f, 0f, -10.4f), new Vector3(14.3f, 0f, -10.4f), new Vector3(-14.3f, 0f, 10.4f), new Vector3(14.3f, 0f, 10.4f) })
+                Kit(n++ % 2 == 0 ? "PalmeraAlta" : "Palmera", esquinas, p, GiroHacia(p), 0.9f);
             M.Cartel(mapa, "VOLEY ATADOS", new Vector3(0f, 7f, 14f), 2.5f, Color.white);
+            CrearDecorado(mapa, arena);
 
             var vacio = M.ZonaTrigger<ZonaMortal>("ZonaAgua", mapa, new Vector3(0f, -8f, 0f), new Vector3(220f, 4f, 220f));
             vacio.motivoObjeto = "se ha caído al agua";
@@ -210,10 +211,6 @@ namespace BichoShow.Herramientas
         /// </summary>
         static Collider CrearTrampasYCabina(Transform mapa, Material agua)
         {
-            var cangrejoMat = E.CrearMaterial("Cangrejo", new Color(0.95f, 0.32f, 0.2f), 0.45f);
-            var ojo = E.CrearMaterial("Ojo", Color.white, 0.8f);
-            var pupila = E.CrearMaterial("Pupila", new Color(0.08f, 0.08f, 0.1f), 0.9f);
-            var metal = E.CrearMaterial("Ventilador", new Color(0.55f, 0.58f, 0.62f), 0.7f);
             var sabotaje = E.CrearMaterial("Sabotaje", new Color(0.62f, 0.3f, 0.9f), 0.5f);
 
             var trampas = M.Grupo(mapa, "TrampasPlaya");
@@ -228,18 +225,11 @@ namespace BichoShow.Herramientas
                 cangrejoGo.transform.position = new Vector3(cx, -1.6f, -8.5f);
                 cangrejoGo.AddComponent<Rigidbody>().isKinematic = true;
                 var caja = cangrejoGo.AddComponent<BoxCollider>();
-                caja.size = new Vector3(1.8f, 0.8f, 1.2f);
-                caja.center = new Vector3(0f, 0.4f, 0f);
+                caja.size = new Vector3(2.2f, 0.9f, 1.4f);
+                caja.center = new Vector3(0f, 0.45f, 0.1f);
                 var cuerpo = new GameObject("Cuerpo").transform;
                 cuerpo.SetParent(cangrejoGo.transform, false);
-                var caparazon = E.Pieza(PrimitiveType.Sphere, "Caparazon", cuerpo, new Vector3(0f, 0.45f, 0f), new Vector3(1.6f, 0.7f, 1.1f), cangrejoMat);
-                foreach (float lado in new[] { -1f, 1f })
-                {
-                    E.Pieza(PrimitiveType.Cube, "Pinza", cuerpo, new Vector3(0.95f * lado, 0.5f, 0.55f), new Vector3(0.5f, 0.35f, 0.35f), cangrejoMat);
-                    E.Pieza(PrimitiveType.Cylinder, "Tallo", cuerpo, new Vector3(0.25f * lado, 0.85f, 0.35f), new Vector3(0.06f, 0.15f, 0.06f), cangrejoMat);
-                    var o = E.Pieza(PrimitiveType.Sphere, "Ojo", cuerpo, new Vector3(0.25f * lado, 1.05f, 0.35f), Vector3.one * 0.22f, ojo);
-                    E.Pieza(PrimitiveType.Sphere, "Pupila", o.transform, new Vector3(0f, 0f, 0.38f), Vector3.one * 0.5f, pupila);
-                }
+                var modeloCangrejo = Kit("Cangrejo", cuerpo, Vector3.zero, local: true);
                 var cangrejo = cangrejoGo.AddComponent<Cangrejo>();
                 cangrejo.desde = new Vector3(cx, 0f, -8.5f);
                 cangrejo.hasta = new Vector3(cx, 0f, 8.5f);
@@ -248,16 +238,20 @@ namespace BichoShow.Herramientas
                 cangrejo.enfriamiento = 9f;
                 cangrejo.radioEfecto = 9f;
                 cangrejo.alturaMarcador = 2.5f;
-                cangrejo.renderersAviso = new[] { caparazon.GetComponent<Renderer>() };
+                cangrejo.renderersAviso = modeloCangrejo.GetComponentsInChildren<Renderer>();
 
                 // Ventilador: en la arena de atrás, sopla a lo ancho del campo.
-                var base_ = E.Bloque($"Ventilador ({campo})", trampas, new Vector3(cx, 0.8f, -10f), new Vector3(1.2f, 1.6f, 0.6f), metal);
+                var base_ = new GameObject($"Ventilador ({campo})");
+                base_.transform.SetParent(trampas, false);
+                base_.transform.position = new Vector3(cx, 0f, -10f);
+                var colisionVentilador = base_.AddComponent<BoxCollider>();
+                colisionVentilador.size = new Vector3(1.2f, 2.3f, 0.8f);
+                colisionVentilador.center = new Vector3(0f, 1.15f, 0f);
+                var modeloVentilador = Kit("Ventilador", base_.transform, Vector3.zero, local: true);
                 var aspas = new GameObject("Aspas").transform;
                 aspas.SetParent(trampas, false);
-                aspas.position = new Vector3(cx, 1.9f, -9.6f);
-                M.Decorado(PrimitiveType.Cube, "Aspa", aspas, new Vector3(cx, 1.9f, -9.6f), new Vector3(2.4f, 0.28f, 0.05f), metal);
-                var aspa2 = M.Decorado(PrimitiveType.Cube, "Aspa", aspas, new Vector3(cx, 1.9f, -9.6f), new Vector3(2.4f, 0.28f, 0.05f), metal);
-                aspa2.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+                aspas.position = new Vector3(cx, 1.9f, -9.8f);
+                Kit("Aspas", aspas, Vector3.zero, local: true);
                 var viento = base_.AddComponent<RafagaViento>();
                 viento.direccion = Vector3.forward;
                 viento.centroZona = new Vector3(cx, 3f, 0f);
@@ -267,7 +261,7 @@ namespace BichoShow.Herramientas
                 viento.enfriamiento = 8f;
                 viento.radioEfecto = 7f;
                 viento.alturaMarcador = 0f;
-                viento.renderersAviso = new[] { base_.GetComponent<Renderer>() };
+                viento.renderersAviso = modeloVentilador.GetComponentsInChildren<Renderer>();
 
                 // Ola: entra desde el mar (el lado de fuera) y encharca el campo.
                 var olaGo = new GameObject($"Ola ({campo})");
@@ -314,22 +308,84 @@ namespace BichoShow.Herramientas
             return p;
         }
 
-        static void Palmera(Transform padre, Vector3 pie, Material tronco, Material hojas)
+        // ------------------------------------------------------------------
+        // Decorado con el kit de la playa (Arte/Blender/crear_kit_playa.py)
+        // ------------------------------------------------------------------
+
+        static GameObject Kit(string pieza, Transform padre, Vector3 posicion, float giro = 0f, float escala = 1f, bool local = false) =>
+            KitObjetos.Poner(pieza, padre, posicion, giro, escala: escala, local: local, kit: KitObjetos.KitPlaya);
+
+        /// <summary>Giro para que una palmera (que se inclina hacia su -X en Unity) se incline hacia fuera de la pista.</summary>
+        static float GiroHacia(Vector3 direccion) => Mathf.Atan2(direccion.z, -direccion.x) * Mathf.Rad2Deg;
+
+        /// <summary>Giro para que un objeto (que mira a su +Z) mire hacia un punto.</summary>
+        static float GiroMirando(Vector3 desde, Vector3 hacia) => Mathf.Atan2(hacia.x - desde.x, hacia.z - desde.z) * Mathf.Rad2Deg;
+
+        /// <summary>
+        /// Islas de arena alrededor de la pista (fuera del juego): el chiringuito al fondo, la
+        /// torre del socorrista a un lado, el castillo de arena al otro, y hinchables en el agua.
+        /// </summary>
+        static void CrearDecorado(Transform mapa, Material arena)
         {
-            var palmera = M.Grupo(padre, "Palmera");
-            for (int i = 0; i < 5; i++)
+            var decorado = M.Grupo(mapa, "DecoradoPlaya");
+            Vector3 pista = Vector3.zero;
+
+            Transform Isla(string nombre, Vector3 centro, Vector2 tamano)
             {
-                var trozo = M.Decorado(PrimitiveType.Cylinder, "Tronco", palmera,
-                    pie + new Vector3(i * 0.12f, 0.5f + i * 0.95f, 0f), new Vector3(0.45f - i * 0.04f, 0.5f, 0.45f - i * 0.04f), tronco);
-                trozo.transform.rotation = Quaternion.Euler(0f, 0f, -6f);
+                var isla = M.Grupo(decorado, nombre);
+                E.Bloque("Arena", isla, centro + new Vector3(0f, -2.5f, 0f), new Vector3(tamano.x, 4f, tamano.y), arena);
+                return isla;
             }
-            Vector3 copa = pie + new Vector3(0.6f, 5f, 0f);
-            for (int i = 0; i < 6; i++)
+
+            const float suelo = -0.5f; // altura de la arena de las islas
+
+            // Al fondo, pegado a la pista (la cámara mira inclinada y lo lejano no se ve):
+            // chiringuito a un lado (el cartel queda en medio), sombrillas y tumbonas al otro.
+            var fondo = Isla("IslaChiringuito", new Vector3(0f, 0f, 19f), new Vector2(22f, 8f));
+            Kit("Chiringuito", fondo, new Vector3(6f, suelo, 19.5f), 180f);
+            Kit("PalmeraAlta", fondo, new Vector3(10f, suelo, 21.5f), GiroHacia(new Vector3(1f, 0f, 0.5f)));
+            Kit("Palmera", fondo, new Vector3(-9.5f, suelo, 21f), GiroHacia(new Vector3(-1f, 0f, 0.5f)), 1.1f);
+            Kit("Sombrilla", fondo, new Vector3(-5f, suelo, 17.4f), 20f);
+            Kit("Toalla", fondo, new Vector3(-4.6f, suelo, 17.1f), 75f);
+            Kit("SombrillaAzul", fondo, new Vector3(-1f, suelo, 18.4f), -15f);
+            Kit("Tumbona", fondo, new Vector3(-1.5f, suelo, 18.1f), 170f);
+            Kit("Tumbona", fondo, new Vector3(0.1f, suelo, 18.2f), 182f);
+            Kit("TablaSurf", fondo, new Vector3(-8f, suelo, 17.2f), 160f);
+
+            // A la izquierda: torre del socorrista mirando a la pista.
+            var izquierda = Isla("IslaSocorrista", new Vector3(-22f, 0f, 0.5f), new Vector2(8f, 10f));
+            Vector3 torre = new Vector3(-21.5f, suelo, 0f);
+            Kit("TorreSocorrista", izquierda, torre, GiroMirando(torre, pista));
+            Kit("Palmera", izquierda, new Vector3(-24.4f, suelo, 3.8f), GiroHacia(new Vector3(-1f, 0f, 0.3f)));
+            Kit("Roca", izquierda, new Vector3(-24.4f, suelo, -3f), 40f, 0.9f);
+            Kit("ToallaRosa", izquierda, new Vector3(-19.6f, suelo, 3f), 100f);
+
+            // A la derecha: castillo de arena, cubo y pala, y una sombrilla.
+            var derecha = Isla("IslaCastillo", new Vector3(22f, 0f, -0.5f), new Vector2(8f, 9f));
+            Vector3 castillo = new Vector3(21.3f, suelo, 0f);
+            Kit("CastilloArena", derecha, castillo, GiroMirando(castillo, pista), 1.3f);
+            Kit("CuboPala", derecha, new Vector3(19.8f, suelo, -2.2f), 30f, 1.3f);
+            Kit("SombrillaAzul", derecha, new Vector3(24f, suelo, -3f), 10f);
+            Kit("Toalla", derecha, new Vector3(23.6f, suelo, -3.3f), -10f);
+            Kit("PalmeraAlta", derecha, new Vector3(24.3f, suelo, 2.6f), GiroHacia(new Vector3(1f, 0f, 0.4f)), 0.9f);
+
+            // Islitas con palmera en las diagonales del fondo.
+            foreach (float lado in new[] { -1f, 1f })
             {
-                var hoja = M.Decorado(PrimitiveType.Cube, "Hoja", palmera, copa, new Vector3(2.6f, 0.08f, 0.6f), hojas);
-                hoja.transform.rotation = Quaternion.Euler(0f, i * 60f, -20f);
-                hoja.transform.position = copa + hoja.transform.right * 1.1f;
+                var islita = Isla("Islita", new Vector3(17.5f * lado, 0f, 16f), new Vector2(5f, 5f));
+                Kit("Palmera", islita, new Vector3(17.5f * lado, suelo, 16.4f), GiroHacia(new Vector3(lado, 0f, 0.8f)), 0.95f);
+                Kit("Roca", islita, new Vector3(18.9f * lado, suelo, 14.7f), lado * 70f, 0.6f);
             }
+
+            // Rocas que asoman del mar y hinchables flotando entre la pista y las islas.
+            const float mar = -2.9f;
+            Kit("Roca", decorado, new Vector3(-18f, mar - 0.3f, -14f), 15f, 1.4f);
+            Kit("Roca", decorado, new Vector3(17f, mar - 0.3f, -16f), 200f, 1.1f);
+            Kit("Roca", decorado, new Vector3(28f, mar - 0.3f, 10f), 120f, 1.6f);
+            Kit("Flotador", decorado, new Vector3(-17.5f, mar, -6.5f), 0f, 1.2f);
+            Kit("Pato", decorado, new Vector3(17.5f, mar, -9f), 200f, 1.4f);
+            Kit("Colchoneta", decorado, new Vector3(-6f, mar, 13f), 70f, 1.3f);
+            Kit("Flotador", decorado, new Vector3(12.5f, mar, 13f), 0f, 0.9f);
         }
     }
 }
