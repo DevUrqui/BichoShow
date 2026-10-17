@@ -156,6 +156,7 @@ namespace BichoShow.Herramientas
             new GameObject("Show").AddComponent<ShowBicho>();
             new GameObject("Menu").AddComponent<MenuPrincipal>();
 
+            Ambientes.Aplicar(Ambientes.Tema.Plato);
             EditorSceneManager.SaveScene(escena, RutaEscena);
             AssetDatabase.SaveAssets();
         }

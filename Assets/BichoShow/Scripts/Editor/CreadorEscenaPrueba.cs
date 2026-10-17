@@ -274,6 +274,7 @@ namespace BichoShow.Herramientas
             gestor.puntosAparicion = puntos.ToArray();
 
             // Guardar y añadir a la lista de escenas del build
+            Ambientes.Aplicar(Ambientes.Tema.Barrio);
             EditorSceneManager.SaveScene(escena, RutaEscena);
             AnadirAlBuild(RutaEscena);
             AssetDatabase.SaveAssets();

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace BichoShow
 {
@@ -52,6 +53,14 @@ namespace BichoShow
             var go = new GameObject($"{name} (mitad derecha)");
             camSecundaria = go.AddComponent<Camera>();
             camSecundaria.CopyFrom(camPrincipal);
+
+            // Los ajustes de URP (post-procesado, antialiasing) no se copian con CopyFrom.
+            var datosPrincipal = camPrincipal.GetUniversalAdditionalCameraData();
+            var datosSecundaria = camSecundaria.GetUniversalAdditionalCameraData();
+            datosSecundaria.renderPostProcessing = datosPrincipal.renderPostProcessing;
+            datosSecundaria.antialiasing = datosPrincipal.antialiasing;
+            datosSecundaria.antialiasingQuality = datosPrincipal.antialiasingQuality;
+            datosSecundaria.renderShadows = datosPrincipal.renderShadows;
             secundaria = go.AddComponent<CamaraGrupo>();
             JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(principal), secundaria);
             secundaria.pantallaDividida = false; // que no cree otra a su vez

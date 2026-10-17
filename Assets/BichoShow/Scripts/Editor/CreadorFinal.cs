@@ -169,6 +169,7 @@ namespace BichoShow.Herramientas
             ronda.confeti = M.Particulas("Confeti", rondaGo.transform, new Vector3(0f, 4.3f, 30f),
                 ColorRojo, new Color(1f, 0.92f, 0.3f), 150, 5f, 10f, m.particula);
 
+            Ambientes.Aplicar(Ambientes.Tema.Plato);
             EditorSceneManager.SaveScene(escena, RutaEscena);
             E.AnadirAlBuild(RutaEscena);
             AssetDatabase.SaveAssets();

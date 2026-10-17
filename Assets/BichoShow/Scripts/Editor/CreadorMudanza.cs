@@ -313,6 +313,7 @@ namespace BichoShow.Herramientas
                 new RondaMudanza.Equipo { nombre = "Azul", color = ColorAzul, casa = casaAzul, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoAzul", 5f), rutaBots = RutaBots(rondaGo.transform, "RutaAzul", 1f) },
             };
 
+            Ambientes.Aplicar(Ambientes.Tema.Barrio);
             EditorSceneManager.SaveScene(escena, RutaEscena);
             E.AnadirAlBuild(RutaEscena);
             AssetDatabase.SaveAssets();

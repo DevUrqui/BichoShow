@@ -138,7 +138,7 @@ namespace BichoShow.Herramientas
                 controlador.renderersColor = tenibles.ToArray();
                 controlador.manoSimple = false;
 
-                var animador = raiz.GetComponent<AspectoBicho>() ?? raiz.AddComponent<AspectoBicho>();
+                if (!raiz.TryGetComponent(out AspectoBicho animador)) animador = raiz.AddComponent<AspectoBicho>();
                 animador.torso = torso;
                 animador.manoIzq = manos.Count > 0 ? manos[0] : null;
                 animador.manoDer = manos.Count > 1 ? manos[1] : null;
