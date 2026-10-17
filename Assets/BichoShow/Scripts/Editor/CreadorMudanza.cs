@@ -127,12 +127,7 @@ namespace BichoShow.Herramientas
             col.size = new Vector3(1.3f, 1f, 0.7f);
             col.center = new Vector3(0f, 0.5f, 0f);
 
-            E.Pieza(PrimitiveType.Cube, "Carcasa", modelo, new Vector3(0f, 0.5f, 0f), new Vector3(1.3f, 1f, 0.7f), m.tele);
-            E.Pieza(PrimitiveType.Cube, "Pantalla", modelo, new Vector3(0f, 0.52f, -0.36f), new Vector3(1.05f, 0.75f, 0.04f), m.pantalla);
-            var antena1 = E.Pieza(PrimitiveType.Cylinder, "Antena", modelo, new Vector3(-0.15f, 1.25f, 0f), new Vector3(0.03f, 0.3f, 0.03f), m.tele);
-            antena1.transform.localRotation = Quaternion.Euler(0f, 0f, 25f);
-            var antena2 = E.Pieza(PrimitiveType.Cylinder, "Antena", modelo, new Vector3(0.15f, 1.25f, 0f), new Vector3(0.03f, 0.3f, 0.03f), m.tele);
-            antena2.transform.localRotation = Quaternion.Euler(0f, 0f, -25f);
+            KitObjetos.Poner("Tele", modelo, Vector3.zero, local: true);
 
             return GuardarObjeto(raiz, modelo, m, "la tele", puntos: 100, fragilidad: 1f, alturaMarcador: 2f);
         }
@@ -145,12 +140,7 @@ namespace BichoShow.Herramientas
             col.height = 1.2f;
             col.center = new Vector3(0f, 0.6f, 0f);
 
-            E.Pieza(PrimitiveType.Cylinder, "Base", modelo, new Vector3(0f, 0.06f, 0f), new Vector3(0.45f, 0.06f, 0.45f), m.jarron);
-            E.Pieza(PrimitiveType.Sphere, "Panza", modelo, new Vector3(0f, 0.48f, 0f), new Vector3(0.76f, 0.82f, 0.76f), m.jarron);
-            E.Pieza(PrimitiveType.Cylinder, "Cuello", modelo, new Vector3(0f, 0.98f, 0f), new Vector3(0.3f, 0.2f, 0.3f), m.jarron);
-            E.Pieza(PrimitiveType.Cylinder, "Boca", modelo, new Vector3(0f, 1.18f, 0f), new Vector3(0.42f, 0.04f, 0.42f), m.jarron);
-            E.Pieza(PrimitiveType.Cylinder, "Tallo", modelo, new Vector3(0f, 1.38f, 0f), new Vector3(0.05f, 0.25f, 0.05f), m.tallo);
-            E.Pieza(PrimitiveType.Sphere, "Flor", modelo, new Vector3(0f, 1.62f, 0f), Vector3.one * 0.3f, m.flor);
+            KitObjetos.Poner("Jarron", modelo, Vector3.zero, local: true);
 
             return GuardarObjeto(raiz, modelo, m, "el jarrón", puntos: 120, fragilidad: 1.6f, alturaMarcador: 2.3f);
         }
@@ -162,15 +152,7 @@ namespace BichoShow.Herramientas
             col.size = new Vector3(2.2f, 1.1f, 1f);
             col.center = new Vector3(0f, 0.55f, 0f);
 
-            E.Pieza(PrimitiveType.Cube, "Asiento", modelo, new Vector3(0f, 0.3f, 0f), new Vector3(2.2f, 0.5f, 1f), m.sofa);
-            E.Pieza(PrimitiveType.Cube, "Respaldo", modelo, new Vector3(0f, 0.85f, 0.375f), new Vector3(2.2f, 0.7f, 0.25f), m.sofa);
-            E.Pieza(PrimitiveType.Cube, "BrazoIzq", modelo, new Vector3(-0.975f, 0.65f, 0f), new Vector3(0.25f, 0.45f, 1f), m.sofa);
-            E.Pieza(PrimitiveType.Cube, "BrazoDer", modelo, new Vector3(0.975f, 0.65f, 0f), new Vector3(0.25f, 0.45f, 1f), m.sofa);
-            E.Pieza(PrimitiveType.Cube, "CojinIzq", modelo, new Vector3(-0.42f, 0.6f, -0.08f), new Vector3(0.82f, 0.14f, 0.72f), m.cojin);
-            E.Pieza(PrimitiveType.Cube, "CojinDer", modelo, new Vector3(0.42f, 0.6f, -0.08f), new Vector3(0.82f, 0.14f, 0.72f), m.cojin);
-            foreach (var x in new[] { -0.95f, 0.95f })
-            foreach (var z in new[] { -0.4f, 0.4f })
-                E.Pieza(PrimitiveType.Cube, "Pata", modelo, new Vector3(x, 0.03f, z), new Vector3(0.12f, 0.08f, 0.12f), m.rueda);
+            KitObjetos.Poner("Sofa", modelo, Vector3.zero, local: true);
 
             return GuardarObjeto(raiz, modelo, m, "el sofá", puntos: 150, fragilidad: 0.6f, alturaMarcador: 1.9f);
         }
@@ -262,6 +244,7 @@ namespace BichoShow.Herramientas
             var casaRoja = CrearCasa(mapa, m, 0, -5f, "CASA ROJA", m.rojo, m.paredRoja, ColorRojo, 35f);
             var casaAzul = CrearCasa(mapa, m, 1, 5f, "CASA AZUL", m.azul, m.paredAzul, ColorAzul, -35f);
 
+            CrearDecorado(mapa);
             Cartel(mapa, "MUDANZA FRÁGIL", new Vector3(0f, 9f, 40f), 3f, Color.white);
             Cartel(mapa, "SALIDA", new Vector3(0f, 5f, -39f), 1.5f, Color.white);
 
@@ -368,24 +351,110 @@ namespace BichoShow.Herramientas
             };
             foreach (var p in conos)
             {
-                var cono = E.Pieza(PrimitiveType.Cylinder, "Cono", salida, p + Vector3.up * 0.35f, new Vector3(0.45f, 0.35f, 0.45f), m.cono, conCollider: true);
+                // Raíz con física; el dibujo es la pieza del kit.
+                var cono = new GameObject("Cono");
+                cono.transform.SetParent(salida, false);
+                cono.transform.position = p;
+                var capsula = cono.AddComponent<CapsuleCollider>();
+                capsula.radius = 0.2f;
+                capsula.height = 0.7f;
+                capsula.center = new Vector3(0f, 0.35f, 0f);
                 cono.AddComponent<Rigidbody>().mass = 0.5f;
+                KitObjetos.Poner("Cono", cono.transform, Vector3.zero, Random.Range(0f, 360f), local: true);
             }
+
+            // Cajas de cartón de la mudanza, apiladas junto a los camiones
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                float x = 8.3f * lado;
+                Caja(salida, new Vector3(x, 0f, -35.2f), 8f);
+                Caja(salida, new Vector3(x + 0.1f * lado, 0f, -34.3f), -12f);
+                Caja(salida, new Vector3(x, 0.7f, -34.8f), 30f);
+            }
+        }
+
+        static void Caja(Transform padre, Vector3 posicion, float giro)
+        {
+            var caja = KitObjetos.Poner("CajaCarton", padre, posicion, giro);
+            var col = caja.AddComponent<BoxCollider>();
+            col.size = new Vector3(0.72f, 0.7f, 0.72f);
+            col.center = new Vector3(0f, 0.35f, 0f);
         }
 
         static void CrearCamion(Transform padre, float x, Material colorEquipo, Mats m)
         {
             var camion = Grupo(padre, colorEquipo == m.rojo ? "CamionRojo" : "CamionAzul");
-            E.Bloque("Caja", camion, new Vector3(x, 1.6f, -34.5f), new Vector3(3.4f, 3f, 5f), m.camion);
-            Decorado(PrimitiveType.Cube, "Franja", camion, new Vector3(x, 1.9f, -34.5f), new Vector3(3.45f, 0.5f, 5.05f), colorEquipo);
-            Decorado(PrimitiveType.Cube, "PuertaAbierta", camion, new Vector3(x, 1.6f, -31.98f), new Vector3(2.8f, 2.5f, 0.05f), m.rueda);
-            E.Bloque("Cabina", camion, new Vector3(x, 1.2f, -38f), new Vector3(3.2f, 2.2f, 1.8f), colorEquipo);
-            Decorado(PrimitiveType.Cube, "Parabrisas", camion, new Vector3(x, 1.7f, -38.92f), new Vector3(2.6f, 0.8f, 0.05f), m.cristal);
-            foreach (float z in new[] { -38f, -36f, -33f })
+            // Colisiones invisibles con las mismas medidas de siempre (caja de carga y cabina)…
+            Colision(camion, "ColisionCaja", new Vector3(x, 1.6f, -34.5f), new Vector3(3.4f, 3f, 5f));
+            Colision(camion, "ColisionCabina", new Vector3(x, 1.2f, -38f), new Vector3(3.2f, 2.2f, 1.8f));
+            // …y el camión de Blender, con la franja y la cabina del color del equipo.
+            KitObjetos.Poner("Camion", camion, new Vector3(x, 0f, -34.5f), 0f, colorEquipo);
+        }
+
+        static void Colision(Transform padre, string nombre, Vector3 centro, Vector3 tamano)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(padre, false);
+            go.transform.position = centro;
+            go.AddComponent<BoxCollider>().size = tamano;
+        }
+
+        // --- Decorado: farolas, buzones, islas con árboles y edificios de fondo (solo para la vista) ---
+        static void CrearDecorado(Transform mapa)
+        {
+            var decorado = Grupo(mapa, "Decorado");
+            var cesped = E.CrearMaterial("Cesped", new Color(0.45f, 0.75f, 0.38f), 0.1f);
+            var tierra = E.CrearMaterial("IslaTierra", new Color(0.62f, 0.5f, 0.42f), 0.1f);
+
+            // Farolas en los bordes, con el brazo hacia el recorrido (lejos de los empujadores).
+            foreach (float z in new[] { -36f, -24f, -6f, 18f })
             foreach (float lado in new[] { -1f, 1f })
             {
-                var rueda = Decorado(PrimitiveType.Cylinder, "Rueda", camion, new Vector3(x + 1.75f * lado, 0.45f, z), new Vector3(0.9f, 0.15f, 0.9f), m.rueda);
-                rueda.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+                var farola = KitObjetos.Poner("Farola", decorado, new Vector3(9.5f * lado, 0f, z), lado < 0 ? 90f : -90f);
+                var col = farola.AddComponent<CapsuleCollider>();
+                col.radius = 0.15f;
+                col.height = 3.6f;
+                col.center = new Vector3(0f, 1.8f, 0f);
+            }
+
+            // Un buzón junto a la puerta de cada casa.
+            foreach (float cx in new[] { -5f, 5f })
+            {
+                var buzon = KitObjetos.Poner("Buzon", decorado, new Vector3(cx - 3.4f, 0f, 22.7f), 180f);
+                var col = buzon.AddComponent<BoxCollider>();
+                col.size = new Vector3(0.45f, 1.6f, 0.6f);
+                col.center = new Vector3(0f, 0.8f, 0f);
+            }
+
+            // Islas flotantes con árboles, arbustos y algún banco, a los lados del recorrido.
+            float[] zs = { -34f, -19f, -3f, 12f, 27f };
+            for (int i = 0; i < zs.Length; i++)
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                float z = zs[i] + (lado < 0 ? 0f : 4f);
+                var centro = new Vector3(16.5f * lado, 0f, z);
+                E.Bloque("Isla", decorado, centro + new Vector3(0f, -2.6f, 0f), new Vector3(6f, 4f, 6f), tierra);
+                E.Bloque("Cesped", decorado, centro + new Vector3(0f, -0.65f, 0f), new Vector3(6.2f, 0.3f, 6.2f), cesped);
+                KitObjetos.Poner("Arbol", decorado, centro + new Vector3(0.8f * lado, -0.5f, -0.6f), i * 47f, escala: 1f + 0.15f * (i % 3));
+                KitObjetos.Poner("Arbusto", decorado, centro + new Vector3(-1.4f * lado, -0.5f, 1.4f), i * 31f);
+                if (i % 2 == 0)
+                    KitObjetos.Poner("Banco", decorado, centro + new Vector3(-1.2f * lado, -0.5f, -1.6f), lado < 0 ? 90f : -90f);
+            }
+
+            // Edificios de fondo sobre islas grandes, lejos, entre la niebla.
+            string[] edificios = { "EdificioA", "EdificioB", "EdificioC" };
+            (Vector3 pos, float giro)[] fondo =
+            {
+                (new Vector3(-34f, 0f, -28f), 0f), (new Vector3(-36f, 0f, -2f), 90f), (new Vector3(-33f, 0f, 22f), 180f),
+                (new Vector3(34f, 0f, -24f), 270f), (new Vector3(37f, 0f, 2f), 0f), (new Vector3(33f, 0f, 26f), 90f),
+                (new Vector3(-16f, 0f, 54f), 0f), (new Vector3(2f, 0f, 58f), 90f), (new Vector3(19f, 0f, 53f), 180f),
+            };
+            for (int i = 0; i < fondo.Length; i++)
+            {
+                var (pos, giro) = fondo[i];
+                E.Bloque("IslaGrande", decorado, pos + new Vector3(0f, -5f, 0f), new Vector3(11f, 6f, 11f), tierra);
+                E.Bloque("CespedGrande", decorado, pos + new Vector3(0f, -1.85f, 0f), new Vector3(11.2f, 0.3f, 11.2f), cesped);
+                KitObjetos.Poner(edificios[i % edificios.Length], decorado, pos + new Vector3(0f, -1.7f, 0f), giro, escala: 1f + 0.12f * (i % 2));
             }
         }
 
