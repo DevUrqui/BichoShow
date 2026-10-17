@@ -186,9 +186,13 @@ namespace BichoShow.Herramientas
             fragil.marcador = marcador.GetComponent<Renderer>();
             fragil.alturaMarcador = alturaMarcador;
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(raiz, $"{CarpetaObjetos}/{raiz.name}.prefab");
+            string ruta = $"{CarpetaObjetos}/{raiz.name}.prefab";
+            PrefabUtility.SaveAsPrefabAsset(raiz, ruta);
             Object.DestroyImmediate(raiz);
-            return prefab.GetComponent<ObjetoFragil>();
+            // Se vuelve a cargar del disco: la referencia que devuelve SaveAsPrefabAsset puede quedar
+            // anulada cuando Unity reimporta el prefab (y la ronda se quedaba sin objetos que sacar).
+            AssetDatabase.ImportAsset(ruta, ImportAssetOptions.ForceSynchronousImport);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(ruta).GetComponent<ObjetoFragil>();
         }
 
         // ------------------------------------------------------------------
@@ -300,7 +304,12 @@ namespace BichoShow.Herramientas
             EditorSceneManager.SaveScene(escena, RutaEscena);
             E.AnadirAlBuild(RutaEscena);
             AssetDatabase.SaveAssets();
-            Selection.activeGameObject = rondaGo;
+
+            // Abrir la escena tal como ha quedado guardada, para que al darle a Play las referencias
+            // a los prefabs sean las del disco y no las que había en memoria al generarla.
+            EditorSceneManager.OpenScene(RutaEscena, OpenSceneMode.Single);
+            var rondaGuardada = Object.FindAnyObjectByType<RondaMudanza>();
+            if (rondaGuardada != null) Selection.activeGameObject = rondaGuardada.gameObject;
         }
 
         /// <summary>

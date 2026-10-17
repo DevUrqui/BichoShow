@@ -121,6 +121,14 @@ namespace BichoShow
             if (secuenciaObjetos == null || secuenciaObjetos.Length == 0 || e.aparicionObjeto == null) return;
 
             var prefab = secuenciaObjetos[e.entregas % secuenciaObjetos.Length];
+            // Si falta alguno en la lista, se usa el siguiente que sí esté.
+            for (int i = 1; prefab == null && i < secuenciaObjetos.Length; i++)
+                prefab = secuenciaObjetos[(e.entregas + i) % secuenciaObjetos.Length];
+            if (prefab == null)
+            {
+                Debug.LogError("Bicho Show: la Mudanza no tiene objetos que sacar (secuenciaObjetos vacía). Regenera la escena.");
+                return;
+            }
             var objeto = Instantiate(prefab, e.aparicionObjeto.position, e.aparicionObjeto.rotation);
             objeto.AsignarEquipo(indiceEquipo, e.color);
             objeto.AlRomperse += (o, motivo) => AlRomperse(indiceEquipo, o, motivo);
