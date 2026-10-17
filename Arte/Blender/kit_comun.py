@@ -132,24 +132,28 @@ class Pieza:
                                   radius2=radio if radio_final is None else radio_final, depth=eje.length, matrix=m)
         self._asignar(r["verts"], material)
 
-    def toro(self, centro, radio, grosor, material, rotacion=(0, 0, 0), segmentos=32, segmentos_tubo=12, rayas=None):
-        """Rosco (flotador, aro) en el plano XY local."""
+    def toro(self, centro, radio, grosor, material, rotacion=(0, 0, 0), segmentos=32, segmentos_tubo=12, rayas=None,
+             arco=360):
+        """Rosco (flotador, aro) en el plano XY local. Con arco < 360, solo ese trozo (empieza en +X)."""
         m = Matrix.Translation(Vector(centro)) @ rot(rotacion)
+        cerrado = arco >= 360
         anillos = []
-        for i in range(segmentos):
-            u = 2 * math.pi * i / segmentos
+        for i in range(segmentos if cerrado else segmentos + 1):
+            u = math.radians(arco) * i / segmentos
             anillo = []
             for j in range(segmentos_tubo):
                 v = 2 * math.pi * j / segmentos_tubo
                 d = radio + grosor * math.cos(v)
                 anillo.append(self.bm.verts.new(m @ Vector((d * math.cos(u), d * math.sin(u), grosor * math.sin(v)))))
             anillos.append(anillo)
-        caras = []
         for i in range(segmentos):
-            a, b = anillos[i], anillos[(i + 1) % segmentos]
+            a, b = anillos[i], anillos[(i + 1) % len(anillos)]
             for j in range(segmentos_tubo):
                 k = (j + 1) % segmentos_tubo
-                caras.append(self.bm.faces.new((a[j], b[j], b[k], a[k])))
+                self.bm.faces.new((a[j], b[j], b[k], a[k]))
+        if not cerrado:
+            for anillo in (anillos[0], anillos[-1]):
+                self.bm.faces.new(anillo)
         verts = [v for anillo in anillos for v in anillo]
         self._asignar(verts, material)
         if rayas:

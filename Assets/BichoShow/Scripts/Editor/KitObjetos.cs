@@ -15,14 +15,24 @@ namespace BichoShow.Herramientas
     {
         public const string KitBarrio = E.Raiz + "/Modelos/KitBarrio.fbx";
         public const string KitPlaya = E.Raiz + "/Modelos/KitPlaya.fbx";
+        public const string KitPlato = E.Raiz + "/Modelos/KitPlato.fbx";
         const string CarpetaMateriales = E.CarpetaMateriales + "/Kit";
 
-        static readonly HashSet<string> Emisivos = new HashSet<string> { "Faro", "Luz" };
+        /// <summary>Materiales que brillan, con su intensidad (la pantalla, poco: encima va texto).</summary>
+        static readonly Dictionary<string, float> Emisivos = new Dictionary<string, float>
+        {
+            { "Faro", 2.5f }, { "Luz", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f },
+        };
         static readonly HashSet<string> Brillantes = new HashSet<string>
         {
             "Cristal", "Ventana", "Pantalla", "Metal", "Llanta",
             "Botella", "BotellaAmbar", "FlotadorRojo", "PatoAmarillo", "OjoBlanco", "PupilaNegra",
+            "Oro", "Lente", "GuanteRojo",
         };
+
+        /// <summary>Giro (en Y) para que una pieza, que mira a su +Z, mire hacia un punto.</summary>
+        public static float GiroMirando(Vector3 desde, Vector3 hacia) =>
+            Mathf.Atan2(hacia.x - desde.x, hacia.z - desde.z) * Mathf.Rad2Deg;
         static readonly Dictionary<string, Material> Cache = new Dictionary<string, Material>();
 
         /// <summary>
@@ -82,11 +92,11 @@ namespace BichoShow.Herramientas
                 mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
                 mat.SetColor("_BaseColor", color);
                 mat.SetFloat("_Smoothness", Brillantes.Contains(nombre) ? 0.75f : 0.2f);
-                if (Emisivos.Contains(nombre))
+                if (Emisivos.TryGetValue(nombre, out float intensidad))
                 {
                     mat.EnableKeyword("_EMISSION");
                     mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-                    mat.SetColor("_EmissionColor", color * 2.5f);
+                    mat.SetColor("_EmissionColor", color * intensidad);
                 }
                 AssetDatabase.CreateAsset(mat, ruta);
             }

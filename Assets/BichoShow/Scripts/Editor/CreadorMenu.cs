@@ -118,6 +118,19 @@ namespace BichoShow.Herramientas
             }
             M.Decorado(PrimitiveType.Cube, "BordeEscenario", plato, new Vector3(0f, 0.31f, -1.45f), new Vector3(10f, 0.02f, 0.1f), foco);
 
+            // Atrezo del plató (kit de Blender): focos, altavoces, cámaras y cañones de confeti.
+            var camaraVista = new Vector3(0f, 0f, -12f);
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                var torre = new Vector3(8.6f * lado, 0f, 2.6f);
+                KitObjetos.Poner("TorreFocos", plato, torre, KitObjetos.GiroMirando(torre, new Vector3(0f, 0f, -3f)), kit: KitObjetos.KitPlato);
+                var altavoz = new Vector3(6.4f * lado, 0f, 2.4f);
+                KitObjetos.Poner("Altavoz", plato, altavoz, KitObjetos.GiroMirando(altavoz, camaraVista), kit: KitObjetos.KitPlato);
+                var camaraTv = new Vector3(6.8f * lado, 0f, -2.6f);
+                KitObjetos.Poner("CamaraTV", plato, camaraTv, KitObjetos.GiroMirando(camaraTv, new Vector3(0f, 0f, 1f)), kit: KitObjetos.KitPlato);
+                KitObjetos.Poner("CanonConfeti", plato, new Vector3(4.5f * lado, 0.3f, -1f), 180f - lado * 25f, escala: 0.8f, kit: KitObjetos.KitPlato);
+            }
+
             var vacio = M.ZonaTrigger<ZonaMortal>("ZonaVacio", plato, new Vector3(0f, -10f, 0f), new Vector3(100f, 4f, 100f));
             vacio.motivoObjeto = "se ha caído al vacío";
 

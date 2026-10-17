@@ -114,7 +114,8 @@ namespace BichoShow.Herramientas
             var carrilRojo = CrearCarril(mapa, 0, -7f, -1f, m);
             var carrilAzul = CrearCarril(mapa, 1, 7f, 1f, m);
 
-            M.Cartel(mapa, "JUNTOS O NADA", new Vector3(0f, 12f, 38f), 3.5f, Color.white);
+            M.Cartel(mapa, "JUNTOS O NADA", new Vector3(0f, 9f, 35.8f), 3.5f, Color.white);
+            CrearPlato(mapa);
             var vacio = M.ZonaTrigger<ZonaMortal>("ZonaVacio", mapa, new Vector3(0f, -12f, -5f), new Vector3(120f, 4f, 160f));
             vacio.motivoObjeto = "se ha caído al vacío";
 
@@ -226,13 +227,17 @@ namespace BichoShow.Herramientas
             barredora.AddComponent<Rigidbody>().isKinematic = true;
             var giro = barredora.AddComponent<BarraGiratoria>();
             giro.velocidadGiro = equipo == 0 ? 55f : -55f;
-            E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.7f, 0.6f, 0.7f), m.peligro, conCollider: true);
+            // Las colisiones siguen siendo el cilindro y el brazo de siempre; lo que se ve es el modelo del kit.
+            var eje = E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.7f, 0.6f, 0.7f), m.peligro, conCollider: true);
             var brazo = E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(7f, 0.4f, 0.4f), m.obstaculo, local: true);
+            Object.DestroyImmediate(eje.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(brazo.GetComponent<MeshRenderer>());
+            var modeloBarredora = Kit("Barredora", barredora.transform, Vector3.zero, local: true);
             giro.nombreTrampa = $"Barredora ({campo})";
             giro.enfriamiento = 8f;
             giro.radioEfecto = 5f;
             giro.alturaMarcador = 3f;
-            giro.renderersAviso = new[] { brazo.GetComponent<Renderer>() };
+            giro.renderersAviso = modeloBarredora.GetComponentsInChildren<Renderer>();
 
             var pivote = new GameObject("PuenteLevadizo");
             pivote.transform.SetParent(p2, false);
@@ -291,11 +296,13 @@ namespace BichoShow.Herramientas
             M.Cartel(p4, "SUBID LOS DOS", new Vector3(lx, 2.8f, 23.85f), 0.7f, Color.white);
             Empujador(p4, $"Empujador ({campo}) 2", lx, fuera, 18f, 1.6f, m);
 
-            // Meta en lo alto, con podio y trofeo
-            M.Decorado(PrimitiveType.Cylinder, "Podio", p4, new Vector3(lx, 4.15f, 30.5f), new Vector3(3f, 0.15f, 3f), m.oro);
-            M.Decorado(PrimitiveType.Cylinder, "Copa", p4, new Vector3(lx, 4.9f, 32f), new Vector3(0.4f, 0.6f, 0.4f), m.oro);
-            M.Decorado(PrimitiveType.Sphere, "CopaArriba", p4, new Vector3(lx, 5.7f, 32f), Vector3.one * 0.9f, m.oro);
+            // Meta en lo alto: arco hinchable del equipo, trofeo, cañones de confeti y altavoz
             M.Decorado(PrimitiveType.Cube, "Banderin", p4, new Vector3(lx, 4.02f, 26f), new Vector3(10f, 0.04f, 0.5f), colorEquipo);
+            KitObjetos.Poner("ArcoMeta", p4, new Vector3(lx, 4f, 26f), 0f, colorEquipo, kit: KitObjetos.KitPlato);
+            Kit("Trofeo", p4, new Vector3(lx, 4f, 32f), 180f, 1.2f);
+            Kit("CanonConfeti", p4, new Vector3(lx - fuera * 3.8f, 4f, 33f), 180f - fuera * 20f);
+            Kit("CanonConfeti", p4, new Vector3(lx + fuera * 2.4f, 4f, 33.3f), 180f + fuera * 20f);
+            Kit("Altavoz", p4, new Vector3(lx + fuera * 4.1f, 4f, 33.3f), 180f);
             M.Cartel(p4, "META", new Vector3(lx, 8f, 33.5f), 1.4f, Color.white);
             var meta = new GameObject("Meta").AddComponent<PlacaPresion>();
             meta.transform.SetParent(p4, false);
@@ -335,18 +342,93 @@ namespace BichoShow.Herramientas
 
         static void Empujador(Transform padre, string nombre, float lx, float fuera, float z, float desfase, Mats m)
         {
-            // Sale desde el borde exterior y empuja hacia el vacío del centro.
-            var go = E.Bloque(nombre, padre, new Vector3(lx + fuera * 4f, 0.7f, z), new Vector3(2f, 1.4f, 2.5f), m.peligro);
+            // Un guante de boxeo con pistón: sale desde el borde exterior y empuja hacia el vacío del centro.
+            var go = new GameObject(nombre);
+            go.transform.SetParent(padre, false);
+            go.transform.position = new Vector3(lx + fuera * 4f, 0.7f, z);
+            Vector3 haciaDentro = new Vector3(-fuera, 0f, 0f);
+            var caja = go.AddComponent<BoxCollider>();
+            caja.size = new Vector3(1.8f, 1.4f, 1.5f);
+            caja.center = haciaDentro * 0.18f;
+            var guante = Kit("Guante", go.transform, new Vector3(0f, -0.7f, 0f), -fuera * 90f, local: true);
             go.AddComponent<Rigidbody>().isKinematic = true;
             var empujador = go.AddComponent<Empujador>();
-            empujador.recorrido = new Vector3(-fuera * 4.5f, 0f, 0f);
+            empujador.recorrido = haciaDentro * 4.5f;
             empujador.periodo = 4.5f;
             empujador.desfase = desfase;
-            empujador.cuerpoVisible = go.GetComponent<Renderer>();
+            empujador.cuerpoVisible = guante.GetComponentInChildren<Renderer>();
             empujador.nombreTrampa = nombre;
             empujador.enfriamiento = 4f;
             empujador.radioEfecto = 4.5f;
             empujador.alturaMarcador = 2.5f;
+        }
+
+        // ------------------------------------------------------------------
+        // Plató de tele con el kit (Arte/Blender/crear_kit_plato.py)
+        // ------------------------------------------------------------------
+
+        static GameObject Kit(string pieza, Transform padre, Vector3 posicion, float giro = 0f, float escala = 1f, bool local = false) =>
+            KitObjetos.Poner(pieza, padre, posicion, giro, escala: escala, local: local, kit: KitObjetos.KitPlato);
+
+        /// <summary>
+        /// Gradas con público a los dos lados de los carriles, torres de focos entre ellas,
+        /// la pantalla gigante detrás de la meta y una cámara de tele en cada salida.
+        /// </summary>
+        static void CrearPlato(Transform mapa)
+        {
+            var plato = M.Grupo(mapa, "Plato");
+            var gradas = M.Grupo(plato, "Gradas");
+            gradas.gameObject.AddComponent<PublicoAnimado>();
+
+            Color[] coloresPublico =
+            {
+                new Color(1f, 0.45f, 0.45f), new Color(0.4f, 0.65f, 1f), new Color(1f, 0.8f, 0.3f),
+                new Color(0.5f, 0.9f, 0.5f), new Color(0.85f, 0.55f, 1f), new Color(1f, 0.6f, 0.85f),
+            };
+            var materialesPublico = new Material[coloresPublico.Length];
+            for (int i = 0; i < coloresPublico.Length; i++)
+                materialesPublico[i] = E.CrearMaterial($"Publico{i}", coloresPublico[i], 0.3f);
+
+            var azar = new System.Random(7);
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                float x = 16.5f * lado;
+                float giroGrada = -lado * 90f; // mirando hacia los carriles
+                for (int k = 0; k < 8; k++)
+                {
+                    float z = -38f + 9.5f * k;
+                    var grada = Kit("Grada", gradas, new Vector3(x, 0f, z), giroGrada);
+
+                    // Público sentado en las cuatro filas (asientos en local: y = 0.5·(i+1)+0.1, z = 1.35 − 1.1·i).
+                    for (int fila = 0; fila < 4; fila++)
+                    {
+                        for (int s = 0; s < 5; s++)
+                        {
+                            if (azar.NextDouble() < 0.15) continue; // algún hueco libre
+                            float px = -3.2f + 1.6f * s + (float)(azar.NextDouble() - 0.5) * 0.5f;
+                            string pieza = azar.NextDouble() < 0.3 ? "PublicoBrazos" : "Publico";
+                            var color = materialesPublico[azar.Next(materialesPublico.Length)];
+                            KitObjetos.Poner(pieza, grada.transform, new Vector3(px, 0.5f * (fila + 1) + 0.1f, 1.35f - 1.1f * fila),
+                                (float)(azar.NextDouble() - 0.5) * 30f, color, 1f + (float)(azar.NextDouble() - 0.5) * 0.2f,
+                                local: true, kit: KitObjetos.KitPlato);
+                        }
+                    }
+                }
+
+                // Torres de focos en uno de cada dos huecos entre gradas.
+                for (int k = 0; k < 7; k += 2)
+                    Kit("TorreFocos", plato, new Vector3(x, 0f, -33.25f + 9.5f * k), giroGrada);
+            }
+
+            // Pantalla gigante detrás de las metas (el cartel de "JUNTOS O NADA" va delante).
+            Kit("Pantalla", plato, new Vector3(0f, 4f, 37f), 180f);
+
+            // Una cámara de tele en la esquina de dentro de cada salida, enfocando su carril.
+            foreach (float lx in new[] { -7f, 7f })
+            {
+                var pos = new Vector3(lx * 0.4f, 0f, -45f);
+                Kit("CamaraTV", plato, pos, KitObjetos.GiroMirando(pos, new Vector3(lx, 0f, -30f)));
+            }
         }
 
         static Transform Control(Transform padre, string nombre, Vector3 posicion)
