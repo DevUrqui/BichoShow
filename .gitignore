@@ -53,3 +53,6 @@ desktop.ini
 # Copias de seguridad de Blender
 *.blend1
 *.blend2
+
+# Python (scripts de Blender)
+__pycache__/
