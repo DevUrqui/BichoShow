@@ -584,6 +584,7 @@ namespace BichoShow.Herramientas
             go.transform.localScale = escala;
             go.GetComponent<Renderer>().sharedMaterial = material;
             Object.DestroyImmediate(go.GetComponent<Collider>());
+            MallasRedondeadas.Redondear(go);
             return go;
         }
 

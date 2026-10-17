@@ -163,6 +163,7 @@ namespace BichoShow.Herramientas
             go.transform.localScale = escala;
             go.GetComponent<Renderer>().sharedMaterial = material;
             if (!conCollider) Object.DestroyImmediate(go.GetComponent<Collider>());
+            MallasRedondeadas.Redondear(go);
             return go;
         }
 
@@ -292,6 +293,7 @@ namespace BichoShow.Herramientas
             else go.transform.position = posicion;
             go.transform.localScale = escala;
             go.GetComponent<Renderer>().sharedMaterial = material;
+            MallasRedondeadas.Redondear(go);
             return go;
         }
 
