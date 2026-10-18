@@ -267,12 +267,14 @@ namespace BichoShow
                 finParpadeo = Time.time + 0.12f;
                 siguienteParpadeo = Time.time + Random.Range(2.5f, 5.5f);
             }
-            bool cerrado = Time.time < finParpadeo || bicho.Tumbado;
+            // Volando (lanzado, cayendo, tras un golpe): ojos como platos. Tirado en el suelo: cerrados.
+            bool volando = !bicho.EnSuelo && rb != null && (rb.linearVelocity.y < -6f || rb.linearVelocity.sqrMagnitude > 80f);
+            bool cerrado = !volando && (Time.time < finParpadeo || (bicho.Tumbado && bicho.EnSuelo));
             for (int i = 0; i < ojos.Length; i++)
             {
                 if (ojos[i] == null) continue;
                 Vector3 e = escalaOjos[i];
-                ojos[i].localScale = cerrado ? new Vector3(e.x, e.y * 0.12f, e.z) : e;
+                ojos[i].localScale = cerrado ? new Vector3(e.x, e.y * 0.12f, e.z) : volando ? e * 1.35f : e;
             }
         }
     }

@@ -27,6 +27,8 @@ namespace BichoShow
             rb = GetComponent<Rigidbody>();
         }
 
+        protected override Sonido SonidoAlActivar => Sonido.Mecanismo;
+
         protected override void AlActivar()
         {
             finLocura = Time.time + duracionLocura;

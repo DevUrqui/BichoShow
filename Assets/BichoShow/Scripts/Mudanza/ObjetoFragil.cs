@@ -171,6 +171,7 @@ namespace BichoShow
             AlRecibirDano?.Invoke(this, dano);
 
             if (Integridad <= 0f) Romper("se ha hecho añicos");
+            else Sonidos.Reproducir(Sonido.Grieta, transform.position, Mathf.Clamp(dano / 25f, 0.35f, 1f));
         }
 
         void ActualizarAspecto()
@@ -225,6 +226,16 @@ namespace BichoShow
 
             LiberarDeLosBichos();
             SoltarPedazos();
+
+            // El momentazo: estallido, temblor, cámara lenta y el público que se lamenta.
+            Vector3 centro = colisionador != null ? colisionador.bounds.center : transform.position;
+            Sonidos.Reproducir(Sonido.Rotura, centro);
+            Sonidos.Reproducir(Sonido.Ooh, centro);
+            Efectos.Impacto(centro, coloresBase.Count > 0 ? coloresBase[0] : Color.white, 1f);
+            Efectos.Polvo(centro, 0.8f);
+            Efectos.Sacudir(0.4f);
+            if (transform.position.y > -5f) Efectos.CamaraLenta(0.3f, 0.5f);
+
             AlRomperse?.Invoke(this, motivo);
             Destroy(gameObject);
         }
@@ -235,6 +246,9 @@ namespace BichoShow
             if (Roto || Entregado) return;
             Entregado = true;
             LiberarDeLosBichos();
+            Sonidos.Reproducir(Sonido.Entrega, transform.position);
+            Sonidos.Reproducir(Sonido.Aplausos, transform.position, 0.7f);
+            Efectos.Impacto(transform.position + Vector3.up * 0.8f, new Color(1f, 0.85f, 0.3f), 0.6f);
             rb.isKinematic = true;
             foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
             StartCoroutine(Encoger());

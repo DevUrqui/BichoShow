@@ -149,6 +149,8 @@ namespace BichoShow
             var zona = choque.collider.GetComponent<ZonaPista>();
             if (zona != null)
             {
+                Sonidos.Reproducir(Sonido.Bote, rb.position, Mathf.Clamp01(choque.relativeVelocity.magnitude / 8f));
+                Efectos.Polvo(choque.GetContact(0).point, 0.4f);
                 if (TipoPelota == Tipo.Aceite) DejarCharco(choque.GetContact(0).point);
                 if (ronda != null) ronda.PelotaEnSuelo(this, zona);
             }
@@ -167,6 +169,7 @@ namespace BichoShow
             rb.linearVelocity = horizontal + Vector3.up * Mathf.Max(rb.linearVelocity.y, subidaToque);
 
             inicioBoing = Time.time;
+            Sonidos.Reproducir(Sonido.Pelota, rb.position, 0.8f, 1.15f);
             RegistrarToque(bicho, equipo);
         }
 
@@ -188,6 +191,15 @@ namespace BichoShow
             rb.angularVelocity = Random.insideUnitSphere * 8f;
             ignorarToquesHasta = Time.time + ignorarToquesTrasGolpe;
             inicioBoing = Time.time;
+
+            // Golpe con el botón: más fuerte que un toque; el remate en el aire, con temblor.
+            Sonidos.Reproducir(Sonido.Pelota, desde, 1f, enElAire ? 0.8f : 0.95f);
+            if (enElAire)
+            {
+                Sonidos.Reproducir(Sonido.Golpe, desde, 0.5f, 1.3f);
+                Efectos.Impacto(desde, quien.ColorJugador, 0.4f);
+                Efectos.Sacudir(0.12f);
+            }
 
             RegistrarToque(quien, equipo);
             return true;

@@ -43,6 +43,8 @@ namespace BichoShow
             Colocar(desde - Vector3.up * profundidad);
         }
 
+        protected override Sonido SonidoAlActivar => Sonido.Cangrejo;
+
         protected override void AlActivar() => inicio = Time.time;
 
         void FixedUpdate()

@@ -141,6 +141,12 @@ namespace BichoShow
         public event System.Action<ControladorBicho> AlTropezar;
         /// <summary>Se lanza al caerse del escenario, antes de reaparecer.</summary>
         public event System.Action<ControladorBicho> AlCaerseDelMapa;
+        /// <summary>El bicho hace algo (saltar, placaje, golpear, agarrar, lanzar): para sonidos y efectos.</summary>
+        public event System.Action<ControladorBicho, AccionBicho> AlHacer;
+        /// <summary>Le han dado un golpe que lo tira (cambio de velocidad en m/s y punto del choque).</summary>
+        public event System.Action<ControladorBicho, float, Vector3> AlRecibirGolpe;
+
+        public enum AccionBicho { Saltar, Placaje, Golpear, Agarrar, Lanzar }
 
         Rigidbody rb;
         CapsuleCollider capsula;
@@ -221,6 +227,9 @@ namespace BichoShow
             rotacionReaparicion = transform.rotation;
 
             CrearManoVisual();
+
+            // Sonidos y efectos del bicho (aplastarse al caer, polvo, estrellitas...).
+            if (!TryGetComponent(out JugoBicho _)) gameObject.AddComponent<JugoBicho>();
         }
 
         void OnEnable() => Todos.Add(this);
@@ -388,6 +397,7 @@ namespace BichoShow
 
             ultimoEnSuelo = -10f;
             ultimoSaltoPulsado = -10f;
+            AlHacer?.Invoke(this, AccionBicho.Saltar);
         }
 
         void Lanzarse()
@@ -408,6 +418,7 @@ namespace BichoShow
             if (IntentarGolpear())
             {
                 ultimoLanzamiento = Time.time - enfriamientoLanzarse + enfriamientoGolpe;
+                AlHacer?.Invoke(this, AccionBicho.Golpear);
                 return;
             }
 
@@ -416,6 +427,7 @@ namespace BichoShow
             // Un empujoncito de giro para que caiga de morros.
             rb.AddTorque(Vector3.Cross(Vector3.up, adelante) * 8f, ForceMode.VelocityChange);
             Tropezar(duracionLanzarse);
+            AlHacer?.Invoke(this, AccionBicho.Placaje);
         }
 
         void Equilibrar()
@@ -483,6 +495,7 @@ namespace BichoShow
                 ? mejor.attachedRigidbody.GetComponent<ControladorBicho>()
                 : null;
             if (bichoAgarrado != null) bichoAgarrado.agarradoPor++;
+            if (agarreACuerpo) AlHacer?.Invoke(this, AccionBicho.Agarrar);
         }
 
         bool IntentarGolpear()
@@ -530,6 +543,7 @@ namespace BichoShow
             rb.AddForce(-adelante * retrocesoAlLanzar, ForceMode.VelocityChange);
 
             if (bicho != null) bicho.Tropezar(duracionVueloLanzado);
+            AlHacer?.Invoke(this, AccionBicho.Lanzar);
         }
 
         void Soltar()
@@ -646,6 +660,8 @@ namespace BichoShow
             if (cambioVelocidad >= golpeParaTropezar)
             {
                 bool yaEstaba = Tumbado;
+                if (!yaEstaba)
+                    AlRecibirGolpe?.Invoke(this, cambioVelocidad, choque.contactCount > 0 ? choque.GetContact(0).point : rb.worldCenterOfMass);
                 Tropezar(duracionTropiezo);
                 if (!yaEstaba) AlgunoDerribado?.Invoke(this);
             }
@@ -726,7 +742,11 @@ namespace BichoShow
             finTumbado = -10f;
             Teletransportar(puntoReaparicion, rotacionReaparicion);
             direccionMirada = Aplanar(rotacionReaparicion * Vector3.forward);
+            AlReaparecer?.Invoke(this);
         }
+
+        /// <summary>Acaba de reaparecer en su punto (tras caerse, al empezar una ronda...).</summary>
+        public event System.Action<ControladorBicho> AlReaparecer;
 
         /// <summary>Número de jugador para los bichos sin mando (bots). Los de mando usan el de PlayerInput.</summary>
         public void AsignarIndice(int indice) => indiceSinMando = indice;

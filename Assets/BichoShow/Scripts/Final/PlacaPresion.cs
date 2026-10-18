@@ -43,8 +43,15 @@ namespace BichoShow
             Contados = Contar(transform.position + Vector3.up * tamano.y * 0.5f, tamano * 0.5f, equipo);
         }
 
+        bool pulsadaAntes;
+
         void Update()
         {
+            if (Pulsada != pulsadaAntes)
+            {
+                pulsadaAntes = Pulsada;
+                Sonidos.Reproducir(Sonido.Click, transform.position, Pulsada ? 1f : 0.5f, Pulsada ? 1f : 0.8f);
+            }
             if (visual == null) return;
             visual.transform.localPosition = posicionVisual + (Pulsada ? Vector3.down * 0.06f : Vector3.zero);
             Color c = Pulsada ? colorPulsada : colorLibre;

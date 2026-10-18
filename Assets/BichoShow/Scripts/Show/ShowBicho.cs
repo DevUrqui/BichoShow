@@ -139,6 +139,7 @@ namespace BichoShow
 
             Estado = EstadoShow.Presentando;
             inicioEstado = Time.time;
+            Sonidos.Reproducir(Sonido.Logro);
         }
 
         void Update()
@@ -160,19 +161,33 @@ namespace BichoShow
                         Estado = RondaActual + 1 < pruebas.Length ? EstadoShow.Marcador : EstadoShow.Final;
                         inicioEstado = Time.time;
                         ControladorBicho.EntradaBloqueada = true;
+                        if (Estado == EstadoShow.Final)
+                        {
+                            Sonidos.Reproducir(Sonido.Victoria);
+                            Sonidos.Reproducir(Sonido.Aplausos);
+                        }
+                        else
+                        {
+                            Sonidos.Reproducir(Sonido.Logro);
+                        }
                     }
                     break;
 
                 case EstadoShow.Marcador:
                     if (Time.time - inicioEstado > 1f && AlguienConfirma())
                     {
+                        Sonidos.Reproducir(Sonido.MenuAceptar);
                         RondaActual++;
                         CargarRonda();
                     }
                     break;
 
                 case EstadoShow.Final:
-                    if (Time.time - inicioEstado > 2f && AlguienConfirma()) VolverAlMenu();
+                    if (Time.time - inicioEstado > 2f && AlguienConfirma())
+                    {
+                        Sonidos.Reproducir(Sonido.MenuAceptar);
+                        VolverAlMenu();
+                    }
                     break;
             }
         }

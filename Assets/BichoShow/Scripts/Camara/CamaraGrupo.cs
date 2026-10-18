@@ -60,7 +60,13 @@ namespace BichoShow
         readonly List<Vector3> puntos = new List<Vector3>();
         GUIStyle estiloIndicador;
 
-        void Awake() => cam = GetComponent<Camera>();
+        Vector3 posicionSinSacudida;
+
+        void Awake()
+        {
+            cam = GetComponent<Camera>();
+            posicionSinSacudida = transform.position;
+        }
 
         void Start()
         {
@@ -74,11 +80,15 @@ namespace BichoShow
             RecogerPuntos(puntos);
             Encuadre(puntos, cam.aspect, null, out _, out float inclinacionObjetivo, out _);
             inclinacionActual = Mathf.SmoothDamp(inclinacionActual, inclinacionObjetivo, ref velocidadInclinacion, suavizado * 1.5f);
-            transform.rotation = Rotacion(inclinacionActual);
+            Quaternion rotacion = Rotacion(inclinacionActual);
 
             // La posición se calcula con la inclinación ya suavizada para que no haya saltos.
             Encuadre(puntos, cam.aspect, inclinacionActual, out Vector3 posicion, out _, out _);
-            transform.position = Vector3.SmoothDamp(transform.position, posicion, ref velocidad, suavizado);
+            posicionSinSacudida = Vector3.SmoothDamp(posicionSinSacudida, posicion, ref velocidad, suavizado);
+
+            // Sacudida (golpes, roturas): se suma encima sin afectar al seguimiento.
+            Efectos.Sacudida(out Vector3 temblor, out float giroTemblor);
+            transform.SetPositionAndRotation(posicionSinSacudida + rotacion * temblor, rotacion * Quaternion.Euler(0f, 0f, giroTemblor));
         }
 
         /// <summary>Coloca la cámara en su sitio sin suavizado. Se puede forzar la forma de pantalla.</summary>
@@ -91,6 +101,7 @@ namespace BichoShow
             transform.rotation = Rotacion(inclinacionActual);
             Encuadre(puntos, a, inclinacionActual, out Vector3 posicion, out _, out _);
             transform.position = posicion;
+            posicionSinSacudida = posicion;
             velocidad = Vector3.zero;
             velocidadInclinacion = 0f;
         }

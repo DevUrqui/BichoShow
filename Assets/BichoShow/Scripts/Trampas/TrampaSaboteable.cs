@@ -63,9 +63,13 @@ namespace BichoShow
             UltimoUso = Time.time;
             UltimoSaboteador = quien;
             finDestello = Time.time + 0.4f;
+            Sonidos.Reproducir(SonidoAlActivar, CentroEfecto);
             AlActivar();
             return true;
         }
+
+        /// <summary>Lo que suena cuando el saboteador la activa.</summary>
+        protected virtual Sonido SonidoAlActivar => Sonido.Alarma;
 
         protected abstract void AlActivar();
 

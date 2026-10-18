@@ -32,6 +32,8 @@ namespace BichoShow
         public bool Soplando => Time.time < fin;
         public override Vector3 CentroEfecto => centroZona;
 
+        protected override Sonido SonidoAlActivar => Sonido.Viento;
+
         protected override void AlActivar() => fin = Time.time + duracion;
 
         void Start() => CrearRachas();

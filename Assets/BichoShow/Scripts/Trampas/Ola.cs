@@ -28,6 +28,8 @@ namespace BichoShow
         public override Vector3 CentroEfecto => centroZona;
         bool Activa => Time.time - inicio < duracion;
 
+        protected override Sonido SonidoAlActivar => Sonido.Ola;
+
         protected override void AlActivar() => inicio = Time.time;
 
         void FixedUpdate()

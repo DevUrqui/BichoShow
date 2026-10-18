@@ -40,6 +40,8 @@ namespace BichoShow
         public override Vector3 CentroEfecto =>
             (Application.isPlaying ? inicio : transform.position) + recorrido * 0.5f;
 
+        protected override Sonido SonidoAlActivar => Sonido.Muelle;
+
         protected override void AlActivar() => inicioManual = Time.time + avisoManual;
         Material material;
         Color colorNormal;

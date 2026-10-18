@@ -165,6 +165,9 @@ namespace BichoShow
                     int bonus = llegados == 1 ? bonusPrimero : bonusSegundo;
                     e.puntos += bonus;
                     Mensaje($"¡EL EQUIPO {e.nombre.ToUpper()} LLEGA A LA META!  +{puntosPorPaso + bonus}", e.color, 4f);
+                    Sonidos.Reproducir(Sonido.Victoria);
+                    Sonidos.Reproducir(Sonido.Aplausos);
+                    Efectos.Sacudir(0.25f);
                     if (confeti != null && paso is PasoAscensor asc && asc.meta != null)
                     {
                         confeti.transform.position = asc.meta.transform.position + Vector3.up * 0.3f;
@@ -176,6 +179,7 @@ namespace BichoShow
                 else
                 {
                     Mensaje($"Equipo {e.nombre}: ¡superado!  +{puntosPorPaso}   Ahora: {PasoActual(i).pista}", e.color, 3f);
+                    Sonidos.Reproducir(Sonido.Logro);
                     FijarPuntoDeControl(i);
                 }
             }

@@ -34,7 +34,11 @@ namespace BichoShow
                 salpicadura.Play();
             }
 
-            if (bicho != null) bicho.Reaparecer();
+            if (bicho != null)
+            {
+                Sonidos.Reproducir(Sonido.Caida, cuerpo.position, bicho.EsBot ? 0.6f : 1f);
+                bicho.Reaparecer();
+            }
             if (objeto != null) objeto.Romper(motivoObjeto);
         }
     }

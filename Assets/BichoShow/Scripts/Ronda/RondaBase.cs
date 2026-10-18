@@ -119,6 +119,8 @@ namespace BichoShow
             if (GestorJugadores.Instancia != null) gestor = GestorJugadores.Instancia;
             if (gestor == null) gestor = FindAnyObjectByType<GestorJugadores>();
             ControladorBicho.AlgunoDerribado += AlDerribar;
+            Musica.Poner(Musica.Tema.Plato);
+            Sonidos.Precargar();
         }
 
         protected virtual void OnDestroy()
@@ -138,11 +140,13 @@ namespace BichoShow
                     break;
 
                 case Estado.CuentaAtras:
+                    PitarCadaSegundo(finCuentaAtras - Time.time, 1f);
                     if (Time.time >= finCuentaAtras) EmpezarRonda();
                     break;
 
                 case Estado.Jugando:
                     TiempoRestante = Mathf.Max(0f, TiempoRestante - Time.deltaTime);
+                    if (TiempoRestante <= 5.5f) PitarCadaSegundo(TiempoRestante, 0.6f); // ¡que se acaba!
                     ActualizarJugando();
                     if (EstadoActual == Estado.Jugando && TiempoRestante <= 0f && PuedeTerminar())
                         TerminarRonda();
@@ -206,7 +210,21 @@ namespace BichoShow
         {
             EstadoActual = Estado.Jugando;
             TiempoRestante = duracionRonda;
+            Sonidos.Reproducir(Sonido.PitidoSalida);
+            Sonidos.Reproducir(Sonido.Silbato);
+            Musica.Poner(Musica.Tema.Prueba);
             AlEmpezarRonda();
+        }
+
+        int ultimoPitido = -1;
+
+        /// <summary>Un pitido cada vez que cambia el segundo que queda (cuenta atrás y final de ronda).</summary>
+        void PitarCadaSegundo(float quedan, float volumen)
+        {
+            int segundo = Mathf.CeilToInt(quedan);
+            if (segundo == ultimoPitido || segundo <= 0) return;
+            ultimoPitido = segundo;
+            Sonidos.Reproducir(Sonido.Pitido, null, volumen, 1f, 0f);
         }
 
         protected void TerminarRonda()
@@ -214,6 +232,10 @@ namespace BichoShow
             if (EstadoActual != Estado.Jugando) return;
             EstadoActual = Estado.Fin;
             TiempoRestante = 0f;
+            ultimoPitido = -1;
+            Sonidos.Reproducir(Sonido.Bocina);
+            Sonidos.Reproducir(Sonido.Aplausos);
+            Musica.Poner(Musica.Tema.Plato);
 
             // Los saboteadores humanos recuperan su bicho (su marcador sigue en pantalla).
             TrampaSaboteable.ModoManual = false;

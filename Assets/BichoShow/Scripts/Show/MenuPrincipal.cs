@@ -37,10 +37,13 @@ namespace BichoShow
 
             ControladorBicho.EntradaBloqueada = true;
             if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(true);
+            Musica.Poner(Musica.Tema.Plato);
+            Sonidos.Precargar();
         }
 
 
-        int NumeroOpciones => pantalla == Pantalla.Principal ? 3 : 4;
+        int NumeroOpciones => pantalla == Pantalla.Principal ? 3 : 6;
+        const int OpcionVolver = 5;
 
         void Update()
         {
@@ -62,8 +65,8 @@ namespace BichoShow
                 stickAnterior.TryGetValue(entrada, out Vector2 antes);
                 stickAnterior[entrada] = stick;
 
-                if (stick.y > 0.6f && antes.y <= 0.6f) seleccion = (seleccion + NumeroOpciones - 1) % NumeroOpciones;
-                if (stick.y < -0.6f && antes.y >= -0.6f) seleccion = (seleccion + 1) % NumeroOpciones;
+                if (stick.y > 0.6f && antes.y <= 0.6f) { seleccion = (seleccion + NumeroOpciones - 1) % NumeroOpciones; Sonidos.Reproducir(Sonido.MenuMover); }
+                if (stick.y < -0.6f && antes.y >= -0.6f) { seleccion = (seleccion + 1) % NumeroOpciones; Sonidos.Reproducir(Sonido.MenuMover); }
                 if (stick.x > 0.6f && antes.x <= 0.6f) CambiarValor(+1);
                 if (stick.x < -0.6f && antes.x >= -0.6f) CambiarValor(-1);
 
@@ -85,12 +88,32 @@ namespace BichoShow
                 case 0: bots = !bots; break;
                 case 1: nivelHabilidad = (nivelHabilidad + sentido + 3) % 3; break;
                 case 2: nivelDuracion = (nivelDuracion + sentido + 3) % 3; break;
+                case 3: Sonidos.Volumen = PasoVolumen(Sonidos.Volumen, sentido); break;
+                case 4: Musica.Volumen = PasoVolumen(Musica.Volumen, sentido); break;
+                default: return;
             }
             Guardar();
+            Sonidos.Reproducir(Sonido.MenuMover, null, 1f, 1.3f, 0f);
+        }
+
+        /// <summary>Sube o baja el volumen de 0.2 en 0.2 (dando la vuelta: de 0 a 1 y de 1 a 0).</summary>
+        static float PasoVolumen(float actual, int sentido)
+        {
+            int paso = Mathf.RoundToInt(actual * 5f) + sentido;
+            if (paso > 5) paso = 0;
+            if (paso < 0) paso = 5;
+            return paso / 5f;
+        }
+
+        static string Barrita(float volumen)
+        {
+            int llenas = Mathf.RoundToInt(volumen * 5f);
+            return llenas == 0 ? "sin sonido" : new string('|', llenas * 2) + new string('.', (5 - llenas) * 2);
         }
 
         void Aceptar()
         {
+            Sonidos.Reproducir(Sonido.MenuAceptar);
             if (pantalla == Pantalla.Principal)
             {
                 switch (seleccion)
@@ -102,7 +125,7 @@ namespace BichoShow
             }
             else
             {
-                if (seleccion == 3) { pantalla = Pantalla.Principal; seleccion = 1; }
+                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 1; }
                 else CambiarValor(+1);
             }
         }
@@ -125,6 +148,8 @@ namespace BichoShow
             PlayerPrefs.SetInt("BichoShow.Bots", bots ? 1 : 0);
             PlayerPrefs.SetInt("BichoShow.Habilidad", nivelHabilidad);
             PlayerPrefs.SetInt("BichoShow.Duracion", nivelDuracion);
+            PlayerPrefs.SetFloat(Sonidos.ClaveVolumen, Sonidos.Volumen);
+            PlayerPrefs.SetFloat(Musica.ClaveVolumen, Musica.Volumen);
             PlayerPrefs.Save();
         }
 
@@ -162,6 +187,8 @@ namespace BichoShow
                     $"Bots en los huecos:  < {(bots ? "Sí" : "No")} >",
                     $"Habilidad de los bots:  < {NombresHabilidad[nivelHabilidad]} >",
                     $"Duración de cada ronda:  < {Duraciones[nivelDuracion]} s >",
+                    $"Volumen de efectos:  < {Barrita(Sonidos.Volumen)} >",
+                    $"Volumen de la música:  < {Barrita(Musica.Volumen)} >",
                     "Volver",
                 };
 

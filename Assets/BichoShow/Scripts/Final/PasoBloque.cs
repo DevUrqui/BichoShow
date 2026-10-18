@@ -227,6 +227,13 @@ namespace BichoShow
             bloque.position = posicion;
             bloque.rotation = rotacion;
             bloque.transform.SetPositionAndRotation(posicion, rotacion);
+
+            // ¡Pum! El bloque encaja en el foso.
+            Vector3 arriba = posicion + Vector3.up * bloque.transform.lossyScale.y * 0.5f;
+            Sonidos.Reproducir(Sonido.Aterrizaje, arriba, 1f, 0.55f, 0f);
+            Sonidos.Reproducir(Sonido.Golpe, arriba, 0.6f, 0.6f);
+            Efectos.Polvo(arriba, 1f);
+            Efectos.Sacudir(0.3f);
         }
 
         /// <summary>¿Hay suelo bajo la base, a esta distancia del centro a lo largo de "adelante" (negativo = atrás)?</summary>

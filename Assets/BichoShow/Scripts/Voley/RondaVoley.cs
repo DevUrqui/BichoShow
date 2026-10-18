@@ -267,6 +267,9 @@ namespace BichoShow
                 autoria = $"  (obra de {culpable.Etiqueta})";
             }
             Mensaje($"¡Punto para el equipo {nombres[ganador]}! {como}{autoria}", colores[ganador], 2.5f);
+            Sonidos.Reproducir(Sonido.Silbato, pelota.transform.position);
+            Sonidos.Reproducir(Sonido.Aplausos, pelota.transform.position, 0.8f);
+            Efectos.Sacudir(0.15f);
 
             if (confeti != null)
             {
