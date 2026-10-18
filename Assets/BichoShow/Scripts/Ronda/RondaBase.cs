@@ -213,6 +213,7 @@ namespace BichoShow
             Sonidos.Reproducir(Sonido.PitidoSalida);
             Sonidos.Reproducir(Sonido.Silbato);
             Musica.Poner(Musica.Tema.Prueba);
+            Estadisticas.InicioRonda(this);
             AlEmpezarRonda();
         }
 
@@ -248,6 +249,7 @@ namespace BichoShow
 
             // Se puede volver a unir gente; los bots se rehacen al empezar la siguiente ronda.
             if (gestor != null && !ControladaPorShow) gestor.PermitirUnirse(true);
+            Estadisticas.FinRonda(this);
             AlTerminarRonda();
             AlTerminarAlguna?.Invoke(this);
         }

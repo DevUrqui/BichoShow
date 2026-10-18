@@ -56,3 +56,6 @@ desktop.ini
 
 # Python (scripts de Blender)
 __pycache__/
+
+# Estadisticas de las partidas de prueba (las genera el juego)
+/[Ee]stadisticas/

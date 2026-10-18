@@ -103,6 +103,7 @@ namespace BichoShow
             habilidad = habilidadBots;
             duracion = duracionRondas;
             for (int i = 0; i < 4; i++) { estrellas[i] = 0; estrellasRonda[i] = 0; }
+            Estadisticas.Texto($"EMPIEZA EL SHOW · bots: {(bots ? "sí" : "no")} · habilidad de los bots: {habilidadBots:0.00} · rondas de {duracionRondas:0} s · humanos: {PlayerInput.all.Count}");
             saboteadorSiguiente = -1;
             RondaActual = 0;
             CargarRonda();
@@ -255,6 +256,9 @@ namespace BichoShow
             }
 
             saboteadorSiguiente = ElegirSaboteadorSiguiente();
+            var tabla = new List<string>();
+            for (int i = 0; i < 4; i++) if (participa[i]) tabla.Add($"{NombreDe(i)} +{estrellasRonda[i]} (total {estrellas[i]})");
+            Estadisticas.Texto($"Estrellas tras {pruebas[RondaActual].nombre}: {string.Join(" · ", tabla)}" + (string.IsNullOrEmpty(resumenSabotaje) ? "" : $" · {resumenSabotaje}"));
             Estado = EstadoShow.Resultado;
             inicioEstado = Time.time;
         }

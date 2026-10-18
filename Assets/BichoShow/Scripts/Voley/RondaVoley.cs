@@ -268,6 +268,7 @@ namespace BichoShow
             }
             Mensaje($"¡Punto para el equipo {nombres[ganador]}! {como}{autoria}", colores[ganador], 2.5f);
             Sonidos.Reproducir(Sonido.Silbato, pelota.transform.position);
+            Estadisticas.Evento("punto", null, $"{nombres[ganador]}: {como}{autoria}");
             Sonidos.Reproducir(Sonido.Aplausos, pelota.transform.position, 0.8f);
             Efectos.Sacudir(0.15f);
 

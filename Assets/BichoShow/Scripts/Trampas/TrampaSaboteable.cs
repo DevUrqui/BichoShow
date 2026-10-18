@@ -64,6 +64,7 @@ namespace BichoShow
             UltimoSaboteador = quien;
             finDestello = Time.time + 0.4f;
             Sonidos.Reproducir(SonidoAlActivar, CentroEfecto);
+            Estadisticas.Evento("trampa", null, $"{Nombre} ({(quien != null ? quien.Etiqueta : "?")})");
             AlActivar();
             return true;
         }

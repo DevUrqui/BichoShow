@@ -11,7 +11,7 @@ namespace BichoShow
     {
         [Range(0f, 1f)] public float habilidad = 0.55f;
         [Tooltip("Muestra encima del bot lo que está haciendo (para probar la final).")]
-        public bool mostrarEstado = true;
+        public bool mostrarEstado = false;
 
         float siguienteSaltito;
         GUIStyle estiloEstado;

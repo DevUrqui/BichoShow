@@ -235,6 +235,7 @@ namespace BichoShow
             Efectos.Polvo(centro, 0.8f);
             Efectos.Sacudir(0.4f);
             if (transform.position.y > -5f) Efectos.CamaraLenta(0.3f, 0.5f);
+            Estadisticas.Evento("objeto roto", null, $"{nombreObjeto} {motivo}");
 
             AlRomperse?.Invoke(this, motivo);
             Destroy(gameObject);
@@ -247,6 +248,7 @@ namespace BichoShow
             Entregado = true;
             LiberarDeLosBichos();
             Sonidos.Reproducir(Sonido.Entrega, transform.position);
+            Estadisticas.Evento("objeto entregado", null, $"{nombreObjeto} con {Integridad:0}% de vida");
             Sonidos.Reproducir(Sonido.Aplausos, transform.position, 0.7f);
             Efectos.Impacto(transform.position + Vector3.up * 0.8f, new Color(1f, 0.85f, 0.3f), 0.6f);
             rb.isKinematic = true;

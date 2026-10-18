@@ -17,7 +17,7 @@ namespace BichoShow.Herramientas
         [InitializeOnLoadMethod]
         static void Comprobar() => EditorApplication.delayCall += Crear;
 
-        static void Crear()
+        internal static void Crear()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             Guardar(Efectos.RecursoPolvo, Efectos.CrearTexturaCirculo);

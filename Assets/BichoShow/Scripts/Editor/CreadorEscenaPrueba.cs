@@ -311,7 +311,7 @@ namespace BichoShow.Herramientas
         {
             var escenas = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             if (escenas.Exists(e => e.path == ruta)) return;
-            escenas.Insert(0, new EditorBuildSettingsScene(ruta, true));
+            escenas.Add(new EditorBuildSettingsScene(ruta, true)); // al final: la primera es siempre el menú
             EditorBuildSettings.scenes = escenas.ToArray();
         }
     }

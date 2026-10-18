@@ -37,6 +37,7 @@ namespace BichoShow
             if (bicho != null)
             {
                 Sonidos.Reproducir(Sonido.Caida, cuerpo.position, bicho.EsBot ? 0.6f : 1f);
+                Estadisticas.Evento("caida", bicho, motivoObjeto);
                 bicho.Reaparecer();
             }
             if (objeto != null) objeto.Romper(motivoObjeto);
