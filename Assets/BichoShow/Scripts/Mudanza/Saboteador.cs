@@ -182,7 +182,9 @@ namespace BichoShow
                 {
                     Activar(pendiente);
                     pendiente = null;
-                    siguientePensar = Time.time + Mathf.Lerp(5f, 2f, agresividad);
+                    // Descanso entre trampas: con menos, cada una se nota más (las estadísticas
+                    // mostraban una trampa cada 5-6 s y se comían la partida).
+                    siguientePensar = Time.time + Mathf.Lerp(11f, 6f, agresividad);
                 }
                 return;
             }
@@ -208,7 +210,7 @@ namespace BichoShow
                 if (puntuacion > mejorPuntuacion) { mejorPuntuacion = puntuacion; mejor = t; }
             }
 
-            if (mejor != null && Random.value < Mathf.Lerp(0.2f, 0.75f, agresividad))
+            if (mejor != null && mejorPuntuacion >= 2f && Random.value < Mathf.Lerp(0.2f, 0.75f, agresividad))
             {
                 seleccionada = mejor;
                 pendiente = mejor;

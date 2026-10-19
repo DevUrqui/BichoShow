@@ -59,6 +59,12 @@ namespace BichoShow
 
         static readonly int IdBaseColor = Shader.PropertyToID("_BaseColor");
 
+        /// <summary>Cuándo golpeó la pelota un humano por última vez (para recordar el botón si no lo usan).</summary>
+        public static float UltimoGolpeHumano = -100f;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void LimpiarEstaticos() => UltimoGolpeHumano = -100f;
+
         public static string NombreTipo(Tipo t) => t switch
         {
             Tipo.Rayo => "¡PELOTA RAYO!",
@@ -176,6 +182,7 @@ namespace BichoShow
         public bool Golpear(ControladorBicho quien, Vector3 direccion, bool enElAire)
         {
             if (ronda == null || PuntoResuelto) return false;
+            if (!quien.EsBot) UltimoGolpeHumano = Time.time;
 
             int equipo = RondaBase.EquipoDe(quien);
             Vector3 objetivo = ronda.PuntoDeGolpe(equipo, direccion, enElAire);

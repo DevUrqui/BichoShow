@@ -42,6 +42,7 @@ namespace BichoShow
 
         public override string Titulo => "JUNTOS O NADA";
         protected override string Descripcion => "Cada pareja tiene su circuito y solo se supera cooperando. ¡La primera pareja en la meta gana!";
+        protected override string ConsejoInicio => "¡Juntos! Mirad la pista de vuestra pareja arriba: empujar, pisar placas, subir…";
         public override string NombreEquipo(int equipo) => equipos[equipo].nombre;
         public override Color ColorEquipo(int equipo) => equipos[equipo].color;
         public override int PuntosEquipo(int equipo) => equipos[equipo].puntos;

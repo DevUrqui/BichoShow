@@ -63,7 +63,8 @@ namespace BichoShow
 
         public override string Titulo => "VOLEY ATADOS";
         protected override string Descripcion => "Que la pelota caiga en el campo rival… atados a tu pareja con una goma";
-        protected override string Controles => "Stick mover · A saltar · X golpear (en el aire: ¡remate!) · Tocarla con el cuerpo la levanta";
+        protected override string Controles => "Stick / WASD mover · A / espacio saltar · X / Q golpear (en el aire: ¡remate!) · Tocarla con el cuerpo la levanta";
+        protected override string ConsejoInicio => "¡Pulsa X (o Q) cerca de la pelota para GOLPEARLA! Saltando: ¡REMATE!";
         public override string NombreEquipo(int equipo) => nombres[equipo];
         public override Color ColorEquipo(int equipo) => colores[equipo];
         public override int PuntosEquipo(int equipo) => puntos[equipo];
@@ -143,6 +144,7 @@ namespace BichoShow
 
         protected override void AlEmpezarRonda()
         {
+            ultimoAvisoGolpe = Time.time; // el primer aviso, a los 30 s si nadie golpea
             CrearGomas();
             equipoSaque = Random.value < 0.5f ? 0 : 1;
             siguienteSaque = Time.time + 0.5f;
@@ -152,6 +154,22 @@ namespace BichoShow
         protected override void ActualizarJugando()
         {
             if (Pelota == null && siguienteSaque >= 0f && Time.time >= siguienteSaque) Sacar();
+
+            // Si ningún humano ha golpeado la pelota en un buen rato, se lo recordamos.
+            if (Time.time - Mathf.Max(PelotaVoley.UltimoGolpeHumano, ultimoAvisoGolpe) > 30f && HayHumanos())
+            {
+                ultimoAvisoGolpe = Time.time;
+                Mensaje("Recuerda: X (o Q) cerca de la pelota = ¡GOLPE!  Saltando = ¡REMATE!", new Color(1f, 0.9f, 0.35f), 4f);
+            }
+        }
+
+        float ultimoAvisoGolpe;
+
+        static bool HayHumanos()
+        {
+            foreach (var b in ControladorBicho.Todos)
+                if (!b.EsBot && !b.Retirado) return true;
+            return false;
         }
 
         protected override void Update()

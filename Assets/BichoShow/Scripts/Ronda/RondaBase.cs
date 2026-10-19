@@ -64,7 +64,11 @@ namespace BichoShow
 
         public abstract string Titulo { get; }
         protected abstract string Descripcion { get; }
-        protected virtual string Controles => "Stick mover · A saltar · Gatillo agarrar · X lanzarse / lanzar lo agarrado";
+        protected virtual string Controles => "Stick / WASD mover · A / espacio saltar · Gatillo / E agarrar · X / Q lanzarse o lanzar lo agarrado";
+        /// <summary>Consejo grande que se ve los primeros segundos de la ronda (lo más importante de la prueba).</summary>
+        protected virtual string ConsejoInicio => null;
+        /// <summary>Segundos que lleva jugándose la ronda.</summary>
+        protected float TiempoJugado => Mathf.Max(0f, duracionRonda - TiempoRestante);
         public abstract string NombreEquipo(int equipo);
         public abstract Color ColorEquipo(int equipo);
         public abstract int PuntosEquipo(int equipo);
@@ -249,8 +253,9 @@ namespace BichoShow
 
             // Se puede volver a unir gente; los bots se rehacen al empezar la siguiente ronda.
             if (gestor != null && !ControladaPorShow) gestor.PermitirUnirse(true);
-            Estadisticas.FinRonda(this);
+
             AlTerminarRonda();
+            Estadisticas.FinRonda(this); // después: así incluye los puntos que se dan al acabar
             AlTerminarAlguna?.Invoke(this);
         }
 
@@ -397,6 +402,14 @@ namespace BichoShow
 
                 case Estado.Jugando:
                     DibujarMarcador(w, h);
+                    // Los primeros segundos: lo más importante de la prueba, bien grande.
+                    if (TiempoJugado < 9f && !string.IsNullOrEmpty(ConsejoInicio))
+                    {
+                        float alfa = Mathf.Clamp01((9f - TiempoJugado) / 1f);
+                        var amarillo = Parpadeo(new Color(1f, 0.9f, 0.35f)); amarillo.a *= alfa;
+                        Texto(new Rect(0, h * 0.8f, w, h * 0.07f), ConsejoInicio, estiloMedio, amarillo);
+                        Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.7f * alfa));
+                    }
                     break;
 
                 case Estado.Fin:

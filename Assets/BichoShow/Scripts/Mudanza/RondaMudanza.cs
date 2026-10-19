@@ -25,6 +25,7 @@ namespace BichoShow
             [HideInInspector] public int entregas;
             [HideInInspector] public ObjetoFragil objetoActual;
             [HideInInspector] public float siguienteObjetoEn = -1f;
+            [HideInInspector] public float progresoMax; // 0 = en el camión, 1 = en la puerta de casa
         }
 
         [Header("Mudanza")]
@@ -34,6 +35,8 @@ namespace BichoShow
         public int puntosMinimos = 10;
         [Tooltip("Puntos para el saboteador cuando su trampa rompe un objeto.")]
         public int puntosRotura = 40;
+        [Tooltip("Si un objeto se rompe (o se acaba el tiempo) a medio camino, el equipo gana esta fracción de sus puntos multiplicada por lo que avanzó.")]
+        [Range(0f, 1f)] public float fraccionEsfuerzo = 0.4f;
 
         [Header("Equipos y objetos")]
         public Equipo[] equipos = new Equipo[2];
@@ -42,6 +45,7 @@ namespace BichoShow
 
         public override string Titulo => "MUDANZA FRÁGIL";
         protected override string Descripcion => "Llevad cada objeto de vuestro camión a vuestra casa… sin romperlo";
+        protected override string ConsejoInicio => "Mantén el GATILLO (o E) para agarrar · ¡Llevadlo entre dos y sin golpes!";
         public override string NombreEquipo(int equipo) => equipos[equipo].nombre;
         public override Color ColorEquipo(int equipo) => equipos[equipo].color;
         public override int PuntosEquipo(int equipo) => equipos[equipo].puntos;
@@ -102,12 +106,42 @@ namespace BichoShow
                 var e = equipos[i];
                 if (e.objetoActual == null && e.siguienteObjetoEn >= 0f && Time.time >= e.siguienteObjetoEn)
                     CrearObjeto(i);
+                if (e.objetoActual != null) e.progresoMax = Mathf.Max(e.progresoMax, Progreso(e, e.objetoActual));
             }
         }
 
         protected override void AlTerminarRonda()
         {
-            foreach (var e in equipos) e.siguienteObjetoEn = -1f;
+            foreach (var e in equipos)
+            {
+                e.siguienteObjetoEn = -1f;
+                // Lo que estaba en camino cuando sonó la bocina también cuenta un poco.
+                if (e.objetoActual == null) continue;
+                int esfuerzo = PuntosEsfuerzo(e, e.objetoActual);
+                if (esfuerzo <= 0) continue;
+                e.puntos += esfuerzo;
+                Mensaje($"Equipo {e.nombre}: +{esfuerzo} por {e.objetoActual.nombreObjeto} a medio camino", e.color, 3f);
+            }
+        }
+
+        /// <summary>Lo avanzado con un objeto: 0 en el camión, 1 en la puerta de casa.</summary>
+        static float Progreso(Equipo e, ObjetoFragil objeto)
+        {
+            if (e.casa == null || e.aparicionObjeto == null || objeto == null) return 0f;
+            Vector3 casa = e.casa.transform.position;
+            float total = Plano(casa - e.aparicionObjeto.position);
+            if (total < 0.1f) return 0f;
+            return Mathf.Clamp01(1f - Plano(casa - objeto.transform.position) / total);
+        }
+
+        static float Plano(Vector3 v) => new Vector2(v.x, v.z).magnitude;
+
+        /// <summary>Puntos de consolación por lo que se avanzó con un objeto que no llegó.</summary>
+        int PuntosEsfuerzo(Equipo e, ObjetoFragil objeto)
+        {
+            float progreso = Mathf.Max(e.progresoMax, Progreso(e, objeto));
+            if (progreso < 0.15f) return 0;
+            return Mathf.CeilToInt(objeto.puntosBase * fraccionEsfuerzo * progreso);
         }
 
         // ---------------------------------------------------------------------
@@ -134,6 +168,7 @@ namespace BichoShow
             objeto.AlRomperse += (o, motivo) => AlRomperse(indiceEquipo, o, motivo);
             objeto.AlRecibirDano += AlDanarObjeto;
             e.objetoActual = objeto;
+            e.progresoMax = 0f;
         }
 
         void AlDanarObjeto(ObjetoFragil objeto, float dano)
@@ -175,7 +210,10 @@ namespace BichoShow
                 culpable.SumarPuntos(puntosRotura, "¡ROTO!");
                 autoria = $"  (obra de {culpable.Etiqueta})";
             }
-            Mensaje($"¡CRASH! {Mayuscula(objeto.nombreObjeto)} del equipo {e.nombre} {motivo}{autoria}", e.color, 3f);
+            int esfuerzo = PuntosEsfuerzo(e, objeto);
+            e.puntos += esfuerzo;
+            string consuelo = esfuerzo > 0 ? $"   (+{esfuerzo} por el camino recorrido)" : "";
+            Mensaje($"¡CRASH! {Mayuscula(objeto.nombreObjeto)} del equipo {e.nombre} {motivo}{autoria}{consuelo}", e.color, 3f);
             e.siguienteObjetoEn = Time.time + esperaNuevoObjeto;
         }
 

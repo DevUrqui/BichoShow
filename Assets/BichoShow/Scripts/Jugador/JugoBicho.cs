@@ -130,7 +130,7 @@ namespace BichoShow
         void AlRecibirGolpe(ControladorBicho _, float fuerza, Vector3 punto)
         {
             float k = Mathf.Clamp01((fuerza - bicho.golpeParaTropezar) / 8f);
-            Estadisticas.Evento("derribado", bicho, $"golpe de {fuerza:0} m/s");
+            Estadisticas.Evento("derribado", bicho, $"golpe de {fuerza:0} m/s ({bicho.OrigenUltimoGolpe})");
             Sonidos.Reproducir(Sonido.Golpe, punto, 0.6f + 0.4f * k);
             Sonidos.Reproducir(Sonido.Derribo, punto, 0.7f + 0.3f * k, Random.Range(0.9f, 1.15f));
             Sonidos.Reproducir(Sonido.Ooh, punto, 0.5f + 0.5f * k);

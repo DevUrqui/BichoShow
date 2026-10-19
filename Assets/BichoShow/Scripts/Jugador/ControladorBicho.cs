@@ -64,6 +64,10 @@ namespace BichoShow
         public float golpeParaTropezar = 5.5f;
         [Tooltip("Cuánto tiempo está en el suelo tras un tropiezo (s). Más de 1.5 s frustra.")]
         public float duracionTropiezo = 0.9f;
+        [Tooltip("Velocidad horizontal máxima, aunque te dé un golpe enorme (m/s).")]
+        public float velocidadMaximaGolpe = 15f;
+        [Tooltip("Velocidad máxima hacia arriba (m/s).")]
+        public float velocidadMaximaSubida = 12f;
         [Tooltip("Si se inclina más que esto sin haber tropezado, recibe ayuda extra para levantarse.")]
         public float anguloTumbado = 60f;
         [Tooltip("Multiplicador del equilibrio durante el levantamiento.")]
@@ -343,6 +347,7 @@ namespace BichoShow
             Equilibrar();
             Agarrar();
             GravedadExtra();
+            LimitarVelocidad();
         }
 
         void ComprobarSuelo()
@@ -488,7 +493,9 @@ namespace BichoShow
             agarre.anchor = transform.InverseTransformPoint(puntoAgarre);
             agarre.breakForce = fuerzaRoturaAgarre;
             agarre.breakTorque = fuerzaRoturaAgarre;
-            agarre.enableCollision = true;
+            // Sin choques entre quien agarra y lo agarrado: el joint los mete uno dentro del otro y
+            // la física respondía con empujones enormes (el bicho tropezaba y soltaba la tele).
+            agarre.enableCollision = false;
             agarreACuerpo = mejor.attachedRigidbody != null;
 
             bichoAgarrado = mejor.attachedRigidbody != null
@@ -655,16 +662,63 @@ namespace BichoShow
             // Solo tropezamos con cosas que se mueven (otros bichos, cajas, trampas),
             // no al aterrizar en el suelo tras un salto.
             if (choque.rigidbody == null) return;
+            if (EsDeMiCarga(choque.rigidbody)) return;
 
             float cambioVelocidad = choque.impulse.magnitude / rb.mass;
             if (cambioVelocidad >= golpeParaTropezar)
             {
                 bool yaEstaba = Tumbado;
+                OrigenUltimoGolpe = NombreOrigen(choque.rigidbody);
                 if (!yaEstaba)
                     AlRecibirGolpe?.Invoke(this, cambioVelocidad, choque.contactCount > 0 ? choque.GetContact(0).point : rb.worldCenterOfMass);
                 Tropezar(duracionTropiezo);
                 if (!yaEstaba) AlgunoDerribado?.Invoke(this);
             }
+        }
+
+        /// <summary>
+        /// Choques que no deben tumbar: con lo que llevo agarrado, con quien me lleva agarrado y
+        /// con quien carga el mismo objeto que yo (al llevar el sofá entre dos se dan codazos).
+        /// </summary>
+        /// <summary>Qué le dio el último golpe que lo tiró (para las estadísticas).</summary>
+        public string OrigenUltimoGolpe { get; private set; }
+
+        static string NombreOrigen(Rigidbody otro)
+        {
+            var bicho = otro.GetComponent<ControladorBicho>();
+            if (bicho != null) return $"J{bicho.IndiceJugador + 1}";
+            var trampa = otro.GetComponentInParent<TrampaSaboteable>();
+            if (trampa != null) return trampa.Nombre;
+            var objeto = otro.GetComponent<ObjetoFragil>();
+            return objeto != null ? objeto.nombreObjeto : otro.name;
+        }
+
+        bool EsDeMiCarga(Rigidbody otro)
+        {
+            Rigidbody mia = CuerpoAgarrado;
+            if (mia != null && otro == mia) return true;
+            var bicho = otro.GetComponent<ControladorBicho>();
+            if (bicho == null) return false;
+            if (bicho.CuerpoAgarrado == rb) return true;
+            return mia != null && bicho.CuerpoAgarrado == mia;
+        }
+
+        /// <summary>
+        /// Tope de velocidad: un golpe muy gordo (una trampa en turbo, un choque raro de la física)
+        /// lanza al bicho por los aires, pero no lo dispara como un cañón fuera del mapa.
+        /// </summary>
+        void LimitarVelocidad()
+        {
+            Vector3 v = rb.linearVelocity;
+            Vector3 horizontal = new Vector3(v.x, 0f, v.z);
+            bool cambia = false;
+            if (horizontal.sqrMagnitude > velocidadMaximaGolpe * velocidadMaximaGolpe)
+            {
+                horizontal = horizontal.normalized * velocidadMaximaGolpe;
+                cambia = true;
+            }
+            if (v.y > velocidadMaximaSubida) { v.y = velocidadMaximaSubida; cambia = true; }
+            if (cambia) rb.linearVelocity = new Vector3(horizontal.x, v.y, horizontal.z);
         }
 
         // ---------------------------------------------------------------------
