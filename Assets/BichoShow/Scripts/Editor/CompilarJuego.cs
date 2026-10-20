@@ -18,7 +18,7 @@ namespace BichoShow.Herramientas
     /// </summary>
     public static class CompilarJuego
     {
-        static readonly string[] EscenasDelShow = { "Menu", "Mudanza", "Patata", "Voley", "Final" };
+        static readonly string[] EscenasDelShow = { "Menu", "Mudanza", "Patata", "Corona", "Lluvia", "Pintura", "Voley", "Final" };
 
         public static string CarpetaSalida =>
             Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Builds", "Windows");
@@ -35,9 +35,15 @@ namespace BichoShow.Herramientas
                 string ruta = $"{E.CarpetaEscenas}/{nombre}.unity";
                 if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ruta) == null)
                 {
-                    EditorUtility.DisplayDialog("Bicho Show",
-                        $"Falta la escena \"{nombre}\". Créala desde el menú BichoShow (Crear escena…) y vuelve a compilar.", "Vale");
-                    return;
+                    // Sin el menú no hay juego; sin alguna prueba, el show sortea entre las que haya.
+                    if (nombre == "Menu" || nombre == "Final")
+                    {
+                        EditorUtility.DisplayDialog("Bicho Show",
+                            $"Falta la escena \"{nombre}\". Créala desde el menú BichoShow (Crear escena…) y vuelve a compilar.", "Vale");
+                        return;
+                    }
+                    Debug.LogWarning($"Bicho Show: la escena \"{nombre}\" no existe todavía; el juego compilado no la tendrá.");
+                    continue;
                 }
                 rutas.Add(ruta);
             }

@@ -23,6 +23,8 @@ namespace BichoShow
             public string nombre = "Mudanza frágil";
             [Tooltip("Las estrellas de esta ronda se multiplican por esto (la final vale doble).")]
             public int multiplicador = 1;
+            [Tooltip("Va siempre al final del show (no entra en el sorteo).")]
+            public bool esFinal;
         }
 
         public enum EstadoShow { Inactivo, Cargando, Presentando, EnRonda, Resultado, Marcador, Final }
@@ -32,13 +34,22 @@ namespace BichoShow
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void LimpiarEstaticos() => Instancia = null;
 
+        [Tooltip("Todas las pruebas posibles. Cada show elige unas cuantas al azar y acaba con las finales.")]
         public Prueba[] pruebas =
         {
-            new Prueba { escena = "Mudanza", nombre = "Mudanza frágil", multiplicador = 1 },
-            new Prueba { escena = "Patata", nombre = "Patata caliente", multiplicador = 1 },
-            new Prueba { escena = "Voley", nombre = "Voley atados", multiplicador = 1 },
-            new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2 },
+            new Prueba { escena = "Mudanza", nombre = "Mudanza frágil" },
+            new Prueba { escena = "Patata", nombre = "Patata caliente" },
+            new Prueba { escena = "Corona", nombre = "La Corona" },
+            new Prueba { escena = "Lluvia", nombre = "Lluvia de muebles" },
+            new Prueba { escena = "Pintura", nombre = "Pintabichos" },
+            new Prueba { escena = "Voley", nombre = "Voley atados" },
+            new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2, esFinal = true },
         };
+        [Tooltip("Pruebas (sin contar la final) que se juegan en cada show.")]
+        public int pruebasPorShow = 3;
+
+        /// <summary>Las pruebas de este show, en orden (las elige EmpezarShow).</summary>
+        readonly List<Prueba> programa = new List<Prueba>();
         public string escenaMenu = "Menu";
         [Tooltip("Segundos del cartel de presentación antes de cada ronda.")]
         public float duracionPresentacion = 2.5f;
@@ -103,10 +114,34 @@ namespace BichoShow
             habilidad = habilidadBots;
             duracion = duracionRondas;
             for (int i = 0; i < 4; i++) { estrellas[i] = 0; estrellasRonda[i] = 0; }
-            Estadisticas.Texto($"EMPIEZA EL SHOW · bots: {(bots ? "sí" : "no")} · habilidad de los bots: {habilidadBots:0.00} · rondas de {duracionRondas:0} s · humanos: {PlayerInput.all.Count}");
+            ElegirPrograma();
+            if (programa.Count == 0)
+            {
+                Debug.LogError("Bicho Show: no hay ninguna prueba en la lista del build. Crea las escenas desde el menú BichoShow.");
+                return;
+            }
+            Estadisticas.Texto($"EMPIEZA EL SHOW · bots: {(bots ? "sí" : "no")} · habilidad de los bots: {habilidadBots:0.00} · rondas de {duracionRondas:0} s · humanos: {PlayerInput.all.Count} · " +
+                               $"pruebas: {string.Join(", ", programa.Select(p => p.nombre))}");
             saboteadorSiguiente = -1;
             RondaActual = 0;
             CargarRonda();
+        }
+
+        /// <summary>
+        /// Sortea las pruebas de este show (solo las que estén en el build, sin repetir) y pone
+        /// las finales al final. Así cada partida es distinta.
+        /// </summary>
+        void ElegirPrograma()
+        {
+            programa.Clear();
+            var bolsa = pruebas.Where(p => !p.esFinal && Application.CanStreamedLevelBeLoaded(p.escena)).ToList();
+            for (int i = 0; i < pruebasPorShow && bolsa.Count > 0; i++)
+            {
+                int k = Random.Range(0, bolsa.Count);
+                programa.Add(bolsa[k]);
+                bolsa.RemoveAt(k);
+            }
+            programa.AddRange(pruebas.Where(p => p.esFinal && Application.CanStreamedLevelBeLoaded(p.escena)));
         }
 
         void CargarRonda()
@@ -119,7 +154,7 @@ namespace BichoShow
             }
             Estado = EstadoShow.Cargando;
             ControladorBicho.EntradaBloqueada = true;
-            SceneManager.LoadScene(pruebas[RondaActual].escena);
+            SceneManager.LoadScene(programa[RondaActual].escena);
         }
 
         void AlCargarEscena(Scene escena, LoadSceneMode modo)
@@ -159,7 +194,7 @@ namespace BichoShow
                 case EstadoShow.Resultado:
                     if (Time.time - inicioEstado > duracionResultado)
                     {
-                        Estado = RondaActual + 1 < pruebas.Length ? EstadoShow.Marcador : EstadoShow.Final;
+                        Estado = RondaActual + 1 < programa.Count ? EstadoShow.Marcador : EstadoShow.Final;
                         inicioEstado = Time.time;
                         ControladorBicho.EntradaBloqueada = true;
                         if (Estado == EstadoShow.Final)
@@ -225,7 +260,7 @@ namespace BichoShow
             if (terminada != ronda || Estado != EstadoShow.EnRonda) return;
 
             ActualizarParticipantes();
-            int mult = Mathf.Max(1, pruebas[RondaActual].multiplicador);
+            int mult = Mathf.Max(1, programa[RondaActual].multiplicador);
             int p0 = ronda.PuntosEquipo(0), p1 = ronda.PuntosEquipo(1);
             int ganador = p0 == p1 ? -1 : p0 > p1 ? 0 : 1;
 
@@ -267,7 +302,7 @@ namespace BichoShow
             saboteadorSiguiente = ElegirSaboteadorSiguiente();
             var tabla = new List<string>();
             for (int i = 0; i < 4; i++) if (participa[i]) tabla.Add($"{NombreDe(i)} +{estrellasRonda[i]} (total {estrellas[i]})");
-            Estadisticas.Texto($"Estrellas tras {pruebas[RondaActual].nombre}: {string.Join(" · ", tabla)}" + (string.IsNullOrEmpty(resumenSabotaje) ? "" : $" · {resumenSabotaje}"));
+            Estadisticas.Texto($"Estrellas tras {programa[RondaActual].nombre}: {string.Join(" · ", tabla)}" + (string.IsNullOrEmpty(resumenSabotaje) ? "" : $" · {resumenSabotaje}"));
             Estado = EstadoShow.Resultado;
             inicioEstado = Time.time;
         }
@@ -292,7 +327,7 @@ namespace BichoShow
         /// </summary>
         int ElegirSaboteadorSiguiente()
         {
-            if (RondaActual + 1 >= pruebas.Length) return -1;
+            if (RondaActual + 1 >= programa.Count) return -1;
             var humanos = Enumerable.Range(0, 4).Where(i => esHumano[i]).ToList();
             if (humanos.Count < 2) return -1;
             return humanos.OrderBy(i => estrellas[i]).ThenBy(i => estrellasRonda[i]).ThenBy(_ => Random.value).First();
@@ -322,10 +357,10 @@ namespace BichoShow
                 {
                     EstiloShow.FondoPlato(0.95f);
                     EstiloShow.Texto(new Rect(0, h * 0.04f, w, Px(120f)), "MARCADOR", Tam(110f), EstiloShow.Oro, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo, false, 1.2f);
-                    EstiloShow.Texto(new Rect(0, h * 0.04f + Px(108f), w, Px(50f)), $"tras la ronda {RondaActual + 1} de {pruebas.Length}", Tam(36f), Color.white);
+                    EstiloShow.Texto(new Rect(0, h * 0.04f + Px(108f), w, Px(50f)), $"tras la ronda {RondaActual + 1} de {programa.Count}", Tam(36f), Color.white);
                     DibujarTabla(w, h, h * 0.27f);
 
-                    var siguiente = pruebas[RondaActual + 1];
+                    var siguiente = programa[RondaActual + 1];
                     var cartel = new Rect(w * 0.5f - Px(560f), h - Px(250f), Px(1120f), Px(76f));
                     EstiloShow.Panel(cartel, EstiloShow.Morado.WithAlpha(0.92f), cartel.height * 0.5f);
                     EstiloShow.Texto(cartel, $"Siguiente: {siguiente.nombre}" + (siguiente.multiplicador > 1 ? $"  ·  ¡estrellas x{siguiente.multiplicador}!" : ""), Tam(40f), Color.white);
@@ -366,11 +401,11 @@ namespace BichoShow
         void DibujarPresentacion(float w, float h)
         {
             EstiloShow.FondoPlato(0.97f);
-            var prueba = pruebas[RondaActual];
+            var prueba = programa[RondaActual];
 
             var cinta = new Rect(w * 0.5f - Px(250f), h * 0.2f, Px(500f), Px(74f));
             EstiloShow.Panel(cinta, EstiloShow.Rosa, cinta.height * 0.5f);
-            EstiloShow.Texto(cinta, $"RONDA {RondaActual + 1} DE {pruebas.Length}", Tam(46f), Color.white);
+            EstiloShow.Texto(cinta, $"RONDA {RondaActual + 1} DE {programa.Count}", Tam(46f), Color.white);
 
             string nombre = prueba.nombre.ToUpper();
             EstiloShow.TituloRebote(new Rect(0, h * 0.3f, w, Px(180f)), nombre, Ajustar(nombre, Tam(140f), w * 0.9f),
