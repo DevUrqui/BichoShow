@@ -44,7 +44,8 @@ namespace BichoShow
                 fuenteTexto = Resources.Load<Font>("Fuentes/Fredoka");
             }
             if (estilo == null)
-                estilo = new GUIStyle(GUI.skin.label) { clipping = TextClipping.Overflow, richText = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0) };
+                // Ojo: con clipping Overflow Unity ignora la alineación (todo salía pegado a la izquierda).
+                estilo = new GUIStyle(GUI.skin.label) { clipping = TextClipping.Clip, richText = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0) };
         }
 
         static void Configurar(int tamano, TextAnchor alineacion, Fuente fuente, bool ajustar)
@@ -71,11 +72,12 @@ namespace BichoShow
             if (!Pintando || string.IsNullOrEmpty(texto) || color.a <= 0.005f) return;
             Configurar(tamano, alineacion, fuente, ajustar);
             contenido.text = texto;
+            r = Agrandar(r, alineacion, ajustar);
 
             float a = color.a;
             Color colorContorno = contorno ?? MoradoOscuro;
             colorContorno.a = a;
-            float g = Mathf.Max(1.2f, tamano * 0.075f) * grosor;
+            float g = Mathf.Max(2f, tamano * 0.085f) * grosor;
 
             // Sombra
             Dibujar(new Rect(r.x + g * 0.5f, r.y + g * 1.7f, r.width, r.height), new Color(0f, 0f, 0f, 0.45f * a));
@@ -98,6 +100,46 @@ namespace BichoShow
             GUI.BeginGroup(new Rect(r.x - margen, r.y - margen, r.width + margen * 2f, centro - (r.y - margen)));
             Dibujar(new Rect(margen, margen, r.width, r.height), Color.Lerp(color, Color.white, 0.32f).WithAlpha(a));
             GUI.EndGroup();
+        }
+
+        /// <summary>
+        /// Si el texto no cabe en su caja, la agranda (sin mover el texto según su alineación),
+        /// para que el recorte no le corte las letras.
+        /// </summary>
+        static Rect Agrandar(Rect r, TextAnchor alineacion, bool ajustar)
+        {
+            Vector2 tamano = ajustar ? new Vector2(r.width, estilo.CalcHeight(contenido, r.width)) : estilo.CalcSize(contenido);
+            tamano += Vector2.one * estilo.fontSize * 0.3f; // holgura para el contorno
+            int columna = (int)alineacion % 3; // 0 izquierda, 1 centro, 2 derecha
+            int fila = (int)alineacion / 3;    // 0 arriba, 1 medio, 2 abajo
+            if (!ajustar && tamano.x > r.width)
+            {
+                float extra = tamano.x - r.width;
+                r.x -= columna == 0 ? 0f : columna == 1 ? extra * 0.5f : extra;
+                r.width = tamano.x;
+            }
+            if (tamano.y > r.height)
+            {
+                float extra = tamano.y - r.height;
+                r.y -= fila == 0 ? 0f : fila == 1 ? extra * 0.5f : extra;
+                r.height = tamano.y;
+            }
+            return r;
+        }
+
+        /// <summary>
+        /// Texto sobre una pastilla oscura del tamaño justo (mensajes sueltos encima del juego).
+        /// La pastilla se centra en "centro".
+        /// </summary>
+        public static void TextoEnPastilla(Vector2 centro, string texto, int tamano, Color color, Color? fondo = null,
+                                           Fuente fuente = Fuente.Texto)
+        {
+            if (!Pintando || string.IsNullOrEmpty(texto) || color.a <= 0.005f) return;
+            float ancho = Ancho(texto, tamano, fuente) + tamano * 1.6f;
+            float alto = tamano * 1.75f;
+            var r = new Rect(centro.x - ancho * 0.5f, centro.y - alto * 0.5f, ancho, alto);
+            Panel(r, (fondo ?? MoradoOscuro.WithAlpha(0.8f)).WithAlpha((fondo?.a ?? 0.8f) * color.a), alto * 0.5f, Px(2.5f), false);
+            Texto(r, texto, tamano, color, TextAnchor.MiddleCenter, fuente);
         }
 
         static void Dibujar(Rect r, Color c)

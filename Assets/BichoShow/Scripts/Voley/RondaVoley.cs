@@ -65,6 +65,7 @@ namespace BichoShow
         protected override string Descripcion => "Que la pelota caiga en el campo rival… atados a tu pareja con una goma";
         protected override string Controles => "Stick / WASD mover · A / espacio saltar · X / Q golpear (en el aire: ¡remate!) · Tocarla con el cuerpo la levanta";
         protected override string ConsejoInicio => "¡Pulsa X (o Q) cerca de la pelota para GOLPEARLA! Saltando: ¡REMATE!";
+        protected override string AccionX => "golpear";
         public override string NombreEquipo(int equipo) => nombres[equipo];
         public override Color ColorEquipo(int equipo) => colores[equipo];
         public override int PuntosEquipo(int equipo) => puntos[equipo];

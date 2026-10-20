@@ -371,26 +371,7 @@ namespace BichoShow
             {
                 case Estado.Esperando:
                     if (ControladaPorShow) break; // el Show pone su propio cartel
-                    Texto(new Rect(0, h * 0.12f, w, h * 0.1f), Titulo, estiloGrande, Color.white);
-                    Texto(new Rect(0, h * 0.23f, w, h * 0.05f), Descripcion, estiloPequeno, Color.white);
-                    Texto(new Rect(0, h * 0.30f, w, h * 0.05f),
-                        $"Pulsa cualquier botón para unirte   ·   Jugadores 1 y 3: equipo {NombreEquipo(0)}   ·   2 y 4: equipo {NombreEquipo(1)}",
-                        estiloPequeno, new Color(1f, 1f, 1f, 0.85f));
-                    if (rellenarConBots && ControladorBicho.Todos.Count < jugadoresConBots)
-                        Texto(new Rect(0, h * 0.35f, w, h * 0.05f), $"Los huecos hasta {jugadoresConBots} jugadores los ocupará la máquina", estiloPequeno, new Color(0.8f, 0.95f, 1f, 0.9f));
-                    if (zonaSaboteadores != null)
-                    {
-                        string enPlataforma = "";
-                        foreach (var b in ControladorBicho.Todos)
-                            if (!b.EsBot && EnZonaSaboteadores(b)) enPlataforma += $" J{b.IndiceJugador + 1}";
-                        string linea = enPlataforma.Length > 0
-                            ? $"Serán SABOTEADORES:{enPlataforma}"
-                            : "Súbete a la plataforma morada para ser SABOTEADOR";
-                        Texto(new Rect(0, h * 0.40f, w, h * 0.05f), linea, estiloPequeno, new Color(0.85f, 0.6f, 1f));
-                    }
-                    if (ControladorBicho.Todos.Count > 0)
-                        Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para empezar", estiloMedio, Parpadeo(Color.yellow));
-                    Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.7f));
+                    DibujarEspera(w, h);
                     break;
 
                 case Estado.CuentaAtras:
@@ -404,7 +385,7 @@ namespace BichoShow
                         EstiloShow.Texto(centro, n.ToString(), Mathf.RoundToInt(EstiloShow.Px(230f) * escala),
                                          colores[Mathf.Abs(n) % colores.Length].WithAlpha(1f - pulso * 0.4f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo, false, 1.3f);
                         EstiloShow.Texto(new Rect(0, h * 0.56f, w, h * 0.08f), Titulo, Mathf.RoundToInt(EstiloShow.Px(64f)), Color.white);
-                        Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.85f));
+                        DibujarControles(h - EstiloShow.Px(150f), 1f);
                     }
                     break;
 
@@ -414,9 +395,11 @@ namespace BichoShow
                     if (TiempoJugado < 9f && !string.IsNullOrEmpty(ConsejoInicio))
                     {
                         float alfa = Mathf.Clamp01((9f - TiempoJugado) / 1f);
-                        var amarillo = Parpadeo(new Color(1f, 0.9f, 0.35f)); amarillo.a *= alfa;
-                        Texto(new Rect(0, h * 0.8f, w, h * 0.07f), ConsejoInicio, estiloMedio, amarillo);
-                        Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.7f * alfa));
+                        float latido = 1f + Mathf.Sin(Time.time * 6f) * 0.03f;
+                        EstiloShow.TextoEnPastilla(new Vector2(w * 0.5f, h - EstiloShow.Px(240f)), ConsejoInicio,
+                            Mathf.RoundToInt(EstiloShow.Px(40f) * latido), EstiloShow.Oro.WithAlpha(alfa), EstiloShow.MoradoOscuro.WithAlpha(0.85f),
+                            EstiloShow.Fuente.Titulo);
+                        DibujarControles(h - EstiloShow.Px(150f), alfa);
                     }
                     break;
 
@@ -436,15 +419,90 @@ namespace BichoShow
             }
 
             // Mensajes recientes, apilados bajo el reloj
-            float y = h * 0.14f;
+            // (cada uno en su pastilla oscura para que se lea sobre cualquier suelo)
+            float y = EstiloShow.Px(150f);
+            int tamanoMensaje = Mathf.RoundToInt(EstiloShow.Px(30f));
             for (int i = mensajes.Count - 1; i >= 0 && i >= mensajes.Count - 4; i--)
             {
                 float vida = Mathf.Clamp01((mensajes[i].hasta - Time.time) / 0.4f);
                 var c = mensajes[i].color; c.a = vida;
-                Texto(new Rect(0, y, w, h * 0.05f), mensajes[i].texto, estiloPequeno, c);
-                y += h * 0.045f;
+                EstiloShow.TextoEnPastilla(new Vector2(w * 0.5f, y + tamanoMensaje), mensajes[i].texto, tamanoMensaje, c);
+                y += tamanoMensaje * 2.1f;
             }
         }
+
+        /// <summary>
+        /// Jugando la prueba suelta (sin el show): tarjeta centrada con el título, de qué va,
+        /// los equipos, bots y saboteador, y el botón de empezar.
+        /// </summary>
+        void DibujarEspera(float w, float h)
+        {
+            System.Func<float, float> px = EstiloShow.Px;
+            System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
+
+            var tarjeta = new Rect(w * 0.5f - Mathf.Min(px(700f), w * 0.46f), h * 0.07f, Mathf.Min(px(1400f), w * 0.92f), px(560f));
+            EstiloShow.Panel(tarjeta, EstiloShow.MoradoOscuro.WithAlpha(0.86f), px(40f));
+            float m = px(50f);
+            var dentro = new Rect(tarjeta.x + m, tarjeta.y, tarjeta.width - m * 2f, tarjeta.height);
+
+            EstiloShow.TituloRebote(new Rect(tarjeta.x, tarjeta.y + px(24f), tarjeta.width, px(130f)), Titulo,
+                                    Mathf.Min(tam(110f), Mathf.FloorToInt(tam(110f) * dentro.width / Mathf.Max(1f, EstiloShow.Ancho(Titulo, tam(110f))))),
+                                    new[] { EstiloShow.Oro, EstiloShow.Rosa, EstiloShow.Cian, Color.white }, 0.6f);
+            EstiloShow.Texto(new Rect(dentro.x, tarjeta.y + px(160f), dentro.width, px(90f)), Descripcion, tam(34f), Color.white,
+                             TextAnchor.UpperCenter, EstiloShow.Fuente.Texto, true);
+
+            // Equipos: dos pastillas de color
+            float y = tarjeta.y + px(270f);
+            float anchoEquipo = Mathf.Min(px(420f), dentro.width * 0.48f);
+            for (int i = 0; i < 2; i++)
+            {
+                var r = new Rect(tarjeta.center.x + (i == 0 ? -anchoEquipo - px(14f) : px(14f)), y, anchoEquipo, px(70f));
+                EstiloShow.Panel(r, Color.Lerp(ColorEquipo(i), EstiloShow.MoradoOscuro, 0.2f), r.height * 0.5f);
+                EstiloShow.Texto(r, $"{(i == 0 ? "J1 y J3" : "J2 y J4")}  ·  {NombreEquipo(i).ToUpper()}", tam(36f), Color.white);
+            }
+            y += px(92f);
+
+            string bots = rellenarConBots && ControladorBicho.Todos.Count < jugadoresConBots
+                ? $"Los huecos hasta {jugadoresConBots} los ocupa la máquina" : "";
+            if (bots.Length > 0)
+                EstiloShow.Texto(new Rect(dentro.x, y, dentro.width, px(44f)), bots, tam(30f), EstiloShow.Cian, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+            y += px(50f);
+            if (zonaSaboteadores != null)
+            {
+                string enPlataforma = "";
+                foreach (var b in ControladorBicho.Todos)
+                    if (!b.EsBot && EnZonaSaboteadores(b)) enPlataforma += $" J{b.IndiceJugador + 1}";
+                string linea = enPlataforma.Length > 0 ? $"Serán SABOTEADORES:{enPlataforma}" : "Súbete a la plataforma morada para ser SABOTEADOR";
+                EstiloShow.Texto(new Rect(dentro.x, y, dentro.width, px(44f)), linea, tam(30f), EstiloShow.Lila, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+            }
+
+            // Botón de empezar (o cómo unirse, si aún no hay nadie)
+            var boton = new Rect(tarjeta.center.x - px(330f), tarjeta.yMax - px(36f), px(660f), px(88f));
+            if (ControladorBicho.Todos.Count > 0)
+                EstiloShow.Boton(boton, "START / ENTER para empezar", true, tam(40f));
+            else
+                EstiloShow.Boton(boton, "Pulsa un botón para unirte", true, tam(40f));
+
+            DibujarControles(h - px(150f), 1f);
+        }
+
+        /// <summary>Barra de controles con botones de mando (y las teclas debajo, en pequeño).</summary>
+        protected void DibujarControles(float y, float alfa)
+        {
+            if (alfa <= 0.01f) return;
+            var antes = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, alfa);
+            float px50 = EstiloShow.Px(50f);
+            EstiloShow.Ayuda(new Rect(0, y, Screen.width, px50),
+                ("Stick", EstiloShow.GlifoTecla, "mover"), ("A", EstiloShow.GlifoA, "saltar"),
+                ("RT", EstiloShow.GlifoTecla, "agarrar"), ("X", EstiloShow.GlifoX, AccionX));
+            EstiloShow.TextoEnPastilla(new Vector2(Screen.width * 0.5f, y + px50 + EstiloShow.Px(34f)),
+                $"Teclado: WASD mover · espacio saltar · E agarrar · Q {AccionX}", Mathf.RoundToInt(EstiloShow.Px(24f)), new Color(1f, 1f, 1f, alfa));
+            GUI.color = antes;
+        }
+
+        /// <summary>Qué hace el botón X en esta prueba.</summary>
+        protected virtual string AccionX => "lanzarse";
 
         /// <summary>Texto grande arriba en el centro. Por defecto, el reloj.</summary>
         protected virtual string TextoReloj
