@@ -54,7 +54,6 @@ namespace BichoShow
         static readonly int PRitmo = Animator.StringToHash("Ritmo");
 
         ControladorBicho bicho;
-        Rigidbody rb;
         Quaternion rotacionVisual;
         Vector3 ultimoAdelante = Vector3.forward;
         float ultimoEnSuelo;
@@ -79,7 +78,6 @@ namespace BichoShow
         void Awake()
         {
             bicho = GetComponent<ControladorBicho>();
-            rb = GetComponent<Rigidbody>();
             if (raizVisual == null) raizVisual = transform.Find("Aspecto");
             if (animador == null) animador = GetComponentInChildren<Animator>();
             if (animador != null)
@@ -110,6 +108,9 @@ namespace BichoShow
         /// <summary>Hace la animación de celebrar durante un rato (gana la ronda, se une al show…).</summary>
         public void Celebrar(float segundos) => finCelebrar = Mathf.Max(finCelebrar, Time.time + segundos);
 
+        /// <summary>Está haciendo la animación de celebrar (para copiarla en la partida online).</summary>
+        public bool Celebrando => Time.time < finCelebrar;
+
         int EjeHaciaArriba(Transform t)
         {
             int mejor = 1;
@@ -130,7 +131,7 @@ namespace BichoShow
             if (animador == null || bicho == null || bicho.Retirado) return;
             float dt = Time.deltaTime;
 
-            Vector3 v = rb != null ? rb.linearVelocity : Vector3.zero;
+            Vector3 v = bicho.Velocidad;
             float rapidez = new Vector2(v.x, v.z).magnitude;
             if (bicho.EnSuelo) ultimoEnSuelo = Time.time;
             bool enAire = Time.time - ultimoEnSuelo > 0.12f; // un saltito del suelo no cuenta como "en el aire"
@@ -224,7 +225,7 @@ namespace BichoShow
 
                 // Al girar corriendo se inclina hacia dentro de la curva, como una moto.
                 float giroPorSegundo = dt > 0f ? Vector3.SignedAngle(adelanteAntes, ultimoAdelante, Vector3.up) / dt : 0f;
-                Vector3 v = rb != null ? rb.linearVelocity : Vector3.zero;
+                Vector3 v = bicho.Velocidad;
                 float rapidez = Mathf.Clamp01(new Vector2(v.x, v.z).magnitude / 4f);
                 float objetivoCurva = Mathf.Clamp(-giroPorSegundo * inclinacionEnCurva * rapidez, -inclinacionEnCurvaMaxima, inclinacionEnCurvaMaxima);
                 inclinacionCurva = Mathf.Lerp(inclinacionCurva, objetivoCurva, 1f - Mathf.Exp(-8f * dt));
@@ -267,7 +268,7 @@ namespace BichoShow
                 finParpadeo = Time.time + 0.12f;
                 siguienteParpadeo = Time.time + Random.Range(2.5f, 5.5f);
             }
-            Vector3 v = rb != null ? rb.linearVelocity : Vector3.zero;
+            Vector3 v = bicho.Velocidad;
             bool volando = !bicho.EnSuelo && (v.y < -6f || v.sqrMagnitude > 80f);
             bool cerrado = !volando && (Time.time < finParpadeo || (bicho.Tumbado && bicho.EnSuelo));
             Escalar(ojoIzq, escalaOjoIzq, ejeArribaIzq, cerrado, volando);

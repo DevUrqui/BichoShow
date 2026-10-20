@@ -5,14 +5,15 @@ using UnityEngine.InputSystem;
 namespace BichoShow
 {
     /// <summary>
-    /// Menú del juego: Empezar el show · Vestuario · Opciones · Salir.
+    /// Menú del juego: Empezar el show · Jugar online · Vestuario · Opciones · Salir.
     /// Cualquier jugador unido lo maneja con el stick (arriba/abajo para elegir, izquierda/
     /// derecha para cambiar un valor) y A / START para aceptar. Las opciones se guardan.
-    /// Mientras el menú está abierto, los bichos no se mueven (el stick es para el menú).
+    /// Mientras el menú está abierto, los bichos no se mueven (el stick es para el menú), salvo
+    /// en la sala online: ahí todos corren por el plató mientras llegan los demás.
     /// </summary>
     public class MenuPrincipal : MonoBehaviour
     {
-        enum Pantalla { Principal, Opciones, Vestuario }
+        enum Pantalla { Principal, Opciones, Vestuario, Online, Codigo, Sala, SalaMenu }
 
         static readonly string[] NombresHabilidad = { "Torpes", "Normales", "Hábiles" };
         static readonly float[] ValoresHabilidad = { 0.25f, 0.55f, 0.85f };
@@ -38,15 +39,31 @@ namespace BichoShow
             if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(true);
             Musica.Poner(Musica.Tema.Plato);
             Sonidos.Precargar();
+            if (Keyboard.current != null) Keyboard.current.onTextInput += AlEscribir;
+        }
+
+        void OnDestroy()
+        {
+            if (Keyboard.current != null) Keyboard.current.onTextInput -= AlEscribir;
         }
 
 
-        int NumeroOpciones => pantalla == Pantalla.Principal ? 4 : 6;
+        int NumeroOpciones => pantalla switch
+        {
+            Pantalla.Principal => 5,
+            Pantalla.Online => 3,
+            Pantalla.SalaMenu => 2,
+            _ => 6,
+        };
         const int OpcionVolver = 5;
 
         void Update()
         {
-            ControladorBicho.EntradaBloqueada = true;
+            // Partida online: mientras haya sala, su pantalla (y al cerrarse, vuelta a la de online).
+            bool enSala = pantalla == Pantalla.Sala || pantalla == Pantalla.SalaMenu;
+            if (RedShow.EnLinea && !enSala) { pantalla = Pantalla.Sala; enSala = true; }
+            else if (!RedShow.EnLinea && enSala) { pantalla = Pantalla.Online; seleccion = 0; enSala = false; }
+            ControladorBicho.EntradaBloqueada = pantalla != Pantalla.Sala;
 
             // Quien acaba de unirse ha pulsado un botón: que esa pulsación no elija nada.
             if (PlayerInput.all.Count != jugadoresAntes)
@@ -59,6 +76,9 @@ namespace BichoShow
             }
             if (Time.unscaledTime < ignorarHasta || PlayerInput.all.Count == 0) return;
             if (pantalla == Pantalla.Vestuario) { ActualizarVestuario(); return; }
+            if (pantalla == Pantalla.Codigo) { ActualizarCodigo(); return; }
+            if (pantalla == Pantalla.Sala) { ActualizarSala(); return; }
+            if (RedShow.Ocupado) return; // conectando: esperar
 
             foreach (var entrada in PlayerInput.all)
             {
@@ -116,14 +136,29 @@ namespace BichoShow
                 switch (seleccion)
                 {
                     case 0: EmpezarShow(); break;
-                    case 1: EntrarVestuario(); break;
-                    case 2: pantalla = Pantalla.Opciones; seleccion = 0; break;
-                    case 3: Salir(); break;
+                    case 1: pantalla = Pantalla.Online; seleccion = 0; RedShow.LimpiarAviso(); break;
+                    case 2: EntrarVestuario(); break;
+                    case 3: pantalla = Pantalla.Opciones; seleccion = 0; break;
+                    case 4: Salir(); break;
                 }
+            }
+            else if (pantalla == Pantalla.Online)
+            {
+                switch (seleccion)
+                {
+                    case 0: RedShow.CrearSala(); break;
+                    case 1: EntrarCodigo(); break;
+                    case 2: pantalla = Pantalla.Principal; seleccion = 1; break;
+                }
+            }
+            else if (pantalla == Pantalla.SalaMenu)
+            {
+                if (seleccion == 0) pantalla = Pantalla.Sala;
+                else RedShow.Salir();
             }
             else
             {
-                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 2; }
+                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 3; }
                 else CambiarValor(+1);
             }
         }
@@ -147,7 +182,7 @@ namespace BichoShow
         void SalirVestuario()
         {
             pantalla = Pantalla.Principal;
-            seleccion = 1;
+            seleccion = 2;
             Sonidos.Reproducir(Sonido.MenuAceptar);
         }
 
@@ -269,6 +304,295 @@ namespace BichoShow
             EstiloShow.Texto(new Rect(r.x + r.width * 0.3f, r.y, r.width * 0.7f - m * 0.5f, r.height), texto, tamano, Color.white);
         }
 
+        // ---------------------------------------------------------------------
+        // Jugar online: crear sala · escribir el código · la sala
+        // ---------------------------------------------------------------------
+
+        const string Letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        readonly char[] codigo = new char[RedShow.LargoCodigo];
+        int cursor;
+
+        void EntrarCodigo()
+        {
+            pantalla = Pantalla.Codigo;
+            System.Array.Clear(codigo, 0, codigo.Length);
+            cursor = 0;
+            RedShow.LimpiarAviso();
+            // Mientras se escribe, una tecla no debe unir a un jugador nuevo.
+            if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(false);
+        }
+
+        void SalirCodigo()
+        {
+            pantalla = Pantalla.Online;
+            seleccion = 1;
+            if (GestorJugadores.Instancia != null && !RedShow.EsAnfitrion) GestorJugadores.Instancia.PermitirUnirse(true);
+            Sonidos.Reproducir(Sonido.MenuMover);
+        }
+
+        bool CodigoCompleto
+        {
+            get
+            {
+                foreach (char c in codigo) if (c == '\0') return false;
+                return true;
+            }
+        }
+
+        void PonerLetra(char c)
+        {
+            codigo[cursor] = c;
+            if (cursor < codigo.Length - 1) cursor++;
+            Sonidos.Reproducir(Sonido.MenuMover, null, 0.8f, 1.2f, 0f);
+        }
+
+        void BorrarLetra()
+        {
+            if (codigo[cursor] == '\0' && cursor > 0) cursor--;
+            codigo[cursor] = '\0';
+            Sonidos.Reproducir(Sonido.MenuMover, null, 0.8f, 0.8f, 0f);
+        }
+
+        void IntentarUnirse()
+        {
+            if (!CodigoCompleto)
+            {
+                Sonidos.Reproducir(Sonido.MenuMover, null, 1f, 0.6f, 0f);
+                return;
+            }
+            Sonidos.Reproducir(Sonido.MenuAceptar);
+            RedShow.Unirse(new string(codigo));
+        }
+
+        /// <summary>Lo que se teclea en el teclado (cualquier distribución) va al código.</summary>
+        void AlEscribir(char c)
+        {
+            if (pantalla != Pantalla.Codigo || RedShow.Ocupado) return;
+            c = char.ToUpperInvariant(c);
+            if (Letras.IndexOf(c) >= 0) PonerLetra(c);
+        }
+
+        void ActualizarCodigo()
+        {
+            if (RedShow.Ocupado) return;
+            var teclado = Keyboard.current;
+            if (teclado != null)
+            {
+                if (teclado.escapeKey.wasPressedThisFrame) { SalirCodigo(); return; }
+                if (teclado.enterKey.wasPressedThisFrame || teclado.numpadEnterKey.wasPressedThisFrame) { IntentarUnirse(); return; }
+                if (teclado.backspaceKey.wasPressedThisFrame) BorrarLetra();
+                if (teclado.leftArrowKey.wasPressedThisFrame && cursor > 0) cursor--;
+                if (teclado.rightArrowKey.wasPressedThisFrame && cursor < codigo.Length - 1 && codigo[cursor] != '\0') cursor++;
+                if (teclado.ctrlKey.isPressed && teclado.vKey.wasPressedThisFrame) Pegar();
+            }
+
+            // Con el mando, como en las recreativas: arriba/abajo cambia la letra, izquierda/derecha se mueve.
+            foreach (var entrada in PlayerInput.all)
+            {
+                if (entrada.actions == null || entrada.currentControlScheme == "Teclado") continue; // el teclado escribe
+                var mover = entrada.actions.FindAction("Mover");
+                Vector2 stick = mover != null ? mover.ReadValue<Vector2>() : Vector2.zero;
+                stickAnterior.TryGetValue(entrada, out Vector2 antes);
+                stickAnterior[entrada] = stick;
+
+                int letra = codigo[cursor] == '\0' ? -1 : Letras.IndexOf(codigo[cursor]);
+                if (stick.y > 0.6f && antes.y <= 0.6f) { codigo[cursor] = Letras[(letra + 1) % Letras.Length]; Sonidos.Reproducir(Sonido.MenuMover); }
+                if (stick.y < -0.6f && antes.y >= -0.6f) { codigo[cursor] = Letras[(letra <= 0 ? Letras.Length : letra) - 1]; Sonidos.Reproducir(Sonido.MenuMover); }
+                if (stick.x > 0.6f && antes.x <= 0.6f && cursor < codigo.Length - 1 && codigo[cursor] != '\0') { cursor++; Sonidos.Reproducir(Sonido.MenuMover); }
+                if (stick.x < -0.6f && antes.x >= -0.6f && cursor > 0) { cursor--; Sonidos.Reproducir(Sonido.MenuMover); }
+
+                var saltar = entrada.actions.FindAction("Saltar");
+                var lanzarse = entrada.actions.FindAction("Lanzarse");
+                var empezar = entrada.actions.FindAction("Empezar");
+                if (saltar != null && saltar.WasPressedThisFrame()) { IntentarUnirse(); return; }
+                if (lanzarse != null && lanzarse.WasPressedThisFrame()) BorrarLetra();
+                if (empezar != null && empezar.WasPressedThisFrame()) { SalirCodigo(); return; }
+            }
+        }
+
+        void Pegar()
+        {
+            string texto;
+            try { texto = GUIUtility.systemCopyBuffer; } catch { return; }
+            if (string.IsNullOrEmpty(texto)) return;
+            System.Array.Clear(codigo, 0, codigo.Length);
+            int n = 0;
+            foreach (char letra in texto.ToUpperInvariant())
+            {
+                if (Letras.IndexOf(letra) < 0) continue;
+                codigo[n++] = letra;
+                if (n == codigo.Length) break;
+            }
+            cursor = Mathf.Min(n, codigo.Length - 1);
+            Sonidos.Reproducir(Sonido.Aparecer, null, 0.8f, 1.2f);
+        }
+
+        /// <summary>En la sala los bichos corren; START abre el menú de la sala.</summary>
+        void ActualizarSala()
+        {
+            foreach (var entrada in PlayerInput.all)
+            {
+                var empezar = entrada.actions != null ? entrada.actions.FindAction("Empezar") : null;
+                if (empezar != null && empezar.WasPressedThisFrame())
+                {
+                    pantalla = Pantalla.SalaMenu;
+                    seleccion = 0;
+                    Sonidos.Reproducir(Sonido.MenuAceptar);
+                    return;
+                }
+            }
+        }
+
+        struct FichaSala
+        {
+            public int indice;
+            public Color color;
+            public string detalle;
+        }
+
+        static List<FichaSala> FichasSala()
+        {
+            var lista = new List<FichaSala>();
+            if (RedShow.EsInvitado)
+            {
+                foreach (var m in RedShow.Marionetas)
+                    if (m != null && !m.EsBot)
+                        lista.Add(new FichaSala { indice = m.Indice, color = m.ColorJugador, detalle = RedShow.EsMia(m) ? "¡Tú!" : "Online" });
+            }
+            else if (GestorJugadores.Instancia != null)
+            {
+                foreach (var b in GestorJugadores.Instancia.Jugadores)
+                    if (b != null && !b.EsBot)
+                        lista.Add(new FichaSala { indice = b.IndiceJugador, color = b.ColorJugador, detalle = b.EsRemoto ? "Online" : "¡Tú! · anfitrión" });
+            }
+            lista.Sort((a, b) => a.indice.CompareTo(b.indice));
+            return lista;
+        }
+
+        void DibujarOnline(float w, float h)
+        {
+            System.Func<float, float> px = EstiloShow.Px;
+            System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
+            float x = w * 0.05f, y = h * 0.36f;
+
+            if (pantalla == Pantalla.Online)
+            {
+                float ancho = px(600f), alto = px(74f), paso = alto + px(16f);
+                EstiloShow.Texto(new Rect(x, y - px(84f), ancho * 1.5f, px(70f)), "JUGAR ONLINE", tam(60f), Color.white, TextAnchor.MiddleLeft);
+                string[] opciones = { "Crear una sala", "Unirse con código", "Volver" };
+                for (int i = 0; i < opciones.Length; i++)
+                {
+                    EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion && !RedShow.Ocupado, tam(42f));
+                    y += paso;
+                }
+                EstiloShow.Texto(new Rect(x, y + px(4f), ancho * 1.3f, px(90f)),
+                    "Crea una sala y pasa el código a tus amigos: cada uno juega desde su casa, con su mando o su teclado.",
+                    tam(26f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
+                DibujarEstadoRed(new Rect(x, y + px(110f), ancho * 1.3f, px(70f)), "Abriendo el plató");
+                EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                    ("Stick", EstiloShow.GlifoTecla, "elegir"), ("A", EstiloShow.GlifoA, "aceptar"));
+                return;
+            }
+
+            if (pantalla == Pantalla.Codigo)
+            {
+                EstiloShow.Texto(new Rect(0, h * 0.33f, w, px(70f)), "CÓDIGO DE LA SALA", tam(60f), Color.white);
+                float lado = px(112f), hueco = px(18f);
+                float total = codigo.Length * lado + (codigo.Length - 1) * hueco;
+                float cx = w * 0.5f - total * 0.5f, cy = h * 0.33f + px(96f);
+                for (int i = 0; i < codigo.Length; i++)
+                {
+                    bool elegida = i == cursor && !RedShow.Ocupado;
+                    var casilla = new Rect(cx + i * (lado + hueco), cy, lado, lado * 1.15f);
+                    if (elegida) casilla = EstiloShow.Escalar(casilla, 1.06f + Mathf.Sin(Time.unscaledTime * 6f) * 0.02f);
+                    EstiloShow.Panel(casilla, elegida ? EstiloShow.Oro : EstiloShow.Morado.WithAlpha(0.92f), px(22f));
+                    string letra = codigo[i] == '\0' ? (elegida && Mathf.Repeat(Time.unscaledTime, 1f) < 0.5f ? "_" : "") : codigo[i].ToString();
+                    EstiloShow.Texto(casilla, letra, tam(76f), Color.white);
+                }
+                DibujarEstadoRed(new Rect(w * 0.5f - px(520f), cy + lado * 1.15f + px(30f), px(1040f), px(64f)), "Entrando en la sala");
+                EstiloShow.Ayuda(new Rect(0, h - px(150f), w, px(50f)),
+                    ("Teclado", EstiloShow.GlifoTecla, "escribe · Ctrl+V pega"), ("Enter", EstiloShow.GlifoTecla, "entrar"), ("Esc", EstiloShow.GlifoTecla, "volver"));
+                EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                    ("Stick", EstiloShow.GlifoTecla, "arriba/abajo letra"), ("A", EstiloShow.GlifoA, "entrar"),
+                    ("X", EstiloShow.GlifoX, "borrar"), ("START", EstiloShow.GlifoTecla, "volver"));
+                return;
+            }
+
+            // --- La sala (Sala y SalaMenu) ---
+            var tarjeta = new Rect(x, y - px(30f), px(620f), px(250f));
+            EstiloShow.Panel(tarjeta, EstiloShow.MoradoOscuro.WithAlpha(0.92f), px(34f));
+            EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(14f), tarjeta.width, px(44f)), "CÓDIGO DE LA SALA", tam(30f), Color.white);
+            string codigoSala = RedShow.Codigo ?? "";
+            EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(56f), tarjeta.width, px(110f)), string.Join(" ", codigoSala.ToCharArray()), tam(92f), EstiloShow.Oro);
+            string subtitulo = RedShow.EsAnfitrion
+                ? "¡Ya está copiado! Pégalo en el chat de tus amigos"
+                : "Estás en la sala de un amigo";
+            EstiloShow.Texto(new Rect(tarjeta.x + px(20f), tarjeta.y + px(172f), tarjeta.width - px(40f), px(60f)), subtitulo, tam(25f),
+                             Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+
+            var fichas = FichasSala();
+            float infoY = tarjeta.yMax + px(24f);
+            EstiloShow.Texto(new Rect(x, infoY, px(900f), px(44f)), $"{fichas.Count} de {RedShow.MaxJugadores} jugadores", tam(36f), Color.white, TextAnchor.MiddleLeft);
+            EstiloShow.Texto(new Rect(x, infoY + px(46f), px(900f), px(80f)),
+                RedShow.EsAnfitrion
+                    ? "¡Corred por el plató mientras llegan todos! El show online llega en la próxima versión."
+                    : "¡Corre por el plató! Lo que ves lo mueve el ordenador del anfitrión.",
+                tam(25f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
+
+            // Fichas de los jugadores
+            float anchoFicha = px(250f), altoFicha = px(78f), separacion = px(18f);
+            float fx = w * 0.5f - (fichas.Count * anchoFicha + (fichas.Count - 1) * separacion) * 0.5f;
+            float fy = h - px(200f);
+            foreach (var f in fichas)
+            {
+                var ficha = new Rect(fx, fy + Mathf.Sin(Time.unscaledTime * 3f + f.indice) * px(4f), anchoFicha, altoFicha);
+                EstiloShow.Panel(ficha, Color.Lerp(f.color, EstiloShow.MoradoOscuro, 0.25f).WithAlpha(0.95f), altoFicha * 0.5f);
+                EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), $"J{f.indice + 1}", tam(44f), Color.white);
+                EstiloShow.Texto(new Rect(ficha.x, ficha.y + ficha.height * 0.48f, ficha.width, ficha.height * 0.45f), f.detalle, tam(22f),
+                                 Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+                fx += anchoFicha + separacion;
+            }
+
+            if (pantalla == Pantalla.SalaMenu)
+            {
+                // Menú de la sala, encima de todo.
+                var fondo = new Rect(w * 0.5f - px(380f), h * 0.42f, px(760f), px(300f));
+                EstiloShow.Panel(fondo, EstiloShow.Morado.WithAlpha(0.97f), px(40f));
+                EstiloShow.Texto(new Rect(fondo.x, fondo.y + px(16f), fondo.width, px(60f)), "SALA", tam(52f), Color.white);
+                string[] opciones = { "Seguir en la sala", RedShow.EsAnfitrion ? "Cerrar la sala" : "Salir de la sala" };
+                float by = fondo.y + px(96f);
+                for (int i = 0; i < opciones.Length; i++)
+                {
+                    EstiloShow.Boton(new Rect(fondo.x + px(70f), by, fondo.width - px(140f), px(74f)), opciones[i], i == seleccion && !RedShow.Ocupado, tam(40f));
+                    by += px(90f);
+                }
+                EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                    ("Stick", EstiloShow.GlifoTecla, "elegir"), ("A", EstiloShow.GlifoA, "aceptar"));
+            }
+            else
+            {
+                EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                    ("Stick", EstiloShow.GlifoTecla, "correr"), ("A", EstiloShow.GlifoA, "saltar"), ("START", EstiloShow.GlifoTecla, "menú de la sala"));
+            }
+        }
+
+        /// <summary>"Conectando..." mientras se espera, o el último aviso de la red (en rosa) si algo ha fallado.</summary>
+        static void DibujarEstadoRed(Rect r, string esperando)
+        {
+            if (RedShow.Ocupado)
+            {
+                int puntos = 1 + (int)(Time.unscaledTime * 3f) % 3;
+                EstiloShow.Panel(r, EstiloShow.Cian.WithAlpha(0.9f), r.height * 0.5f);
+                EstiloShow.Texto(r, esperando + new string('.', puntos), Mathf.RoundToInt(r.height * 0.45f), EstiloShow.MoradoOscuro);
+            }
+            else if (!string.IsNullOrEmpty(RedShow.Aviso))
+            {
+                EstiloShow.Panel(r, EstiloShow.Rosa.WithAlpha(0.95f), r.height * 0.4f);
+                EstiloShow.Texto(new Rect(r.x + r.height * 0.3f, r.y, r.width - r.height * 0.6f, r.height), RedShow.Aviso,
+                                 Mathf.RoundToInt(r.height * 0.36f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+            }
+        }
+
         void EmpezarShow()
         {
             var show = ShowBicho.Instancia;
@@ -334,17 +658,22 @@ namespace BichoShow
                 DibujarVestuario(w, h);
                 return;
             }
+            if (pantalla == Pantalla.Online || pantalla == Pantalla.Codigo || pantalla == Pantalla.Sala || pantalla == Pantalla.SalaMenu)
+            {
+                DibujarOnline(w, h);
+                return;
+            }
 
             // --- Opciones (columna a la izquierda: el escenario con los bichos queda a la vista) ---
             float x = w * 0.05f, ancho = px(pantalla == Pantalla.Principal ? 560f : 780f);
-            float alto = px(pantalla == Pantalla.Principal ? 84f : 74f), paso = alto + px(pantalla == Pantalla.Principal ? 18f : 16f);
+            float alto = px(74f), paso = alto + px(pantalla == Pantalla.Principal ? 14f : 16f);
             float y = h * 0.36f;
             if (pantalla == Pantalla.Principal)
             {
-                string[] opciones = { "¡Empezar el show!", "Vestuario", "Opciones", "Salir" };
+                string[] opciones = { "¡Empezar el show!", "Jugar online", "Vestuario", "Opciones", "Salir" };
                 for (int i = 0; i < opciones.Length; i++)
                 {
-                    EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(46f));
+                    EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(42f));
                     y += paso;
                 }
             }

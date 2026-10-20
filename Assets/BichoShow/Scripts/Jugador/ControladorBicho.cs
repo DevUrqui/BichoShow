@@ -135,7 +135,24 @@ namespace BichoShow
         public bool TeTienenAgarrado => agarradoPor > 0;
         public int IndiceJugador => playerInput != null ? playerInput.playerIndex : indiceSinMando;
         /// <summary>Lo controla la máquina (o cualquier fuente que no sea un mando).</summary>
-        public bool EsBot => entradaExterna != null || GetComponent<IEntradaBicho>() != null;
+        public bool EsBot
+        {
+            get
+            {
+                if (EsMarioneta) return marionetaEsBot;
+                var e = entradaExterna ?? GetComponent<IEntradaBicho>();
+                return e != null && !e.EsPersona;
+            }
+        }
+        /// <summary>Lo maneja una persona desde otro ordenador (partida online, en el anfitrión).</summary>
+        public bool EsRemoto => (entradaExterna ?? GetComponent<IEntradaBicho>()) is EntradaRemota;
+        /// <summary>
+        /// Copia de un bicho del anfitrión (partida online, en un invitado): no tiene física ni
+        /// mando propios, solo sigue lo que llega por la red.
+        /// </summary>
+        public bool EsMarioneta { get; private set; }
+        /// <summary>Velocidad del bicho (la de la física o, en una marioneta, la que manda el anfitrión).</summary>
+        public Vector3 Velocidad => EsMarioneta || rb == null ? velocidadRed : rb.linearVelocity;
         /// <summary>Lo que tengo agarrado, si es algo con Rigidbody.</summary>
         public Rigidbody CuerpoAgarrado => agarre != null ? agarre.connectedBody : null;
         public Color ColorJugador { get; private set; } = Color.white;
@@ -187,6 +204,10 @@ namespace BichoShow
         readonly Collider[] candidatosAgarre = new Collider[12];
 
         bool inicializado;
+
+        // Marioneta (online)
+        Vector3 velocidadRed;
+        bool marionetaEsBot;
 
         // Con "Enter Play Mode Options" sin recarga de dominio, los estáticos sobreviven entre partidas.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -257,7 +278,7 @@ namespace BichoShow
             if (Camera.main != null) camara = Camera.main.transform;
 
             entradaExterna = GetComponent<IEntradaBicho>();
-            if (entradaExterna != null) return; // lo controla un bot u otra fuente
+            if (entradaExterna != null || EsMarioneta) return; // lo controla un bot, la red u otra fuente
 
             if (playerInput != null && playerInput.actions != null)
             {
@@ -278,7 +299,7 @@ namespace BichoShow
         // ---------------------------------------------------------------------
         void Update()
         {
-            if (Retirado) return;
+            if (Retirado || EsMarioneta) return;
 
             if (EntradaBloqueada)
             {
@@ -319,7 +340,7 @@ namespace BichoShow
 
         void LateUpdate()
         {
-            if (!Retirado) ActualizarManoVisual();
+            if (!Retirado && !EsMarioneta) ActualizarManoVisual();
         }
 
         // ---------------------------------------------------------------------
@@ -327,7 +348,7 @@ namespace BichoShow
         // ---------------------------------------------------------------------
         void FixedUpdate()
         {
-            if (Retirado) return;
+            if (Retirado || EsMarioneta) return;
             ComprobarSuelo();
 
             Vector3 direccion = DireccionDesdeCamara(entradaMover);
@@ -778,16 +799,19 @@ namespace BichoShow
 
             if (retirar)
             {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                if (!rb.isKinematic)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
                 rb.isKinematic = true;
                 Todos.Remove(this);
             }
             else
             {
-                rb.isKinematic = false;
+                rb.isKinematic = EsMarioneta;
                 if (!Todos.Contains(this)) Todos.Add(this);
-                Reaparecer();
+                if (!EsMarioneta) Reaparecer();
             }
         }
 
@@ -803,6 +827,45 @@ namespace BichoShow
 
         /// <summary>Acaba de reaparecer en su punto (tras caerse, al empezar una ronda...).</summary>
         public event System.Action<ControladorBicho> AlReaparecer;
+
+        // ---------------------------------------------------------------------
+        // Marioneta (partida online, en los invitados)
+        // ---------------------------------------------------------------------
+
+        /// <summary>Convierte el bicho en la copia de uno del anfitrión: sin física ni mando.</summary>
+        public void HacerMarioneta(bool esBot)
+        {
+            Inicializar();
+            EsMarioneta = true;
+            marionetaEsBot = esBot;
+            Soltar();
+            rb.interpolation = RigidbodyInterpolation.None;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            rb.isKinematic = true;
+            if (mano != null) mano.gameObject.SetActive(false);
+            if (brazo != null) brazo.gameObject.SetActive(false);
+        }
+
+        /// <summary>Lo que dice el anfitrión de este bicho (ya interpolado).</summary>
+        public void AplicarEstadoRed(Vector3 posicion, Quaternion rotacion, Vector3 velocidad, bool enSuelo,
+                                     bool tumbado, bool manoEstirada, Vector3 puntoMano)
+        {
+            transform.SetPositionAndRotation(posicion, rotacion);
+            velocidadRed = velocidad;
+            EnSuelo = enSuelo;
+            finTumbado = tumbado ? Time.time + 0.3f : -10f;
+            ManoEstirada = manoEstirada;
+            PuntoMano = puntoMano;
+        }
+
+        /// <summary>El anfitrión avisa de que este bicho ha hecho algo (para sonidos y efectos).</summary>
+        public void AccionRed(AccionBicho accion) => AlHacer?.Invoke(this, accion);
+
+        /// <summary>El anfitrión avisa de que a este bicho le han dado un golpe que lo tira.</summary>
+        public void GolpeRed(float fuerza, Vector3 punto) => AlRecibirGolpe?.Invoke(this, fuerza, punto);
+
+        /// <summary>El anfitrión avisa de que este bicho acaba de reaparecer.</summary>
+        public void ReaparecerRed() => AlReaparecer?.Invoke(this);
 
         /// <summary>Número de jugador para los bichos sin mando (bots). Los de mando usan el de PlayerInput.</summary>
         public void AsignarIndice(int indice) => indiceSinMando = indice;

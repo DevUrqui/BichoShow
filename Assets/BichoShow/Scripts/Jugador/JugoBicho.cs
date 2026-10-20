@@ -79,17 +79,17 @@ namespace BichoShow
 
         void FixedUpdate()
         {
-            if (bicho == null || rb == null || bicho.Retirado || rb.isKinematic) return;
+            if (bicho == null || rb == null || bicho.Retirado || (rb.isKinematic && !bicho.EsMarioneta)) return;
 
             bool enSuelo = bicho.EnSuelo;
             if (enSuelo && !estabaEnSuelo && velocidadYAntes < -3.5f) Aterrizar(-velocidadYAntes);
             estabaEnSuelo = enSuelo;
-            velocidadYAntes = rb.linearVelocity.y;
+            velocidadYAntes = bicho.Velocidad.y;
 
             // Pasos
             if (enSuelo && !bicho.Tumbado)
             {
-                Vector3 v = rb.linearVelocity;
+                Vector3 v = bicho.Velocidad;
                 distanciaPaso += new Vector2(v.x, v.z).magnitude * Time.fixedDeltaTime;
                 if (distanciaPaso > 0.9f)
                 {
@@ -183,7 +183,7 @@ namespace BichoShow
                 // En el aire se estira un poco al subir y se encoge al caer.
                 float objetivo = 0f;
                 if (rb != null && !bicho.EnSuelo && !bicho.Tumbado)
-                    objetivo = Mathf.Clamp(rb.linearVelocity.y * 0.022f, -0.1f, 0.14f);
+                    objetivo = Mathf.Clamp(bicho.Velocidad.y * 0.022f, -0.1f, 0.14f);
                 velocidadDeformacion += (rigidez * (objetivo - deformacion) - amortiguacion * velocidadDeformacion) * dt;
                 deformacion = Mathf.Clamp(deformacion + velocidadDeformacion * dt, -0.4f, 0.4f);
                 raiz.localScale = Vector3.Scale(escalaRaiz, new Vector3(1f - deformacion * 0.5f, 1f + deformacion, 1f - deformacion * 0.5f));

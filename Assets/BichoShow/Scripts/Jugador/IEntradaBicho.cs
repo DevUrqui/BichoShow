@@ -16,5 +16,7 @@ namespace BichoShow
         bool ConsumirSaltar();
         /// <summary>Devuelve true una vez por cada pulsación de lanzarse.</summary>
         bool ConsumirLanzarse();
+        /// <summary>Detrás hay una persona (un jugador online), no la máquina.</summary>
+        bool EsPersona => false;
     }
 }

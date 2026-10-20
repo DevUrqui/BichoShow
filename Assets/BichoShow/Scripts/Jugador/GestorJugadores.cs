@@ -139,8 +139,15 @@ namespace BichoShow
 
             int indice = entrada.playerIndex;
             if (persistente) DontDestroyOnLoad(entrada.gameObject);
-            Preparar(bicho, indice, $"J{indice + 1} ({entrada.currentControlScheme})");
             Vestuario.PonerGuardado(bicho);
+            // Invitado de una partida online: el bicho lo mueve el anfitrión; aquí solo se lee el mando.
+            if (RedShow.EsInvitado)
+            {
+                bicho.gameObject.name = $"Mando J{indice + 1}";
+                bicho.gameObject.AddComponent<MandoRemoto>();
+                return;
+            }
+            Preparar(bicho, indice, $"J{indice + 1} ({entrada.currentControlScheme})");
         }
 
         void AlSalir(PlayerInput entrada)
@@ -184,8 +191,8 @@ namespace BichoShow
         readonly List<ControladorBicho> bots = new List<ControladorBicho>();
         public IReadOnlyList<ControladorBicho> Bots => bots;
 
-        /// <summary>Jugadores con mando o teclado.</summary>
-        public int NumeroHumanos => PlayerInput.all.Count;
+        /// <summary>Jugadores con mando o teclado (en este ordenador o, en una partida online, en otro).</summary>
+        public int NumeroHumanos => PlayerInput.all.Count + remotos.Count;
 
         /// <summary>
         /// Crea un bicho controlado por la máquina con el componente T (que debe implementar
@@ -194,18 +201,8 @@ namespace BichoShow
         /// </summary>
         public T CrearBot<T>(int indice) where T : Component, IEntradaBicho
         {
-            var prefab = manager.playerPrefab;
-            if (prefab == null) return null;
-
-            // Se crea dentro de un objeto desactivado para quitar el PlayerInput antes de que se active.
-            var contenedor = new GameObject("CreandoBot");
-            contenedor.SetActive(false);
-            var go = Instantiate(prefab, contenedor.transform);
-            var entrada = go.GetComponent<PlayerInput>();
-            if (entrada != null) DestroyImmediate(entrada);
-            var cerebro = go.AddComponent<T>();
-            go.transform.SetParent(null, false); // aquí se activa
-            Destroy(contenedor);
+            var go = InstanciarSinMando(out T cerebro);
+            if (go == null) return null;
 
             var bicho = go.GetComponent<ControladorBicho>();
             bicho.AsignarIndice(indice);
@@ -213,6 +210,118 @@ namespace BichoShow
             Vestuario.PonerAlAzar(bicho);
             bots.Add(bicho);
             return cerebro;
+        }
+
+        /// <summary>
+        /// Instancia el prefab de los jugadores sin PlayerInput (para que no se quede con ningún
+        /// mando ni cuente como jugador del PlayerInputManager) y con el componente T.
+        /// </summary>
+        GameObject InstanciarSinMando<T>(out T componente) where T : Component
+        {
+            componente = null;
+            var prefab = manager != null ? manager.playerPrefab : null;
+            if (prefab == null) return null;
+
+            // Se crea dentro de un objeto desactivado para quitar el PlayerInput antes de que se active.
+            var contenedor = new GameObject("CreandoBicho");
+            contenedor.SetActive(false);
+            var go = Instantiate(prefab, contenedor.transform);
+            var entrada = go.GetComponent<PlayerInput>();
+            if (entrada != null) DestroyImmediate(entrada);
+            componente = go.AddComponent<T>();
+            go.transform.SetParent(null, false); // aquí se activa
+            Destroy(contenedor);
+            return go;
+        }
+
+        // ---------------------------------------------------------------------
+        // Partida online
+        // ---------------------------------------------------------------------
+
+        readonly List<ControladorBicho> remotos = new List<ControladorBicho>();
+        /// <summary>En el anfitrión: los bichos de los jugadores que juegan desde otro ordenador.</summary>
+        public IReadOnlyList<ControladorBicho> Remotos => remotos;
+
+        /// <summary>Número de jugador más bajo que no usa nadie (ni los de aquí ni los de fuera).</summary>
+        public int IndiceLibre()
+        {
+            jugadores.RemoveAll(j => j == null);
+            for (int i = 0; ; i++)
+            {
+                bool usado = false;
+                foreach (var j in jugadores) if (j.IndiceJugador == i) { usado = true; break; }
+                if (!usado) foreach (var p in PlayerInput.all) if (p.playerIndex == i) { usado = true; break; }
+                if (!usado) return i;
+            }
+        }
+
+        /// <summary>En el anfitrión: crea el bicho de un jugador que juega desde otro ordenador.</summary>
+        public EntradaRemota CrearRemoto(ulong cliente, byte local, int gorro, int complemento)
+        {
+            int indice = IndiceLibre();
+            var go = InstanciarSinMando(out EntradaRemota entrada);
+            if (go == null) return null;
+            entrada.Cliente = cliente;
+            entrada.Local = local;
+            if (persistente) DontDestroyOnLoad(go);
+
+            var bicho = go.GetComponent<ControladorBicho>();
+            bicho.AsignarIndice(indice);
+            Preparar(bicho, indice, $"J{indice + 1} (online)");
+            if (go.TryGetComponent(out Vestuario v)) v.Poner(gorro, complemento);
+            remotos.Add(bicho);
+            if (go.TryGetComponent(out AnimadorBicho a)) a.Celebrar(2.5f); // ¡hola!
+            Sonidos.Reproducir(Sonido.Aparecer, bicho.transform.position);
+            return entrada;
+        }
+
+        public void QuitarRemoto(ControladorBicho bicho)
+        {
+            if (bicho == null) return;
+            remotos.Remove(bicho);
+            jugadores.Remove(bicho);
+            Destroy(bicho.gameObject);
+        }
+
+        /// <summary>En un invitado: crea la copia de un bicho del anfitrión.</summary>
+        public MarionetaBicho CrearMarioneta(int indice, bool esBot)
+        {
+            var go = InstanciarSinMando(out MarionetaBicho marioneta);
+            if (go == null) return null;
+            DontDestroyOnLoad(go);
+            var bicho = go.GetComponent<ControladorBicho>();
+            bicho.AsignarIndice(indice);
+            bicho.HacerMarioneta(esBot);
+            go.name = esBot ? $"Bot {indice + 1} (red)" : $"J{indice + 1} (red)";
+            return marioneta;
+        }
+
+        /// <summary>Al entrar como invitado: los jugadores de aquí pasan a ser solo mandos.</summary>
+        public void ConvertirEnMandos()
+        {
+            jugadores.RemoveAll(j => j == null);
+            foreach (var j in jugadores.ToArray())
+            {
+                if (!j.TryGetComponent(out PlayerInput _)) continue;
+                jugadores.Remove(j);
+                if (!j.TryGetComponent(out MandoRemoto _)) j.gameObject.AddComponent<MandoRemoto>();
+            }
+        }
+
+        /// <summary>Al salir de la partida online: vuelven los bichos de aquí y se van los de fuera.</summary>
+        public void VolverALocal()
+        {
+            foreach (var m in MandoRemoto.Todos.ToArray())
+            {
+                if (m == null) continue;
+                var bicho = m.GetComponent<ControladorBicho>();
+                var entrada = m.GetComponent<PlayerInput>();
+                DestroyImmediate(m); // vuelve a ser visible y a tener física
+                if (bicho != null && entrada != null)
+                    Preparar(bicho, entrada.playerIndex, $"J{entrada.playerIndex + 1} ({entrada.currentControlScheme})");
+            }
+            foreach (var r in remotos.ToArray()) QuitarRemoto(r);
+            remotos.Clear();
         }
 
         public void EliminarBots()

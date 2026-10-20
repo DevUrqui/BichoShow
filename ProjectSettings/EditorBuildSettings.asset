@@ -26,5 +26,14 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/BichoShow/Escenas/Patata.unity
     guid: 0137c1cbb11ae224e8da4e21a2b504e0
+  - enabled: 1
+    path: Assets/BichoShow/Escenas/Corona.unity
+    guid: cf0c9d445571b304cbb53d8708de96e2
+  - enabled: 1
+    path: Assets/BichoShow/Escenas/Lluvia.unity
+    guid: b92d8c7ed2e863b498a622f9f9596a5b
+  - enabled: 1
+    path: Assets/BichoShow/Escenas/Pintura.unity
+    guid: e28bfd8e8e32de64f9e1ae316362c9e4
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
