@@ -187,9 +187,8 @@ namespace BichoShow.Herramientas
             Rampa("Rampa lateral", 7.25f, 2.5f, 126f, 2.6f, 129.5f, 3.8f, crema);
             Cojin("Alfiletero 3", -6f, 8.5f, 129.5f, 136f, 3.8f, turquesaClaro, false);
             // La cinta métrica hace de puente hasta la meta.
-            Losa("Cinta metrica", -3f, 3f, 136f, 138f, 3.8f, mostaza, 0.25f, false);
-            for (int i = 0; i < 9; i++)
-                Pegatina("Marca cinta", -3f, -2.2f + (i % 2) * 0.3f, 136.1f + i * 0.22f, 136.14f + i * 0.22f, 3.81f, azul);
+            SoloColision(Losa("Cinta metrica", -3f, 3f, 136f, 138f, 3.8f, mostaza, 0.25f, false));
+            Kit("PuenteCinta", decorado, new Vector3(0f, 3.8f, 137f));
             Losa("Meta", -9f, 9f, 138f, 147f, 3.8f, turquesa);
             Cuadricula(-9f, 9f, 138f, 147f, 3.8f);
             Arco("META", 142f, 3.8f, 18f);
@@ -343,12 +342,8 @@ namespace BichoShow.Herramientas
             capsula.radius = radio + 0.1f;
             capsula.height = 3.4f;
 
-            E.Pieza(PrimitiveType.Cylinder, "Hilo", go.transform, Vector3.zero, new Vector3(radio * 2f, 1.45f, radio * 2f), hilo);
-            foreach (float y in new[] { -1.55f, 1.55f })
-                E.Pieza(PrimitiveType.Cylinder, "Tapa", go.transform, new Vector3(0f, y, 0f), new Vector3(radio * 2f + 0.7f, 0.14f, radio * 2f + 0.7f), madera);
-            // Una raya a lo largo: así se ve que rueda.
-            E.Pieza(PrimitiveType.Cube, "Raya", go.transform, new Vector3(radio - 0.02f, 0f, 0f), new Vector3(0.08f, 2.9f, 0.35f), crema);
-            E.Pieza(PrimitiveType.Cube, "Raya", go.transform, new Vector3(-radio + 0.02f, 0f, 0f), new Vector3(0.08f, 2.9f, 0.35f), crema);
+            // El modelo, en coordenadas del mundo (eje a lo largo de Z) para no heredar el giro del collider.
+            Kit("Carrete", go.transform, go.transform.position, 0f, hilo);
 
             var carrete = go.AddComponent<CarreteViajero>();
             carrete.recorrido = 6f - radio - 0.35f;
@@ -367,11 +362,7 @@ namespace BichoShow.Herramientas
             go.AddComponent<Rigidbody>().isKinematic = true;
             var caja = go.AddComponent<BoxCollider>();
             caja.size = new Vector3(4f, 0.4f, z1 - z0);
-            E.Pieza(PrimitiveType.Cube, "Tabla", go.transform, Vector3.zero, new Vector3(4f, 0.4f, z1 - z0), madera);
-            E.Pieza(PrimitiveType.Cube, "Tela", go.transform, new Vector3(0f, 0.05f, 0f), new Vector3(3.8f, 0.36f, z1 - z0 - 0.2f), tela);
-            // Pespunte en zigzag: dos líneas que marcan hacia dónde se inclinará.
-            E.Pieza(PrimitiveType.Cube, "Pespunte", go.transform, new Vector3(sentido * 1.5f, 0.24f, 0f), new Vector3(0.1f, 0.02f, z1 - z0 - 0.5f), crema);
-            E.Pieza(PrimitiveType.Cube, "Pespunte", go.transform, new Vector3(-sentido * 1.5f, 0.24f, 0f), new Vector3(0.1f, 0.02f, z1 - z0 - 0.5f), crema);
+            Kit("PanelAcordeon", go.transform, go.transform.position, 0f, tela);
             var panel = go.AddComponent<PanelAcordeon>();
             panel.sentido = sentido;
             panel.retraso = retraso;
@@ -416,12 +407,10 @@ namespace BichoShow.Herramientas
                     cuerpo.isKinematic = true;
                     bisagras.Add(cuerpo);
                     float mitad = ancho * 0.5f - 0.03f;
-                    E.Pieza(PrimitiveType.Cube, "Suelo", pivote.transform, new Vector3(-lado * mitad * 0.5f, -0.2f, 0f),
-                            new Vector3(mitad, 0.4f, largoTramo - 0.06f), tela, conCollider: true);
-                    // Dientes de la cremallera en el borde de dentro (decorado).
-                    for (float dz = -largoTramo * 0.5f + 0.25f; dz < largoTramo * 0.5f - 0.1f; dz += 0.5f)
-                        E.Pieza(PrimitiveType.Cube, "Diente", pivote.transform, new Vector3(-lado * (mitad - 0.12f), 0.02f, dz + (lado < 0f ? 0f : 0.25f)),
-                                new Vector3(0.28f, 0.1f, 0.22f), dorado);
+                    SoloColision(E.Pieza(PrimitiveType.Cube, "Suelo", pivote.transform, new Vector3(-lado * mitad * 0.5f, -0.2f, 0f),
+                                         new Vector3(mitad, 0.4f, largoTramo - 0.06f), tela, conCollider: true));
+                    // La mitad de cremallera del kit (tela, bisagra y dientes): la izquierda tal cual, la derecha girada.
+                    Kit(ancho > 3f ? "MitadCremalleraAncha" : "MitadCremalleraEstrecha", pivote.transform, Vector3.zero, lado < 0f ? 0f : 180f, tela, local: true);
                 }
             }
             // Las cintas de los lados (decorado).
@@ -433,8 +422,7 @@ namespace BichoShow.Herramientas
             cursor.SetParent(raiz.transform, false);
             float fuera = x < 0f ? -1f : 1f;
             cursor.localPosition = new Vector3(fuera * (ancho * 0.5f + 0.45f), 0.25f, 0f);
-            E.Pieza(PrimitiveType.Cube, "Cuerpo", cursor, Vector3.zero, new Vector3(0.6f, 0.55f, 1.1f), dorado);
-            E.Pieza(PrimitiveType.Cube, "Lengueta", cursor, new Vector3(fuera * 0.55f, 0.1f, -0.2f), new Vector3(0.7f, 0.15f, 0.55f), dorado);
+            Kit("Tirador", cursor, Vector3.zero, fuera > 0f ? 0f : 180f, local: true);
             // Patas debajo de todo el puente.
             Patas(x - ancho * 0.5f, x + ancho * 0.5f, z0, z0 + largo, arriba - 0.4f);
 
@@ -456,13 +444,9 @@ namespace BichoShow.Herramientas
             go.transform.SetParent(blando ? obstaculos : suelos, false);
             go.transform.position = new Vector3((x0 + x1) * 0.5f, arriba - 0.6f, (z0 + z1) * 0.5f);
             float w = x1 - x0, d = z1 - z0;
-            E.Pieza(PrimitiveType.Cube, "Cojin", go.transform, Vector3.zero, new Vector3(w, 1.2f, d), tela, conCollider: true);
-            // Botones y pespuntes encima (se mueven con el cojín).
-            foreach (float bx in new[] { -0.3f, 0.3f })
-                foreach (float bz in new[] { -0.3f, 0.3f })
-                    E.Pieza(PrimitiveType.Sphere, "Boton", go.transform, new Vector3(bx * w, 0.6f, bz * d), new Vector3(0.6f, 0.15f, 0.6f), dorado);
-            E.Pieza(PrimitiveType.Cube, "Pespunte", go.transform, new Vector3(0f, 0.61f, 0f), new Vector3(w - 0.8f, 0.02f, 0.1f), crema);
-            E.Pieza(PrimitiveType.Cube, "Pespunte", go.transform, new Vector3(0f, 0.61f, 0f), new Vector3(0.1f, 0.02f, d - 0.8f), crema);
+            SoloColision(E.Pieza(PrimitiveType.Cube, "Cojin", go.transform, Vector3.zero, new Vector3(w, 1.2f, d), tela, conCollider: true));
+            // El alfiletero acolchado del kit (se mueve con el cojín).
+            Kit(w > 13f ? "Alfiletero14x6" : "Alfiletero12x7", go.transform, Vector3.zero, 0f, tela, local: true);
             // Base de madera (fija) y patas.
             M.Decorado(PrimitiveType.Cube, "Base", decorado, new Vector3((x0 + x1) * 0.5f, arriba - 1.6f, (z0 + z1) * 0.5f), new Vector3(w - 0.4f, 0.8f, d - 0.4f), madera);
             Patas(x0, x1, z0, z1, arriba - 2f);
@@ -485,37 +469,28 @@ namespace BichoShow.Herramientas
         static void Arco(string texto, float z, float arriba, float ancho)
         {
             var arco = M.Grupo(decorado, $"Arco {texto}");
+            Kit("ArcoTela", arco, new Vector3(0f, arriba, z), 0f, coral);   // 18 m de ancho, postes en x = ±9
             foreach (float lado in new[] { -1f, 1f })
             {
-                E.Pieza(PrimitiveType.Cylinder, "Poste", arco, new Vector3(lado * (ancho * 0.5f), arriba + 2.2f, z), new Vector3(0.9f, 2.2f, 0.9f), coral, conCollider: true);
-                E.Pieza(PrimitiveType.Sphere, "Boton", arco, new Vector3(lado * (ancho * 0.5f), arriba + 4.6f, z), new Vector3(1.3f, 0.5f, 1.3f), dorado);
+                var poste = new GameObject("Poste (colision)");
+                poste.transform.SetParent(arco, false);
+                poste.transform.position = new Vector3(lado * (ancho * 0.5f), arriba + 2.3f, z);
+                var capsula = poste.AddComponent<CapsuleCollider>();
+                capsula.radius = 0.65f;
+                capsula.height = 4.6f;
             }
-            E.Pieza(PrimitiveType.Cube, "Cinta", arco, new Vector3(0f, arriba + 4.7f, z), new Vector3(ancho - 1f, 1.3f, 0.5f), crema);
-            E.Pieza(PrimitiveType.Cube, "Borde", arco, new Vector3(0f, arriba + 4.05f, z - 0.05f), new Vector3(ancho - 1f, 0.12f, 0.55f), coral);
-            E.Pieza(PrimitiveType.Cube, "Borde", arco, new Vector3(0f, arriba + 5.35f, z - 0.05f), new Vector3(ancho - 1f, 0.12f, 0.55f), coral);
             M.Cartel(arco, texto, new Vector3(0f, arriba + 4.7f, z - 0.3f), 0.95f, new Color(0.14f, 0.2f, 0.42f));
         }
 
         /// <summary>Flecha cosida en el suelo: un ">" que apunta hacia "giro" (0 = adelante).</summary>
         static void Flecha(Vector3 posicion, float giro, Material material)
         {
-            var flecha = M.Grupo(decorado, "Flecha");
-            flecha.position = posicion + Vector3.up * 0.015f;
-            flecha.rotation = Quaternion.Euler(0f, giro, 0f);
-            foreach (float lado in new[] { -1f, 1f })
-            {
-                var brazo = M.Decorado(PrimitiveType.Cube, "Brazo", flecha, new Vector3(lado * 0.42f, 0f, -0.1f), new Vector3(0.28f, 0.03f, 1.3f), material, local: true);
-                if (brazo != null) brazo.transform.localRotation = Quaternion.Euler(0f, -lado * 45f, 0f);
-            }
+            Kit("Flecha", decorado, posicion + Vector3.up * 0.01f, giro, material, 1.3f);
         }
 
         static void Banderin(Vector3 pie, Material tela)
         {
-            var b = M.Grupo(decorado, "Banderin");
-            b.position = pie;
-            M.Decorado(PrimitiveType.Cylinder, "Palo", b, new Vector3(0f, 0.9f, 0f), new Vector3(0.12f, 0.9f, 0.12f), madera, local: true);
-            M.Decorado(PrimitiveType.Cube, "Tela", b, new Vector3(0.38f, 1.55f, 0f), new Vector3(0.7f, 0.45f, 0.05f), tela, local: true);
-            M.Decorado(PrimitiveType.Sphere, "Punta", b, new Vector3(0f, 1.85f, 0f), Vector3.one * 0.2f, dorado, local: true);
+            Kit("Banderin", decorado, pie, pie.x < 0f ? 180f : 0f, tela);
         }
 
         /// <summary>Barandillas de hilo con colisión (invisible): el camino fácil no tira a nadie.</summary>
@@ -576,20 +551,28 @@ namespace BichoShow.Herramientas
         static void Unir(PuntoRuta desde, params PuntoRuta[] siguientes) => desde.siguientes = siguientes;
 
         // ---------------------------------------------------------------------
+        // Piezas del kit de Blender (Arte/Blender/crear_kit_costura.py)
+        // ---------------------------------------------------------------------
+
+        static GameObject Kit(string pieza, Transform padre, Vector3 posicion, float giro = 0f, Material equipo = null,
+                              float escala = 1f, bool local = false) =>
+            KitObjetos.Poner(pieza, padre, posicion, giro, equipo, escala, local, KitObjetos.KitCostura);
+
+        /// <summary>Deja solo la colisión de una pieza hecha con primitivas (lo que se ve es el modelo del kit).</summary>
+        static GameObject SoloColision(GameObject go)
+        {
+            if (go != null && go.TryGetComponent(out MeshRenderer r)) Object.DestroyImmediate(r);
+            return go;
+        }
+
+        // ---------------------------------------------------------------------
         // Decorado: el dedal, la mesa y el taller (apagados, para no distraer)
         // ---------------------------------------------------------------------
 
         static void Dedal(Vector3 base_)
         {
             var g = M.Grupo(decorado, "Dedal");
-            M.Decorado(PrimitiveType.Cylinder, "Dedal", g, base_ + new Vector3(0f, 2.4f, 0f), new Vector3(4.4f, 2.4f, 4.4f), dedal);
-            M.Decorado(PrimitiveType.Sphere, "Cupula", g, base_ + new Vector3(0f, 4.8f, 0f), new Vector3(4.4f, 1.8f, 4.4f), dedal);
-            for (int fila = 0; fila < 4; fila++)
-                for (int i = 0; i < 10; i++)
-                {
-                    float a = (i + fila * 0.5f) * Mathf.PI * 2f / 10f;
-                    M.Decorado(PrimitiveType.Sphere, "Hoyuelo", g, base_ + new Vector3(Mathf.Cos(a) * 2.18f, 1f + fila * 0.9f, Mathf.Sin(a) * 2.18f), Vector3.one * 0.3f, fondoGris);
-                }
+            Kit("Dedal", g, base_);
             M.Decorado(PrimitiveType.Cylinder, "Columna", g, new Vector3(base_.x, (base_.y + AlturaMesa) * 0.5f, base_.z),
                        new Vector3(2.5f, (base_.y - AlturaMesa) * 0.5f, 2.5f), madera);
         }
@@ -610,11 +593,8 @@ namespace BichoShow.Herramientas
             BotonFondo(f, new Vector3(-21f, AlturaMesa, 72f), 4f, fondoTurquesa);
             BotonFondo(f, new Vector3(25f, AlturaMesa, 102f), 4.5f, fondoCoral);
             // Tijeras abiertas.
-            foreach (float giro in new[] { 15f, -15f })
-            {
-                var hoja = M.Decorado(PrimitiveType.Cube, "Tijera", f, new Vector3(-24f, AlturaMesa + 0.4f, 145f), new Vector3(1.4f, 0.4f, 18f), fondoGris);
-                if (hoja != null) hoja.transform.rotation = Quaternion.Euler(0f, giro, 0f);
-            }
+            Kit("Tijeras", f, new Vector3(-24f, AlturaMesa, 145f), 30f, fondoCoral, 3f);
+            Kit("CintaRollo", f, new Vector3(-15f, AlturaMesa, -14f), -20f, null, 3f);
             // Cinta métrica larga sobre la mesa.
             M.Decorado(PrimitiveType.Cube, "Cinta metrica", f, new Vector3(-15f, AlturaMesa + 0.05f, 70f), new Vector3(2.5f, 0.1f, 170f), fondoMostaza);
             // Pared del taller al fondo y una estantería.
@@ -625,16 +605,12 @@ namespace BichoShow.Herramientas
 
         static void CarreteFondo(Transform padre, Vector3 pie, float radio, float alto, Material hilo)
         {
-            M.Decorado(PrimitiveType.Cylinder, "Carrete", padre, pie + Vector3.up * alto * 0.5f, new Vector3(radio * 2f, alto * 0.5f, radio * 2f), hilo);
-            M.Decorado(PrimitiveType.Cylinder, "Tapa", padre, pie + Vector3.up * 0.3f, new Vector3(radio * 2.5f, 0.3f, radio * 2.5f), madera);
-            M.Decorado(PrimitiveType.Cylinder, "Tapa", padre, pie + Vector3.up * (alto - 0.3f), new Vector3(radio * 2.5f, 0.3f, radio * 2.5f), madera);
+            Kit("CarreteDePie", padre, pie, radio * 40f, hilo, alto / 2f);
         }
 
         static void BotonFondo(Transform padre, Vector3 pie, float radio, Material material)
         {
-            M.Decorado(PrimitiveType.Cylinder, "Boton", padre, pie + Vector3.up * 0.4f, new Vector3(radio * 2f, 0.4f, radio * 2f), material);
-            foreach (var o in new[] { new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(-1f, 1f), new Vector2(1f, 1f) })
-                M.Decorado(PrimitiveType.Cylinder, "Agujero", padre, pie + new Vector3(o.x * radio * 0.22f, 0.82f, o.y * radio * 0.22f), new Vector3(radio * 0.25f, 0.03f, radio * 0.25f), mesa);
+            Kit("Boton", padre, pie, radio * 25f, material, radio);
         }
     }
 }

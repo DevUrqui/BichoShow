@@ -101,16 +101,32 @@ Las medidas del recorrido, en cambio, están en `Editor/CreadorCostura.cs`, con 
 
 La escena usa las mismas piezas que el resto del show: los obstáculos se mueven en el anfitrión y los invitados ven lo mismo. No hay que hacer nada especial.
 
-## Siguiente paso: los modelos de Blender
+## Los modelos de Blender
 
-Cuando las medidas estén bien, haremos `Arte/Blender/crear_kit_costura.py` (KitCostura.fbx) con módulos reutilizables:
+Lo que se ve sale de `Arte/Blender/crear_kit_costura.py`, que genera `Modelos/KitCostura.fbx`. Las colisiones siguen siendo las cajas de la versión de prueba; solo cambia el dibujo.
 
-- Losas de tabla de corte y de tela acolchada, con pespunte.
-- Carrete con hilo enrollado.
-- Panel de acordeón.
-- Tramo de cremallera con dientes y tirador.
-- Alfileteros.
-- Botones, banderines y barandilla de hilo.
-- Arco de SALIDA y META, dedal y cinta métrica.
+Las piezas:
 
-Las colisiones seguirán siendo las cajas de ahora; solo cambia lo que se ve.
+- **Obstáculos**:
+  - Carrete con vueltas de hilo y tapas de madera. Los agujeros y los hilos cruzados dejan ver que rueda.
+  - Panel del acordeón: tabla con dos almohadillas y pespunte.
+  - Dos medias cremalleras (ancha y estrecha) con sus dientes, y el tirador.
+- **Suelos**:
+  - Dos alfileteros acolchados (12×7 y 14,5×6,5), con botones donde se hunde la tela.
+  - El puente de cinta métrica.
+- **Decorado**:
+  - El arco de tela de SALIDA y META.
+  - El dedal, los banderines y las flechas cosidas.
+  - Al fondo: botones, carretes de pie, tijeras y el rollo de cinta métrica.
+
+"Equipo" es la tela o el hilo; el generador le pone el color de cada sitio (coral, azul, turquesa o mostaza).
+
+Para regenerar el kit tras cambiar el script:
+
+```
+blender -b --factory-startup -P Arte/Blender/crear_kit_costura.py -- Assets/BichoShow/Modelos/KitCostura.fbx Arte/Blender/KitCostura.blend Arte/Blender/vistas
+```
+
+Las vistas previas quedan en `Arte/Blender/vistas/kit_costura_*.png`; una de ellas está tomada desde la cámara del juego. Después, vuelve a crear la escena.
+
+Pendiente: las losas (tabla de corte, suelos de tela) siguen siendo bloques redondeados con la cuadrícula y el pespunte pintados.

@@ -16,6 +16,7 @@ namespace BichoShow.Herramientas
         public const string KitBarrio = E.Raiz + "/Modelos/KitBarrio.fbx";
         public const string KitPlaya = E.Raiz + "/Modelos/KitPlaya.fbx";
         public const string KitPlato = E.Raiz + "/Modelos/KitPlato.fbx";
+        public const string KitCostura = E.Raiz + "/Modelos/KitCostura.fbx";
         const string CarpetaMateriales = E.CarpetaMateriales + "/Kit";
 
         /// <summary>Materiales que brillan, con su intensidad (la pantalla, poco: encima va texto).</summary>
@@ -27,7 +28,7 @@ namespace BichoShow.Herramientas
         {
             "Cristal", "Ventana", "Pantalla", "Metal", "Llanta",
             "Botella", "BotellaAmbar", "FlotadorRojo", "PatoAmarillo", "OjoBlanco", "PupilaNegra",
-            "Oro", "Lente", "GuanteRojo", "BombaNegra", "Seta", "GemaRoja", "GemaAzul", "PianoNegro",
+            "Oro", "Lente", "GuanteRojo", "BombaNegra", "Seta", "GemaRoja", "GemaAzul", "PianoNegro", "DedalCostura",
         };
 
         /// <summary>Giro (en Y) para que una pieza, que mira a su +Z, mire hacia un punto.</summary>
