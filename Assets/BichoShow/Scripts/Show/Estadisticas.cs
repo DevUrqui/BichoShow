@@ -110,7 +110,18 @@ namespace BichoShow
 
             var sb = new StringBuilder();
             sb.AppendLine($"=== {nombreRonda} · {System.DateTime.Now:HH:mm} · duró {Reloj(duracion)} ===");
-            sb.AppendLine($"Resultado: Rojo {ronda.PuntosEquipo(0)} · Azul {ronda.PuntosEquipo(1)}");
+            if (ronda.Individual)
+            {
+                var puntos = new List<string>();
+                var orden = new List<int>(jugadores.Keys);
+                orden.Sort();
+                foreach (int i in orden) puntos.Add($"J{i + 1} {ronda.PuntosJugador(i)}");
+                sb.AppendLine($"Resultado (individual): {string.Join(" · ", puntos)}");
+            }
+            else
+            {
+                sb.AppendLine($"Resultado: Rojo {ronda.PuntosEquipo(0)} · Azul {ronda.PuntosEquipo(1)}");
+            }
 
             // Tabla por jugador
             sb.Append("Jugador        ");

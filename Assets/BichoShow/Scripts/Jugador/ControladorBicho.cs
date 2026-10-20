@@ -140,6 +140,8 @@ namespace BichoShow
         public Rigidbody CuerpoAgarrado => agarre != null ? agarre.connectedBody : null;
         public Color ColorJugador { get; private set; } = Color.white;
         public Rigidbody Cuerpo => rb;
+        /// <summary>Para que una prueba acelere o frene a un bicho (p. ej. quien lleva la bomba corre más).</summary>
+        public float MultiplicadorVelocidad { get; set; } = 1f;
 
         /// <summary>Se lanza cada vez que el bicho tropieza o se lanza al suelo.</summary>
         public event System.Action<ControladorBicho> AlTropezar;
@@ -376,7 +378,7 @@ namespace BichoShow
         void Mover(Vector3 direccion)
         {
             Vector3 velocidadActual = Aplanar(rb.linearVelocity);
-            Vector3 velocidadDeseada = direccion * velocidadMaxima;
+            Vector3 velocidadDeseada = direccion * velocidadMaxima * MultiplicadorVelocidad;
 
             float acel = aceleracion * (EnSuelo ? 1f : controlEnAire);
             // Si me tienen agarrado, forcejeo pero con poca fuerza: así quien agarra me puede arrastrar.

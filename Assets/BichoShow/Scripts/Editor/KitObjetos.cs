@@ -21,13 +21,13 @@ namespace BichoShow.Herramientas
         /// <summary>Materiales que brillan, con su intensidad (la pantalla, poco: encima va texto).</summary>
         static readonly Dictionary<string, float> Emisivos = new Dictionary<string, float>
         {
-            { "Faro", 2.5f }, { "Luz", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f },
+            { "Faro", 2.5f }, { "Luz", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f }, { "Chispa", 4f },
         };
         static readonly HashSet<string> Brillantes = new HashSet<string>
         {
             "Cristal", "Ventana", "Pantalla", "Metal", "Llanta",
             "Botella", "BotellaAmbar", "FlotadorRojo", "PatoAmarillo", "OjoBlanco", "PupilaNegra",
-            "Oro", "Lente", "GuanteRojo",
+            "Oro", "Lente", "GuanteRojo", "BombaNegra", "Seta",
         };
 
         /// <summary>Giro (en Y) para que una pieza, que mira a su +Z, mire hacia un punto.</summary>

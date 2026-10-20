@@ -73,6 +73,31 @@ namespace BichoShow
         public abstract Color ColorEquipo(int equipo);
         public abstract int PuntosEquipo(int equipo);
 
+        /// <summary>Prueba de todos contra todos: cuentan los puntos de cada jugador, no los de equipo.</summary>
+        public virtual bool Individual => false;
+        /// <summary>Puntos de un jugador (solo en pruebas individuales).</summary>
+        public virtual int PuntosJugador(int indice) => 0;
+        /// <summary>Texto pequeño bajo la ficha de un jugador en el marcador individual (p. ej. "¡LLEVA LA BOMBA!").</summary>
+        protected virtual string EtiquetaJugador(int indice) => null;
+
+        /// <summary>Nombre corto de un jugador para los carteles: J1… o Bot 2…</summary>
+        public static string NombreJugador(ControladorBicho b) => b.EsBot ? $"Bot {b.IndiceJugador + 1}" : $"J{b.IndiceJugador + 1}";
+
+        /// <summary>Los jugadores (no retirados) con más puntos en una prueba individual.</summary>
+        protected List<ControladorBicho> LideresIndividuales()
+        {
+            var lideres = new List<ControladorBicho>();
+            int maximo = int.MinValue;
+            foreach (var b in ControladorBicho.Todos)
+            {
+                if (b.Retirado) continue;
+                int p = PuntosJugador(b.IndiceJugador);
+                if (p > maximo) { maximo = p; lideres.Clear(); }
+                if (p == maximo) lideres.Add(b);
+            }
+            return lideres;
+        }
+
         /// <summary>Crea un bot en ese número de jugador (con el cerebro que toque en esta prueba).</summary>
         protected abstract void CrearBot(int indice);
 
@@ -226,6 +251,12 @@ namespace BichoShow
         /// <summary>Los bichos del equipo ganador celebran al acabar la ronda.</summary>
         void CelebrarGanadores()
         {
+            if (Individual)
+            {
+                foreach (var b in LideresIndividuales())
+                    if (b.TryGetComponent(out AnimadorBicho a)) a.Celebrar(5f);
+                return;
+            }
             int p0 = PuntosEquipo(0), p1 = PuntosEquipo(1);
             if (p0 == p1) return;
             int ganador = p0 > p1 ? 0 : 1;
@@ -414,6 +445,26 @@ namespace BichoShow
                     }
                     break;
 
+                case Estado.Fin when Individual:
+                {
+                    DibujarMarcador(w, h);
+                    var lideres = LideresIndividuales();
+                    bool empate = lideres.Count != 1;
+                    Color colorGanador = !empate && gestor != null ? gestor.ColorDe(lideres[0].IndiceJugador) : Color.white;
+                    EstiloShow.Banda(new Rect(0, h * 0.27f, w, h * 0.24f), EstiloShow.MoradoOscuro.WithAlpha(0.8f));
+                    EstiloShow.TituloRebote(new Rect(0, h * 0.28f, w, h * 0.14f),
+                        empate ? "¡EMPATE!" : $"¡GANA {NombreJugador(lideres[0]).ToUpper()}!",
+                        Mathf.RoundToInt(EstiloShow.Px(110f)), new[] { colorGanador, Color.white, EstiloShow.Oro });
+                    var resumen = new List<string>();
+                    var todos = new List<ControladorBicho>(ControladorBicho.Todos);
+                    todos.Sort((a, b) => PuntosJugador(b.IndiceJugador).CompareTo(PuntosJugador(a.IndiceJugador)));
+                    foreach (var b in todos) if (!b.Retirado) resumen.Add($"{NombreJugador(b)} {PuntosJugador(b.IndiceJugador)}");
+                    Texto(new Rect(0, h * 0.42f, w, h * 0.07f), string.Join("   ·   ", resumen), estiloMedio, Color.white);
+                    if (!ControladaPorShow)
+                        Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para otra ronda", estiloMedio, Parpadeo(Color.yellow));
+                    break;
+                }
+
                 case Estado.Fin:
                     DibujarMarcador(w, h);
                     int p0 = PuntosEquipo(0), p1 = PuntosEquipo(1);
@@ -465,7 +516,13 @@ namespace BichoShow
             // Equipos: dos pastillas de color
             float y = tarjeta.y + px(270f);
             float anchoEquipo = Mathf.Min(px(420f), dentro.width * 0.48f);
-            for (int i = 0; i < 2; i++)
+            if (Individual)
+            {
+                var r = new Rect(tarjeta.center.x - anchoEquipo, y, anchoEquipo * 2f, px(70f));
+                EstiloShow.Panel(r, EstiloShow.Rosa, r.height * 0.5f);
+                EstiloShow.Texto(r, "¡TODOS CONTRA TODOS!", tam(38f), Color.white);
+            }
+            else for (int i = 0; i < 2; i++)
             {
                 var r = new Rect(tarjeta.center.x + (i == 0 ? -anchoEquipo - px(14f) : px(14f)), y, anchoEquipo, px(70f));
                 EstiloShow.Panel(r, Color.Lerp(ColorEquipo(i), EstiloShow.MoradoOscuro, 0.2f), r.height * 0.5f);
@@ -536,6 +593,12 @@ namespace BichoShow
             EstiloShow.Panel(reloj, urgente ? new Color(0.8f, 0.16f, 0.22f, 0.92f) : EstiloShow.Morado.WithAlpha(0.9f), reloj.height * 0.5f);
             EstiloShow.Texto(reloj, TextoReloj, Mathf.RoundToInt(EstiloShow.Px(64f)), urgente ? Color.white : EstiloShow.Oro);
 
+            if (Individual)
+            {
+                DibujarFichasJugadores(w);
+                return;
+            }
+
             for (int i = 0; i < 2; i++)
             {
                 float x = i == 0 ? w * 0.03f : w * 0.67f;
@@ -557,6 +620,38 @@ namespace BichoShow
                 else
                     DibujarInfoEquipo(i, x, w * 0.3f, h);
                 estiloPequeno.alignment = TextAnchor.MiddleCenter;
+            }
+        }
+
+        /// <summary>
+        /// Marcador de las pruebas individuales: una ficha por jugador con su color y sus puntos,
+        /// dos a cada lado del reloj; debajo, su etiqueta (si la prueba pone alguna) latiendo.
+        /// </summary>
+        void DibujarFichasJugadores(float w)
+        {
+            var jugadores = new List<ControladorBicho>(ControladorBicho.Todos);
+            jugadores.RemoveAll(b => b.Retirado);
+            jugadores.Sort((a, b) => a.IndiceJugador.CompareTo(b.IndiceJugador));
+            float ancho = Mathf.Min(w * 0.16f, EstiloShow.Px(300f)), alto = EstiloShow.Px(84f), hueco = EstiloShow.Px(14f);
+            for (int k = 0; k < jugadores.Count; k++)
+            {
+                var b = jugadores[k];
+                int i = b.IndiceJugador;
+                bool izquierda = k < (jugadores.Count + 1) / 2;
+                int posicion = izquierda ? k : k - (jugadores.Count + 1) / 2;
+                float x = izquierda ? w * 0.02f + posicion * (ancho + hueco) : w * 0.98f - (posicion + 1) * ancho - posicion * hueco;
+                var panel = new Rect(x, EstiloShow.Px(18f), ancho, alto);
+                Color color = gestor != null ? gestor.ColorDe(i) : b.ColorJugador;
+                string etiqueta = EtiquetaJugador(i);
+                if (etiqueta != null) panel = EstiloShow.Escalar(panel, 1.05f + Mathf.Sin(Time.time * 10f) * 0.03f);
+                EstiloShow.Panel(panel, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.3f).WithAlpha(0.92f), EstiloShow.Px(24f));
+                float m = EstiloShow.Px(18f);
+                var dentro = new Rect(panel.x + m, panel.y, panel.width - m * 2f, panel.height);
+                EstiloShow.Texto(dentro, NombreJugador(b), Mathf.RoundToInt(EstiloShow.Px(36f)), Color.white, TextAnchor.MiddleLeft);
+                EstiloShow.Texto(dentro, PuntosJugador(i).ToString(), Mathf.RoundToInt(EstiloShow.Px(56f)), EstiloShow.Oro, TextAnchor.MiddleRight);
+                if (etiqueta != null)
+                    EstiloShow.TextoEnPastilla(new Vector2(panel.center.x, panel.yMax + EstiloShow.Px(30f)), etiqueta,
+                        Mathf.RoundToInt(EstiloShow.Px(24f)), Parpadeo(new Color(1f, 0.55f, 0.2f)), new Color(0.35f, 0.05f, 0.05f, 0.9f), EstiloShow.Fuente.Titulo);
             }
         }
 

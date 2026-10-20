@@ -683,7 +683,8 @@ namespace BichoShow.Herramientas
             go.transform.SetParent(padre, false);
             go.transform.position = posicion;
             var tm = go.AddComponent<TextMesh>();
-            var fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // La fuente del show (Lilita One); si no está, la de Unity.
+            var fuente = Resources.Load<Font>("Fuentes/LilitaOne") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             tm.font = fuente;
             tm.text = texto;
             tm.fontSize = 64;

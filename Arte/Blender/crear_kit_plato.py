@@ -34,10 +34,11 @@ COLORES = {
     "Pedestal": (0.92, 0.90, 0.98), "Altavoz": (0.10, 0.10, 0.12), "ConoAltavoz": (0.38, 0.38, 0.42),
     "GuanteRojo": (0.92, 0.18, 0.20), "Peligro": (1.00, 0.82, 0.15), "PeligroNegro": (0.10, 0.10, 0.10),
     "Espuma": (0.30, 0.85, 0.75), "RosaPlato": (1.00, 0.45, 0.75),
+    "BombaNegra": (0.13, 0.12, 0.16), "Mecha": (0.78, 0.62, 0.40), "Chispa": (1.00, 0.62, 0.15), "Seta": (0.95, 0.25, 0.30),
 }
 
-crear_materiales(COLORES, brillantes=("Oro", "OjoBlanco", "PupilaNegra", "Lente", "GuanteRojo", "Metal"),
-                 emisivos=("Luz", "LuzRoja", "PantallaPlato"))
+crear_materiales(COLORES, brillantes=("Oro", "OjoBlanco", "PupilaNegra", "Lente", "GuanteRojo", "Metal", "BombaNegra", "Seta"),
+                 emisivos=("Luz", "LuzRoja", "PantallaPlato", "Chispa"))
 
 objetos = []
 
@@ -204,6 +205,29 @@ p.cilindro((0, 0, 1.25), 0.45, 0.1, "Metal", segmentos=16)
 objetos.append(p.crear(bisel=0.0))
 
 # ---------------------------------------------------------------------------
+# Patata caliente: bomba de dibujos (origen en el centro de la bola) y seta rebotadora
+# ---------------------------------------------------------------------------
+
+p = Pieza("Bomba")
+p.esfera((0, 0, 0), (0.34, 0.34, 0.34), "BombaNegra", segmentos=28, anillos=14)
+p.esfera((-0.12, -0.2, 0.16), (0.08, 0.05, 0.06), "OjoBlanco", segmentos=12, anillos=6)           # brillo
+p.cilindro((0, 0, 0.36), 0.11, 0.1, "Metal", segmentos=16)                                         # tapón
+puntos_mecha = [(0, 0, 0.4), (0.03, 0, 0.5), (0.1, 0, 0.58), (0.18, 0, 0.6)]
+for i in range(len(puntos_mecha) - 1):
+    p.tubo(puntos_mecha[i], puntos_mecha[i + 1], 0.025, "Mecha", segmentos=8)
+p.esfera(puntos_mecha[-1], (0.06, 0.06, 0.06), "Chispa", segmentos=12, anillos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Seta")
+p.cilindro((0, 0, 0.35), 0.32, 0.7, "Pedestal", radio_arriba=0.26, segmentos=20)                 # tallo
+p.esfera((0, 0, 0.78), (1.0, 1.0, 0.45), "Seta", segmentos=32, anillos=14)                        # sombrero
+for a, r in ((0, 0.6), (120, 0.6), (240, 0.6), (60, 0.2), (200, 0.32), (300, 0.8), (160, 0.82)):
+    z = 0.78 + 0.45 * math.sqrt(max(0.0, 1 - r * r)) - 0.015  # sobre la superficie del sombrero
+    ang = math.radians(a)
+    p.esfera((r * math.cos(ang), r * math.sin(ang), z), (0.13, 0.13, 0.06), "Pedestal", segmentos=14, anillos=6)
+objetos.append(p.crear(bisel=0.0))
+
+# ---------------------------------------------------------------------------
 # Exportar y vistas
 # ---------------------------------------------------------------------------
 
@@ -212,6 +236,7 @@ exportar(objetos, RUTA_FBX, RUTA_BLEND)
 vistas(objetos, CARPETA_VISTAS, "kit_plato", [
     ("gradas", ["TorreFocos", "Grada", "Publico", "PublicoBrazos", "CamaraTV", "Altavoz"], 0.8, (0, -30, 10), (0, 0, 2.5)),
     ("meta", ["ArcoMeta", "Trofeo", "CanonConfeti", "Guante", "Barredora"], 0.8, (0, -26, 7), (0, 0, 2.0)),
+    ("patata", ["Bomba", "Seta"], 0.8, (0, -8, 3), (0, 0, 0.6)),
     ("pantalla", ["Pantalla"], 0.8, (0, -26, 7), (0, 0, 4.5)),
 ], color_fondo=(0.30, 0.20, 0.45), material_suelo="GradaB")
 

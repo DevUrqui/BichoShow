@@ -35,6 +35,7 @@ namespace BichoShow
         public Prueba[] pruebas =
         {
             new Prueba { escena = "Mudanza", nombre = "Mudanza frágil", multiplicador = 1 },
+            new Prueba { escena = "Patata", nombre = "Patata caliente", multiplicador = 1 },
             new Prueba { escena = "Voley", nombre = "Voley atados", multiplicador = 1 },
             new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2 },
         };
@@ -244,6 +245,15 @@ namespace BichoShow
                 {
                     ganadas = puntosSabotaje >= 60 ? 3 : puntosSabotaje >= 25 ? 2 : puntosSabotaje > 0 ? 1 : 0;
                     resumenSabotaje = $"{NombreDe(i)} saboteó: {puntosSabotaje} puntos";
+                }
+                else if (ronda.Individual)
+                {
+                    // Todos contra todos: 3 estrellas el primero, 2 el segundo, 1 el tercero (empates: las mismas).
+                    int mejores = 0;
+                    for (int j = 0; j < 4; j++)
+                        if (j != i && participa[j] && !sabotaje.ContainsKey(j) && ronda.PuntosJugador(j) > ronda.PuntosJugador(i))
+                            mejores++;
+                    ganadas = Mathf.Max(0, 3 - mejores);
                 }
                 else
                 {
