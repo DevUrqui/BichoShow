@@ -236,12 +236,12 @@ objetos.append(p.crear(bisel=0.01))
 
 p = Pieza("Flecha")                                                                          # apunta a -Y (Unity +Z)
 for s in (-1, 1):
-    p.caja((s * 0.38, 0.1, 0.02), (0.32, 1.2, 0.04), "Equipo", rotacion=(0, 0, -s * 45))
-    for k in range(4):
-        t = -0.4 + k * 0.27
-        x = s * 0.38 + (-s) * t * math.sin(math.radians(45))
-        y = 0.1 + t * math.cos(math.radians(45))
-        p.caja((x, y, 0.045), (0.05, 0.14, 0.02), "CremaCostura", rotacion=(0, 0, -s * 45))
+    giro = -s * 45
+    p.caja((s * 0.38, 0.1, 0.02), (0.32, 1.2, 0.04), "Equipo", rotacion=(0, 0, giro))
+    eje = (-math.sin(math.radians(giro)), math.cos(math.radians(giro)))                  # a lo largo del brazo
+    for k in range(4):                                                                       # pespunte por el centro del brazo
+        t = -0.42 + k * 0.28
+        p.caja((s * 0.38 + eje[0] * t, 0.1 + eje[1] * t, 0.045), (0.05, 0.16, 0.02), "CremaCostura", rotacion=(0, 0, giro))
 objetos.append(p.crear(bisel=0.015))
 
 p = Pieza("Boton")

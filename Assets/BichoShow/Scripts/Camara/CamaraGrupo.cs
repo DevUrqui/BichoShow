@@ -38,6 +38,8 @@ namespace BichoShow
         [Header("A quién encuadrar")]
         [Tooltip("Si hay algún humano, los bots no cuentan para el encuadre.")]
         public bool priorizarHumanos = true;
+        [Tooltip("En carreras: además de a los jugadores, encuadra este trozo por delante de ellos (m, hacia donde mira la cámara).")]
+        public float adelanto;
         [Tooltip("Dónde mirar cuando todavía no hay nadie jugando.")]
         public Vector3 centroSinJugadores = Vector3.zero;
 
@@ -154,6 +156,11 @@ namespace BichoShow
             foreach (var b in bichos)
                 if (!hayHumanos || !b.EsBot)
                     destino.Add(PuntoDe(b));
+
+            // Lo que viene por delante también tiene que verse.
+            if (adelanto > 0f)
+                for (int i = destino.Count - 1; i >= 0; i--)
+                    destino.Add(destino[i] + Rumbo * adelanto);
         }
 
         public static Vector3 PuntoDe(ControladorBicho b) => b.transform.position + Vector3.up * 0.6f;

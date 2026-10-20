@@ -69,6 +69,7 @@ namespace BichoShow.Herramientas
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var camara = A.Camara(14f, 34f);
             camara.centroSinJugadores = new Vector3(0f, 0f, 10f);
+            camara.adelanto = 9f; // en una carrera hay que ver el obstáculo que viene
             camara.ColocarAlInstante();
 
             mapa = new GameObject("Mapa").transform;
