@@ -65,6 +65,14 @@ namespace BichoShow
 
         float Volumen => bicho != null && bicho.EsBot ? 0.55f : 1f;
 
+        /// <summary>Lo deja plano como un sello (le cae algo encima) y luego recupera la forma de golpe.</summary>
+        public void Aplastar()
+        {
+            deformacion = -0.4f;
+            velocidadDeformacion = -2f;
+            finEstrellas = Time.time + 2f;
+        }
+
         // ------------------------------------------------------------------
         // Aterrizajes y pasos
         // ------------------------------------------------------------------
