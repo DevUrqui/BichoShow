@@ -88,9 +88,15 @@ namespace BichoShow
                 float ang = i * Mathf.PI * 2f / pasos;
                 Dibujar(new Rect(r.x + Mathf.Cos(ang) * g, r.y + Mathf.Sin(ang) * g, r.width, r.height), colorContorno);
             }
-            // Relleno: abajo un poco más oscuro, arriba más claro (brillo de "plástico")
-            Dibujar(r, Color.Lerp(color, Color.black, 0.12f).WithAlpha(a));
+            // Relleno: abajo un poco más oscuro, arriba más claro (brillo de "plástico").
+            // Si el texto ocupa varias líneas, un solo color (si no, cada línea saldría de un tono).
             float alto = estilo.CalcHeight(contenido, r.width);
+            if (alto > estilo.lineHeight * 1.5f)
+            {
+                Dibujar(r, color);
+                return;
+            }
+            Dibujar(r, Color.Lerp(color, Color.black, 0.12f).WithAlpha(a));
             float centro = alineacion == TextAnchor.UpperLeft || alineacion == TextAnchor.UpperCenter || alineacion == TextAnchor.UpperRight
                 ? r.y + alto * 0.5f
                 : alineacion == TextAnchor.LowerLeft || alineacion == TextAnchor.LowerCenter || alineacion == TextAnchor.LowerRight
@@ -144,8 +150,10 @@ namespace BichoShow
 
         static void Dibujar(Rect r, Color c)
         {
+            // Siempre en estado "normal": con GUI.Label, al pasar el ratón por encima Unity usaba
+            // el color de "hover" de la etiqueta y el texto se veía blanquecino.
             estilo.normal.textColor = c;
-            GUI.Label(r, contenido, estilo);
+            estilo.Draw(r, contenido, false, false, false, false);
         }
 
         /// <summary>Ancho que ocupa un texto con ese tamaño y fuente.</summary>
@@ -161,7 +169,7 @@ namespace BichoShow
         {
             if (!Pintando) return;
             float t = Time.unscaledTime;
-            float espacio = Ancho(" ", tamano) * 0.6f;
+            float espacio = tamano * 0.32f; // medir " " suelto da casi 0 (y se juntaban las palabras)
             var anchos = new float[texto.Length];
             float total = 0f;
             for (int i = 0; i < texto.Length; i++)
