@@ -52,6 +52,9 @@ namespace BichoShow
             if (PlayerInput.all.Count != jugadoresAntes)
             {
                 jugadoresAntes = PlayerInput.all.Count;
+                // Quien se une saluda con un "¡hurra!".
+                foreach (var b in ControladorBicho.Todos)
+                    if (!b.EsBot && b.TryGetComponent(out AnimadorBicho a)) a.Celebrar(2.5f);
                 ignorarHasta = Time.unscaledTime + 0.4f;
             }
             if (Time.unscaledTime < ignorarHasta || PlayerInput.all.Count == 0) return;

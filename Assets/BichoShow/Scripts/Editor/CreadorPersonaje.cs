@@ -183,7 +183,7 @@ namespace BichoShow.Herramientas
         /// Deja el modelo de pie, a escala 1, mirando a +Z (los ojos delante) y con los pies en
         /// el suelo, pase lo que pase con los ejes al exportar desde Blender.
         /// </summary>
-        static void Orientar(Transform modelo, Transform raiz)
+        internal static void Orientar(Transform modelo, Transform raiz)
         {
             Bounds b = Limites(modelo, raiz);
             if (b.size.y > 20f) modelo.localScale *= 0.01f;           // exportado en centímetros
@@ -237,7 +237,7 @@ namespace BichoShow.Herramientas
             return r != null ? r.bounds.center : t.position;
         }
 
-        static Transform Buscar(Transform raiz, string nombre)
+        internal static Transform Buscar(Transform raiz, string nombre)
         {
             foreach (var t in raiz.GetComponentsInChildren<Transform>(true))
                 if (t.name == nombre) return t;

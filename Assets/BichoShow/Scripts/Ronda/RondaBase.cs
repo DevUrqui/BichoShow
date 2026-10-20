@@ -223,6 +223,16 @@ namespace BichoShow
 
         int ultimoPitido = -1;
 
+        /// <summary>Los bichos del equipo ganador celebran al acabar la ronda.</summary>
+        void CelebrarGanadores()
+        {
+            int p0 = PuntosEquipo(0), p1 = PuntosEquipo(1);
+            if (p0 == p1) return;
+            int ganador = p0 > p1 ? 0 : 1;
+            foreach (var b in ControladorBicho.Todos)
+                if (EquipoDe(b) == ganador && b.TryGetComponent(out AnimadorBicho a)) a.Celebrar(5f);
+        }
+
         /// <summary>Un pitido cada vez que cambia el segundo que queda (cuenta atrás y final de ronda).</summary>
         void PitarCadaSegundo(float quedan, float volumen)
         {
@@ -239,6 +249,7 @@ namespace BichoShow
             TiempoRestante = 0f;
             ultimoPitido = -1;
             Sonidos.Reproducir(Sonido.Bocina);
+            CelebrarGanadores();
             Sonidos.Reproducir(Sonido.Aplausos);
             Musica.Poner(Musica.Tema.Plato);
 
