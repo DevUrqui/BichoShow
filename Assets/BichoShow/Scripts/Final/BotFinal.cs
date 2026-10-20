@@ -106,9 +106,9 @@ namespace BichoShow
                 estiloEstado = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.Max(11, Screen.height / 55) };
             var r = new Rect(p.x - 150f, Screen.height - p.y - 12f, 300f, 24f);
             estiloEstado.normal.textColor = Color.black;
-            GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), texto, estiloEstado);
+            EstiloShow.Etiqueta(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), texto, estiloEstado);
             estiloEstado.normal.textColor = bicho.ColorJugador;
-            GUI.Label(r, texto, estiloEstado);
+            EstiloShow.Etiqueta(r, texto, estiloEstado);
         }
 
         void Pensar()

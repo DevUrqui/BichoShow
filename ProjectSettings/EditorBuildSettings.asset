@@ -12,18 +12,6 @@ EditorBuildSettings:
     path: Assets/BichoShow/Escenas/Mudanza.unity
     guid: 81f443cac19b4064f8fefa2f1199892d
   - enabled: 1
-    path: Assets/BichoShow/Escenas/Voley.unity
-    guid: b8f22917ce9c9004ba58b4b97e93d1f9
-  - enabled: 1
-    path: Assets/BichoShow/Escenas/Final.unity
-    guid: dae182258563cac49a345d8b7cd49029
-  - enabled: 0
-    path: Assets/BichoShow/Escenas/PruebaBicho.unity
-    guid: d9cc9fd3724040648bf18eecd6f03789
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
     path: Assets/BichoShow/Escenas/Patata.unity
     guid: 0137c1cbb11ae224e8da4e21a2b504e0
   - enabled: 1
@@ -35,5 +23,17 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/BichoShow/Escenas/Pintura.unity
     guid: e28bfd8e8e32de64f9e1ae316362c9e4
+  - enabled: 1
+    path: Assets/BichoShow/Escenas/Voley.unity
+    guid: b8f22917ce9c9004ba58b4b97e93d1f9
+  - enabled: 1
+    path: Assets/BichoShow/Escenas/Final.unity
+    guid: dae182258563cac49a345d8b7cd49029
+  - enabled: 0
+    path: Assets/BichoShow/Escenas/PruebaBicho.unity
+    guid: d9cc9fd3724040648bf18eecd6f03789
+  - enabled: 0
+    path: Assets/Scenes/SampleScene.unity
+    guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

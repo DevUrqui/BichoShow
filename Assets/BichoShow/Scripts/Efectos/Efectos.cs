@@ -38,6 +38,7 @@ namespace BichoShow
 
         public static void Polvo(Vector3 punto, float cantidad = 1f)
         {
+            if (!RedShow.EfectoLocal(RedShow.EfectoPolvo, punto, Color.clear, cantidad, 0f)) return;
             var ps = Anfitrion.Obtener().polvo;
             int n = Mathf.RoundToInt(Mathf.Lerp(4f, 14f, Mathf.Clamp01(cantidad)));
             var p = new ParticleSystem.EmitParams();
@@ -55,6 +56,7 @@ namespace BichoShow
 
         public static void Impacto(Vector3 punto, Color color, float cantidad = 1f)
         {
+            if (!RedShow.EfectoLocal(RedShow.EfectoImpacto, punto, color, cantidad, 0f)) return;
             var ps = Anfitrion.Obtener().estrellas;
             int n = Mathf.RoundToInt(Mathf.Lerp(5f, 16f, Mathf.Clamp01(cantidad)));
             var p = new ParticleSystem.EmitParams();
@@ -82,6 +84,7 @@ namespace BichoShow
         {
             float ahora = Time.unscaledTime;
             if (ahora < siguienteCamaraLenta) return;
+            if (!RedShow.EfectoLocal(RedShow.EfectoCamaraLenta, Vector3.zero, Color.clear, escala, duracion)) return;
             siguienteCamaraLenta = ahora + duracion + espera;
             finCamaraLenta = ahora + duracion;
             Time.timeScale = escala;

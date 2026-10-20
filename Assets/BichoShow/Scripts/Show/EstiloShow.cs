@@ -70,6 +70,7 @@ namespace BichoShow
                                  Fuente fuente = Fuente.Titulo, bool ajustar = false, float grosor = 1f, Color? contorno = null)
         {
             if (!Pintando || string.IsNullOrEmpty(texto) || color.a <= 0.005f) return;
+            GrabadorPantalla.Texto(r, texto, tamano, color, alineacion, fuente, ajustar, grosor, contorno);
             Configurar(tamano, alineacion, fuente, ajustar);
             contenido.text = texto;
             r = Agrandar(r, alineacion, ajustar);
@@ -205,16 +206,15 @@ namespace BichoShow
             if (radio < 0f) radio = Mathf.Min(r.height, r.width) * 0.22f;
             radio = Mathf.Min(radio, Mathf.Min(r.width, r.height) * 0.5f);
             if (borde < 0f) borde = Mathf.Max(2f, Px(3.5f));
-            var blanco = Texture2D.whiteTexture;
 
             if (sombra)
-                GUI.DrawTexture(new Rect(r.x, r.y + Px(7f), r.width, r.height), blanco, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0f, 0f, 0.35f * color.a), 0f, radio);
-            GUI.DrawTexture(r, blanco, ScaleMode.StretchToFill, true, 0f, color, 0f, radio);
+                DibujarTextura(new Rect(r.x, r.y + Px(7f), r.width, r.height), TexBlanca, ScaleMode.StretchToFill, new Color(0f, 0f, 0f, 0.35f * color.a), 0f, radio);
+            DibujarTextura(r, TexBlanca, ScaleMode.StretchToFill, color, 0f, radio);
             float m = borde + Px(3f);
-            GUI.DrawTexture(new Rect(r.x + m, r.y + m, r.width - m * 2f, (r.height - m * 2f) * 0.45f), blanco, ScaleMode.StretchToFill, true, 0f,
+            DibujarTextura(new Rect(r.x + m, r.y + m, r.width - m * 2f, (r.height - m * 2f) * 0.45f), TexBlanca, ScaleMode.StretchToFill,
                             new Color(1f, 1f, 1f, 0.13f * color.a), 0f, Mathf.Max(0f, radio - m));
             if (borde > 0f)
-                GUI.DrawTexture(r, blanco, ScaleMode.StretchToFill, true, 0f, Color.Lerp(color, Color.white, 0.4f).WithAlpha(color.a), borde, radio);
+                DibujarTextura(r, TexBlanca, ScaleMode.StretchToFill, Color.Lerp(color, Color.white, 0.4f).WithAlpha(color.a), borde, radio);
         }
 
         /// <summary>Botón tipo píldora. El elegido es dorado, más grande y late.</summary>
@@ -277,17 +277,15 @@ namespace BichoShow
         {
             if (!Pintando) return;
             float radio = r.height * 0.5f;
-            var blanco = Texture2D.whiteTexture;
-            GUI.DrawTexture(r, blanco, ScaleMode.StretchToFill, true, 0f, MoradoOscuro.WithAlpha(0.75f), 0f, radio);
+            DibujarTextura(r, TexBlanca, ScaleMode.StretchToFill, MoradoOscuro.WithAlpha(0.75f), 0f, radio);
             float m = Mathf.Max(2f, r.height * 0.14f);
             var dentro = new Rect(r.x + m, r.y + m, (r.width - m * 2f) * Mathf.Clamp01(valor), r.height - m * 2f);
             if (dentro.width >= dentro.height * 0.6f)
             {
-                GUI.DrawTexture(dentro, blanco, ScaleMode.StretchToFill, true, 0f, color, 0f, dentro.height * 0.5f);
-                GUI.DrawTexture(new Rect(dentro.x + m, dentro.y + m * 0.5f, dentro.width - m * 2f, dentro.height * 0.4f), blanco,
-                                ScaleMode.StretchToFill, true, 0f, new Color(1f, 1f, 1f, 0.3f), 0f, dentro.height * 0.2f);
+                DibujarTextura(dentro, TexBlanca, ScaleMode.StretchToFill, color, 0f, dentro.height * 0.5f);
+                DibujarTextura(new Rect(dentro.x + m, dentro.y + m * 0.5f, dentro.width - m * 2f, dentro.height * 0.4f), TexBlanca, ScaleMode.StretchToFill, new Color(1f, 1f, 1f, 0.3f), 0f, dentro.height * 0.2f);
             }
-            GUI.DrawTexture(r, blanco, ScaleMode.StretchToFill, true, 0f, new Color(1f, 1f, 1f, 0.35f), Mathf.Max(1.5f, Px(2f)), radio);
+            DibujarTextura(r, TexBlanca, ScaleMode.StretchToFill, new Color(1f, 1f, 1f, 0.35f), Mathf.Max(1.5f, Px(2f)), radio);
         }
 
         /// <summary>Estrella (la misma textura que las partículas), con contorno oscuro.</summary>
@@ -298,8 +296,8 @@ namespace BichoShow
                 texEstrella = Resources.Load<Texture2D>(Efectos.RecursoEstrella + "Textura") ?? Efectos.CrearTexturaEstrella();
             var matriz = GUI.matrix;
             if (giro != 0f) GUIUtility.RotateAroundPivot(giro, r.center);
-            GUI.DrawTexture(Escalar(r, 1.3f), texEstrella, ScaleMode.ScaleToFit, true, 0f, MoradoOscuro.WithAlpha(color.a), 0f, 0f);
-            GUI.DrawTexture(r, texEstrella, ScaleMode.ScaleToFit, true, 0f, color, 0f, 0f);
+            DibujarTextura(Escalar(r, 1.3f), TexEstrella, ScaleMode.ScaleToFit, MoradoOscuro.WithAlpha(color.a), 0f, 0f);
+            DibujarTextura(r, TexEstrella, ScaleMode.ScaleToFit, color, 0f, 0f);
             GUI.matrix = matriz;
         }
 
@@ -311,13 +309,13 @@ namespace BichoShow
             if (texRayos == null) texRayos = CrearRayos();
 
             var pantalla = new Rect(0, 0, Screen.width, Screen.height);
-            GUI.DrawTexture(pantalla, texDegradado, ScaleMode.StretchToFill, true, 0f, new Color(1f, 1f, 1f, opacidad), 0f, 0f);
+            DibujarTextura(pantalla, TexDegradado, ScaleMode.StretchToFill, new Color(1f, 1f, 1f, opacidad), 0f, 0f);
 
             Vector2 c = centroRayos ?? new Vector2(Screen.width * 0.5f, Screen.height * 0.3f);
             float lado = Mathf.Max(Screen.width, Screen.height) * 1.9f;
             var matriz = GUI.matrix;
             GUIUtility.RotateAroundPivot(Time.unscaledTime * 6f, c);
-            GUI.DrawTexture(new Rect(c.x - lado * 0.5f, c.y - lado * 0.5f, lado, lado), texRayos, ScaleMode.StretchToFill, true, 0f,
+            DibujarTextura(new Rect(c.x - lado * 0.5f, c.y - lado * 0.5f, lado, lado), TexRayos, ScaleMode.StretchToFill,
                             (colorRayos ?? Oro).WithAlpha(0.13f * opacidad), 0f, 0f);
             GUI.matrix = matriz;
         }
@@ -326,10 +324,61 @@ namespace BichoShow
         public static void Banda(Rect r, Color color)
         {
             if (!Pintando) return;
-            GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, color, 0f, 0f);
+            DibujarTextura(r, TexBlanca, ScaleMode.StretchToFill, color, 0f, 0f);
             float b = Mathf.Max(2f, Px(4f));
-            GUI.DrawTexture(new Rect(r.x, r.y, r.width, b), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, Oro.WithAlpha(color.a), 0f, 0f);
-            GUI.DrawTexture(new Rect(r.x, r.yMax - b, r.width, b), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, Oro.WithAlpha(color.a), 0f, 0f);
+            DibujarTextura(new Rect(r.x, r.y, r.width, b), TexBlanca, ScaleMode.StretchToFill, Oro.WithAlpha(color.a), 0f, 0f);
+            DibujarTextura(new Rect(r.x, r.yMax - b, r.width, b), TexBlanca, ScaleMode.StretchToFill, Oro.WithAlpha(color.a), 0f, 0f);
+        }
+
+        /// <summary>Rectángulo liso (fondos de indicadores, líneas…).</summary>
+        public static void Rectangulo(Rect r, Color color)
+        {
+            if (!Pintando) return;
+            DibujarTextura(r, TexBlanca, ScaleMode.StretchToFill, color, 0f, 0f);
+        }
+
+        /// <summary>GUI.Label con un estilo propio, pero que también ven los invitados de una partida online.</summary>
+        public static void Etiqueta(Rect r, string texto, GUIStyle estiloPropio)
+        {
+            if (!Pintando || estiloPropio == null) return;
+            Preparar();
+            int fuente = estiloPropio.font == null ? 0 : estiloPropio.font == fuenteTitulo ? 1 : estiloPropio.font == fuenteTexto ? 2 : 0;
+            GrabadorPantalla.Etiqueta(r, texto, estiloPropio, fuente);
+            estiloPropio.Draw(r, texto, false, false, false, false);
+        }
+
+        // Texturas que usa la interfaz, por número (así viajan en la grabación de pantalla).
+        const int TexBlanca = 0, TexEstrella = 1, TexDegradado = 2, TexRayos = 3;
+
+        static void DibujarTextura(Rect r, int id, ScaleMode modo, Color color, float borde, float radio)
+        {
+            GrabadorPantalla.Textura(r, id, modo, color, borde, radio);
+            GUI.DrawTexture(r, TexturaPorId(id), modo, true, 0f, color, borde, radio);
+        }
+
+        internal static Texture2D TexturaPorId(int id)
+        {
+            switch (id)
+            {
+                case TexEstrella:
+                    if (texEstrella == null)
+                        texEstrella = Resources.Load<Texture2D>(Efectos.RecursoEstrella + "Textura") ?? Efectos.CrearTexturaEstrella();
+                    return texEstrella;
+                case TexDegradado:
+                    if (texDegradado == null) texDegradado = CrearDegradado();
+                    return texDegradado;
+                case TexRayos:
+                    if (texRayos == null) texRayos = CrearRayos();
+                    return texRayos;
+                default:
+                    return Texture2D.whiteTexture;
+            }
+        }
+
+        internal static Font FuentePorId(int id)
+        {
+            Preparar();
+            return id == 1 ? fuenteTitulo : id == 2 ? fuenteTexto : null;
         }
 
         public static Rect Escalar(Rect r, float k) =>

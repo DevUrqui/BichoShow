@@ -8,6 +8,7 @@ using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BichoShow
 {
@@ -35,6 +36,8 @@ namespace BichoShow
         const float Retraso = 0.1f;
 
         const string MensajeMando = "BS.Mando", MensajeEstado = "BS.Estado", MensajeEvento = "BS.Evento";
+        const string MensajeEscena = "BS.Escena", MensajeListo = "BS.Listo", MensajeCambios = "BS.Cambios",
+                     MensajeMovimientos = "BS.Mov", MensajePantalla = "BS.Pantalla", MensajeAvisos = "BS.Avisos";
         const byte EventoAccion = 0, EventoGolpe = 1, EventoReaparecer = 2;
 
         public static Modo ModoActual { get; private set; }
@@ -284,6 +287,20 @@ namespace BichoShow
         /// <summary>Vuelve a la partida local: fuera marionetas y jugadores de fuera; vuelven los bichos de aquí.</summary>
         void Limpiar(string aviso)
         {
+            bool eraInvitado = EsInvitado;
+            espejo.Parar();
+            espejo.PararInvitado();
+            conEscena.Clear();
+            pantallas.Clear();
+            memAvisos.SetLength(0);
+            GrabadorPantalla.Grabando = false;
+            MandoRemoto.Pausado = false;
+            if (eraInvitado)
+            {
+                Time.timeScale = 1f;
+                // Si estábamos mirando una prueba (sin lógica), de vuelta al menú.
+                if (SceneManager.GetActiveScene().name != EscenaMenu) SceneManager.LoadScene(EscenaMenu);
+            }
             foreach (var m in marionetas.Values) if (m != null) Destroy(m.gameObject);
             marionetas.Clear();
             entradas.Clear();
@@ -312,12 +329,20 @@ namespace BichoShow
             mensajes.RegisterNamedMessageHandler(MensajeMando, RecibirMando);
             mensajes.RegisterNamedMessageHandler(MensajeEstado, RecibirEstado);
             mensajes.RegisterNamedMessageHandler(MensajeEvento, RecibirEvento);
+            mensajes.RegisterNamedMessageHandler(MensajeEscena, RecibirEscena);
+            mensajes.RegisterNamedMessageHandler(MensajeListo, RecibirListo);
+            mensajes.RegisterNamedMessageHandler(MensajeCambios, RecibirCambios);
+            mensajes.RegisterNamedMessageHandler(MensajeMovimientos, RecibirMovimientos);
+            mensajes.RegisterNamedMessageHandler(MensajePantalla, RecibirPantalla);
+            mensajes.RegisterNamedMessageHandler(MensajeAvisos, RecibirAvisos);
             manejadores = true;
         }
 
         void AlIrseCliente(ulong cliente)
         {
             if (!EsAnfitrion || red == null || !red.IsServer) return;
+            espejo.Quitar(cliente);
+            conEscena.Remove(cliente);
             // Se van sus bichos.
             var gestor = GestorJugadores.Instancia;
             var claves = new List<(ulong, byte)>(entradas.Keys);
@@ -332,12 +357,24 @@ namespace BichoShow
 
         void Update()
         {
-            if (!EnLinea || red == null || !red.IsListening || !manejadores) return;
+            if (!EnLinea || red == null || !red.IsListening || !manejadores)
+            {
+                GrabadorPantalla.Grabando = false;
+                return;
+            }
+            if (EsInvitado) espejo.Actualizar(TiempoDibujo);
+            else GrabarPantalla();
+
             acumulado += Time.unscaledDeltaTime;
             if (acumulado < 1f / EnviosPorSegundo) return;
             acumulado = Mathf.Min(acumulado - 1f / EnviosPorSegundo, 0.1f);
 
-            if (EsAnfitrion) EnviarEstado();
+            if (EsAnfitrion)
+            {
+                EnviarEstado();
+                VigilarEscena();
+                EnviarAvisos();
+            }
             else EnviarMando();
         }
 
@@ -357,6 +394,7 @@ namespace BichoShow
                 w.WriteValueSafe((byte)(m.AgarrarPulsado ? 1 : 0));
                 w.WriteValueSafe(m.Saltos);
                 w.WriteValueSafe(m.Lanzamientos);
+                w.WriteValueSafe(m.Empezar);
                 w.WriteValueSafe((byte)m.Gorro);
                 w.WriteValueSafe((byte)m.Complemento);
             }
@@ -366,6 +404,13 @@ namespace BichoShow
         void RecibirMando(ulong cliente, FastBufferReader r)
         {
             if (!EsAnfitrion || cliente == red.LocalClientId) return;
+            if (conEscena.Add(cliente))
+            {
+                // Recién llegado: que cargue la escena en la que estamos (si el show está en marcha, mira).
+                uno.Clear();
+                uno.Add(cliente);
+                EnviarEscena(uno);
+            }
             var gestor = GestorJugadores.Instancia;
             r.ReadValueSafe(out byte n);
             for (int i = 0; i < n; i++)
@@ -376,6 +421,7 @@ namespace BichoShow
                 r.ReadValueSafe(out byte botones);
                 r.ReadValueSafe(out byte saltos);
                 r.ReadValueSafe(out byte lanzamientos);
+                r.ReadValueSafe(out byte empezar);
                 r.ReadValueSafe(out byte gorro);
                 r.ReadValueSafe(out byte complemento);
 
@@ -383,13 +429,14 @@ namespace BichoShow
                 entradas.TryGetValue(clave, out var entrada);
                 if (entrada == null)
                 {
-                    // Jugador nuevo de fuera: bicho nuevo, si cabe.
+                    // Jugador nuevo de fuera: bicho nuevo, si cabe (con el show empezado, mira hasta volver al menú).
                     if (gestor == null || gestor.Jugadores.Count - gestor.Bots.Count >= MaxJugadores) continue;
+                    if (ShowBicho.Instancia != null && ShowBicho.Instancia.Estado != ShowBicho.EstadoShow.Inactivo) continue;
                     entrada = gestor.CrearRemoto(cliente, local, gorro, complemento);
                     if (entrada == null) continue;
                     entradas[clave] = entrada;
                 }
-                entrada.Recibir(new Vector2(dx, dz), (botones & 1) != 0, saltos, lanzamientos);
+                entrada.Recibir(new Vector2(dx, dz), (botones & 1) != 0, saltos, lanzamientos, empezar);
                 if (entrada.TryGetComponent(out Vestuario v) && (v.Gorro != gorro || v.Complemento != complemento))
                     v.Poner(gorro, complemento);
             }
@@ -585,6 +632,321 @@ namespace BichoShow
                 case EventoReaparecer:
                     m.Bicho.ReaparecerRed();
                     break;
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // El show online: escenas, espejo de la escena, pantalla, sonidos
+        // ---------------------------------------------------------------------
+
+        public const byte EfectoPolvo = 1, EfectoImpacto = 2, EfectoCamaraLenta = 3;
+        const byte AvisoSonido = 1, AvisoEfecto = 2, AvisoMusica = 3;
+        const float PantallasPorSegundo = 12f;
+
+        readonly EspejoEscena espejo = new EspejoEscena();
+        readonly HashSet<ulong> conEscena = new HashSet<ulong>();
+        readonly List<ulong> uno = new List<ulong>(1);
+        readonly System.IO.MemoryStream memAvisos = new System.IO.MemoryStream(1024);
+        System.IO.BinaryWriter avisos;
+        float siguientePantalla;
+        static bool reproduciendoRed;
+
+        class FotogramaPantalla
+        {
+            public float tiempo;
+            public byte[] datos;
+            public int ancho, alto;
+        }
+        readonly List<FotogramaPantalla> pantallas = new List<FotogramaPantalla>();
+
+        static string EscenaMenu => ShowBicho.Instancia != null ? ShowBicho.Instancia.escenaMenu : "Menu";
+
+        void OnEnable() => SceneManager.sceneLoaded += AlCargarEscena;
+        void OnDisable() => SceneManager.sceneLoaded -= AlCargarEscena;
+
+        void AlCargarEscena(Scene escena, LoadSceneMode modo)
+        {
+            if (EsAnfitrion)
+            {
+                // Una prueba del show: los invitados la cargan y la copian. El menú: cada uno el suyo.
+                bool show = ShowBicho.Instancia != null && ShowBicho.Instancia.Estado != ShowBicho.EstadoShow.Inactivo &&
+                            escena.name != EscenaMenu;
+                if (show) espejo.EmpezarAnfitrion(escena);
+                else espejo.Parar();
+                pantallas.Clear();
+                if (red != null && red.IsListening && PrepararDestinos())
+                {
+                    foreach (var c in destinos) conEscena.Add(c);
+                    EnviarEscena(destinos);
+                }
+            }
+            else if (EsInvitado)
+            {
+                if (espejo.AlCargarEscenaInvitado(escena)) EnviarListo();
+            }
+        }
+
+        void EnviarEscena(IReadOnlyList<ulong> a)
+        {
+            var escena = SceneManager.GetActiveScene();
+            using var w = new FastBufferWriter(256, Allocator.Temp);
+            w.WriteValueSafe(espejo.Numero);
+            w.WriteValueSafe(espejo.Activo);
+            w.WriteValueSafe(escena.name);
+            red.CustomMessagingManager.SendNamedMessage(MensajeEscena, a, w, NetworkDelivery.ReliableSequenced);
+        }
+
+        void RecibirEscena(ulong de, FastBufferReader r)
+        {
+            if (red.IsServer) return;
+            r.ReadValueSafe(out int numero);
+            r.ReadValueSafe(out bool copiar);
+            r.ReadValueSafe(out string nombre);
+            pantallas.Clear();
+            MandoRemoto.Pausado = false;
+            if (Time.timeScale != 1f) Time.timeScale = 1f;
+            espejo.CambiarEscenaInvitado(numero, nombre, copiar);
+        }
+
+        void EnviarListo()
+        {
+            using var w = new FastBufferWriter(16, Allocator.Temp);
+            w.WriteValueSafe(espejo.Numero);
+            red.CustomMessagingManager.SendNamedMessage(MensajeListo, NetworkManager.ServerClientId, w, NetworkDelivery.ReliableSequenced);
+        }
+
+        void RecibirListo(ulong cliente, FastBufferReader r)
+        {
+            if (!EsAnfitrion) return;
+            r.ReadValueSafe(out int numero);
+            var datos = espejo.Listo(cliente, numero, out int largo);
+            if (datos == null) return;
+            uno.Clear();
+            uno.Add(cliente);
+            EnviarBytes(MensajeCambios, uno, espejo.Numero, datos, largo, NetworkDelivery.ReliableFragmentedSequenced);
+        }
+
+        /// <summary>Un bloque de bytes con el número de escena delante.</summary>
+        void EnviarBytes(string mensaje, IReadOnlyList<ulong> a, int numero, byte[] datos, int largo, NetworkDelivery entrega)
+        {
+            if (a.Count == 0 || largo <= 0) return;
+            using var w = new FastBufferWriter(largo + 16, Allocator.Temp);
+            w.WriteValueSafe(numero);
+            w.WriteValueSafe(largo);
+            w.WriteBytesSafe(datos, largo);
+            red.CustomMessagingManager.SendNamedMessage(mensaje, a, w, entrega);
+        }
+
+        static byte[] LeerBytes(FastBufferReader r, out int numero, out int largo)
+        {
+            r.ReadValueSafe(out numero);
+            r.ReadValueSafe(out largo);
+            var datos = new byte[Mathf.Max(0, largo)];
+            if (largo > 0) r.ReadBytesSafe(ref datos, largo);
+            return datos;
+        }
+
+        void RecibirCambios(ulong de, FastBufferReader r)
+        {
+            if (red.IsServer) return;
+            var datos = LeerBytes(r, out int numero, out int largo);
+            if (numero == espejo.Numero) espejo.RecibirCambios(datos, largo);
+        }
+
+        void RecibirMovimientos(ulong de, FastBufferReader r)
+        {
+            if (red.IsServer) return;
+            var datos = LeerBytes(r, out _, out int largo);
+            espejo.RecibirMovimientos(datos, largo); // el número de escena va dentro
+        }
+
+        /// <summary>En el anfitrión, cada vuelta: lo que ha cambiado en la escena.</summary>
+        void VigilarEscena()
+        {
+            if (!espejo.Activo) return;
+            espejo.Vigilar((float)Time.unscaledTimeAsDouble, out var datos, out int largo, EnviarTrozoMovimientos);
+            if (largo > 0 && espejo.HayListos)
+                EnviarBytes(MensajeCambios, espejo.Listos, espejo.Numero, datos, largo, NetworkDelivery.ReliableFragmentedSequenced);
+        }
+
+        void EnviarTrozoMovimientos(byte[] datos, int largo)
+        {
+            if (espejo.HayListos) EnviarBytes(MensajeMovimientos, espejo.Listos, espejo.Numero, datos, largo, NetworkDelivery.UnreliableSequenced);
+        }
+
+        // --- La pantalla del anfitrión ---
+
+        /// <summary>
+        /// En el anfitrión, cada fotograma: manda lo que se dibujó en el anterior (unas 12 veces por
+        /// segundo) y empieza a grabar el siguiente.
+        /// </summary>
+        void GrabarPantalla()
+        {
+            bool grabar = espejo.Activo && espejo.HayListos;
+            float ahora = Time.unscaledTime;
+            if (GrabadorPantalla.Grabando && grabar && ahora >= siguientePantalla && GrabadorPantalla.Longitud > 0)
+            {
+                siguientePantalla = ahora + 1f / PantallasPorSegundo;
+                int largo = GrabadorPantalla.Longitud;
+                using var w = new FastBufferWriter(largo + 32, Allocator.Temp);
+                w.WriteValueSafe(espejo.Numero);
+                w.WriteValueSafe((float)Time.unscaledTimeAsDouble);
+                w.WriteValueSafe((short)Screen.width);
+                w.WriteValueSafe((short)Screen.height);
+                w.WriteValueSafe(largo);
+                w.WriteBytesSafe(GrabadorPantalla.Buffer, largo);
+                red.CustomMessagingManager.SendNamedMessage(MensajePantalla, espejo.Listos, w, NetworkDelivery.ReliableFragmentedSequenced);
+            }
+            GrabadorPantalla.Grabando = grabar;
+            GrabadorPantalla.EmpezarFotograma();
+        }
+
+        void RecibirPantalla(ulong de, FastBufferReader r)
+        {
+            if (red.IsServer) return;
+            r.ReadValueSafe(out int numero);
+            r.ReadValueSafe(out float tiempo);
+            r.ReadValueSafe(out short ancho);
+            r.ReadValueSafe(out short alto);
+            r.ReadValueSafe(out int largo);
+            if (numero != espejo.Numero || largo <= 0) return;
+            var datos = new byte[largo];
+            r.ReadBytesSafe(ref datos, largo);
+            pantallas.Add(new FotogramaPantalla { tiempo = tiempo, datos = datos, ancho = Mathf.Max(1, ancho), alto = Mathf.Max(1, alto) });
+            if (pantallas.Count > 12) pantallas.RemoveAt(0);
+        }
+
+        void OnGUI()
+        {
+            if (!EsInvitado || !espejo.Activo || pantallas.Count == 0) return;
+            // El fotograma que toca: el último que no se adelante a lo que se ve (los bichos van 0,1 s en el pasado).
+            float t = (float)TiempoDibujo;
+            FotogramaPantalla elegido = pantallas[0];
+            foreach (var p in pantallas) if (p.tiempo <= t) elegido = p;
+            if (t - elegido.tiempo > 3f) return; // el anfitrión ha dejado de mandar
+            GrabadorPantalla.Reproducir(elegido.datos, elegido.datos.Length,
+                                        Screen.width / (float)elegido.ancho, Screen.height / (float)elegido.alto);
+        }
+
+        // --- Sonidos, efectos y música ---
+
+        /// <summary>
+        /// Lo llama Sonidos.Reproducir. Devuelve si se debe oír aquí. En el anfitrión se apunta para
+        /// los invitados; en un invitado solo suena lo que llega del anfitrión (y los ruiditos de su menú).
+        /// </summary>
+        public static bool SonidoLocal(Sonido sonido, Vector3? posicion, float volumen, float tono, float variacion)
+        {
+            bool deMenu = sonido == Sonido.MenuMover || sonido == Sonido.MenuAceptar;
+            if (ModoActual == Modo.Local || instancia == null) return true;
+            if (EsAnfitrion)
+            {
+                if (!deMenu)
+                {
+                    var w = instancia.Avisos();
+                    w.Write(AvisoSonido);
+                    w.Write((byte)sonido);
+                    w.Write(posicion.HasValue);
+                    if (posicion.HasValue) { w.Write(posicion.Value.x); w.Write(posicion.Value.y); w.Write(posicion.Value.z); }
+                    w.Write(Mathf.FloatToHalf(volumen));
+                    w.Write(Mathf.FloatToHalf(tono));
+                    w.Write(Mathf.FloatToHalf(variacion));
+                }
+                return true;
+            }
+            return reproduciendoRed || deMenu;
+        }
+
+        /// <summary>Lo llaman las partículas y la cámara lenta de Efectos (igual que SonidoLocal).</summary>
+        public static bool EfectoLocal(byte tipo, Vector3 punto, Color color, float a, float b)
+        {
+            if (ModoActual == Modo.Local || instancia == null) return true;
+            if (EsAnfitrion)
+            {
+                var w = instancia.Avisos();
+                w.Write(AvisoEfecto);
+                w.Write(tipo);
+                w.Write(punto.x); w.Write(punto.y); w.Write(punto.z);
+                Color32 c = color;
+                w.Write(c.r); w.Write(c.g); w.Write(c.b); w.Write(c.a);
+                w.Write(a);
+                w.Write(b);
+                return true;
+            }
+            return reproduciendoRed;
+        }
+
+        /// <summary>Lo llama Musica.Poner: en el anfitrión, los invitados ponen la misma.</summary>
+        public static void AnotarMusica(Musica.Tema tema)
+        {
+            if (!EsAnfitrion || instancia == null) return;
+            var w = instancia.Avisos();
+            w.Write(AvisoMusica);
+            w.Write((byte)tema);
+        }
+
+        System.IO.BinaryWriter Avisos()
+        {
+            if (avisos == null) avisos = new System.IO.BinaryWriter(memAvisos);
+            return avisos;
+        }
+
+        void EnviarAvisos()
+        {
+            if (avisos == null) return;
+            avisos.Flush();
+            int largo = (int)memAvisos.Length;
+            if (largo > 0 && PrepararDestinos())
+                EnviarBytes(MensajeAvisos, destinos, espejo.Numero, memAvisos.GetBuffer(), largo, NetworkDelivery.ReliableFragmentedSequenced);
+            memAvisos.SetLength(0);
+        }
+
+        void RecibirAvisos(ulong de, FastBufferReader r)
+        {
+            if (red.IsServer) return;
+            var datos = LeerBytes(r, out _, out int largo);
+            reproduciendoRed = true;
+            using var l = new System.IO.BinaryReader(new System.IO.MemoryStream(datos, 0, largo, false));
+            try
+            {
+                while (l.BaseStream.Position < largo)
+                {
+                    byte tipo = l.ReadByte();
+                    switch (tipo)
+                    {
+                        case AvisoSonido:
+                        {
+                            var sonido = (Sonido)l.ReadByte();
+                            Vector3? pos = null;
+                            if (l.ReadBoolean()) pos = new Vector3(l.ReadSingle(), l.ReadSingle(), l.ReadSingle());
+                            float volumen = Mathf.HalfToFloat(l.ReadUInt16());
+                            float tono = Mathf.HalfToFloat(l.ReadUInt16());
+                            float variacion = Mathf.HalfToFloat(l.ReadUInt16());
+                            Sonidos.Reproducir(sonido, pos, volumen, tono, variacion);
+                            break;
+                        }
+                        case AvisoEfecto:
+                        {
+                            byte efecto = l.ReadByte();
+                            var punto = new Vector3(l.ReadSingle(), l.ReadSingle(), l.ReadSingle());
+                            Color color = new Color32(l.ReadByte(), l.ReadByte(), l.ReadByte(), l.ReadByte());
+                            float a = l.ReadSingle(), b = l.ReadSingle();
+                            if (efecto == EfectoPolvo) Efectos.Polvo(punto, a);
+                            else if (efecto == EfectoImpacto) Efectos.Impacto(punto, color, a);
+                            else if (efecto == EfectoCamaraLenta) Efectos.CamaraLenta(a, b, 0f);
+                            break;
+                        }
+                        case AvisoMusica:
+                            Musica.Poner((Musica.Tema)l.ReadByte());
+                            break;
+                        default:
+                            return;
+                    }
+                }
+            }
+            catch (System.IO.EndOfStreamException) { }
+            finally
+            {
+                reproduciendoRed = false;
             }
         }
 

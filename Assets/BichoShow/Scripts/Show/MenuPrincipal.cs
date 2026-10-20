@@ -36,7 +36,8 @@ namespace BichoShow
             nivelDuracion = Mathf.Clamp(PlayerPrefs.GetInt("BichoShow.Duracion", 1), 0, 2);
 
             ControladorBicho.EntradaBloqueada = true;
-            if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(true);
+            // En una sala online el anfitrión no admite jugadores nuevos de aquí (les tocaría el número de uno de fuera).
+            if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(!RedShow.EsAnfitrion);
             Musica.Poner(Musica.Tema.Plato);
             Sonidos.Precargar();
             if (Keyboard.current != null) Keyboard.current.onTextInput += AlEscribir;
@@ -44,6 +45,7 @@ namespace BichoShow
 
         void OnDestroy()
         {
+            MandoRemoto.Pausado = false;
             if (Keyboard.current != null) Keyboard.current.onTextInput -= AlEscribir;
         }
 
@@ -52,7 +54,7 @@ namespace BichoShow
         {
             Pantalla.Principal => 5,
             Pantalla.Online => 3,
-            Pantalla.SalaMenu => 2,
+            Pantalla.SalaMenu => RedShow.EsAnfitrion ? 3 : 2,
             _ => 6,
         };
         const int OpcionVolver = 5;
@@ -64,6 +66,7 @@ namespace BichoShow
             if (RedShow.EnLinea && !enSala) { pantalla = Pantalla.Sala; enSala = true; }
             else if (!RedShow.EnLinea && enSala) { pantalla = Pantalla.Online; seleccion = 0; enSala = false; }
             ControladorBicho.EntradaBloqueada = pantalla != Pantalla.Sala;
+            MandoRemoto.Pausado = RedShow.EsInvitado && pantalla != Pantalla.Sala; // el stick es para el menú
 
             // Quien acaba de unirse ha pulsado un botón: que esa pulsación no elija nada.
             if (PlayerInput.all.Count != jugadoresAntes)
@@ -153,7 +156,9 @@ namespace BichoShow
             }
             else if (pantalla == Pantalla.SalaMenu)
             {
-                if (seleccion == 0) pantalla = Pantalla.Sala;
+                int opcion = RedShow.EsAnfitrion ? seleccion : seleccion + 1; // el invitado no tiene "Empezar"
+                if (opcion == 0) EmpezarShow();
+                else if (opcion == 1) pantalla = Pantalla.Sala;
                 else RedShow.Salir();
             }
             else
@@ -535,8 +540,8 @@ namespace BichoShow
             EstiloShow.Texto(new Rect(x, infoY, px(900f), px(44f)), $"{fichas.Count} de {RedShow.MaxJugadores} jugadores", tam(36f), Color.white, TextAnchor.MiddleLeft);
             EstiloShow.Texto(new Rect(x, infoY + px(46f), px(900f), px(80f)),
                 RedShow.EsAnfitrion
-                    ? "¡Corred por el plató mientras llegan todos! El show online llega en la próxima versión."
-                    : "¡Corre por el plató! Lo que ves lo mueve el ordenador del anfitrión.",
+                    ? "¡Corred por el plató mientras llegan todos! Cuando estéis, START y ¡Empezar el show!"
+                    : "¡Corre por el plató! El anfitrión empezará el show cuando estéis todos.",
                 tam(25f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
 
             // Fichas de los jugadores
@@ -556,10 +561,13 @@ namespace BichoShow
             if (pantalla == Pantalla.SalaMenu)
             {
                 // Menú de la sala, encima de todo.
-                var fondo = new Rect(w * 0.5f - px(380f), h * 0.42f, px(760f), px(300f));
+                int n = RedShow.EsAnfitrion ? 3 : 2;
+                var fondo = new Rect(w * 0.5f - px(380f), h * 0.4f, px(760f), px(120f + 90f * n));
                 EstiloShow.Panel(fondo, EstiloShow.Morado.WithAlpha(0.97f), px(40f));
                 EstiloShow.Texto(new Rect(fondo.x, fondo.y + px(16f), fondo.width, px(60f)), "SALA", tam(52f), Color.white);
-                string[] opciones = { "Seguir en la sala", RedShow.EsAnfitrion ? "Cerrar la sala" : "Salir de la sala" };
+                string[] opciones = RedShow.EsAnfitrion
+                    ? new[] { "¡Empezar el show!", "Seguir en la sala", "Cerrar la sala" }
+                    : new[] { "Seguir en la sala", "Salir de la sala" };
                 float by = fondo.y + px(96f);
                 for (int i = 0; i < opciones.Length; i++)
                 {
@@ -572,7 +580,7 @@ namespace BichoShow
             else
             {
                 EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
-                    ("Stick", EstiloShow.GlifoTecla, "correr"), ("A", EstiloShow.GlifoA, "saltar"), ("START", EstiloShow.GlifoTecla, "menú de la sala"));
+                    ("Stick", EstiloShow.GlifoTecla, "correr"), ("A", EstiloShow.GlifoA, "saltar"), ("START", EstiloShow.GlifoTecla, RedShow.EsAnfitrion ? "empezar el show" : "menú de la sala"));
             }
         }
 

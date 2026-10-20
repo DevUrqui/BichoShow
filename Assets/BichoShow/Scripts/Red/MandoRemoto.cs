@@ -14,14 +14,24 @@ namespace BichoShow
     {
         public static readonly List<MandoRemoto> Todos = new List<MandoRemoto>();
 
+        /// <summary>
+        /// Lo pone el menú de este ordenador mientras se usa el stick para el menú (y no para
+        /// mover el bicho). En el show se manda siempre: los menús los lleva el anfitrión.
+        /// </summary>
+        public static bool Pausado;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void LimpiarEstaticos() => Todos.Clear();
+        static void LimpiarEstaticos()
+        {
+            Todos.Clear();
+            Pausado = false;
+        }
 
         PlayerInput entrada;
         ControladorBicho bicho;
         Vestuario vestuario;
-        InputAction accionMover, accionSaltar, accionAgarrar, accionLanzarse;
-        byte saltos, lanzamientos;
+        InputAction accionMover, accionSaltar, accionAgarrar, accionLanzarse, accionEmpezar;
+        byte saltos, lanzamientos, empezar;
 
         /// <summary>Número del mando en este ordenador.</summary>
         public byte Local => (byte)(entrada != null ? entrada.playerIndex : 0);
@@ -29,14 +39,15 @@ namespace BichoShow
         public int Complemento => vestuario != null ? vestuario.Complemento : 0;
         public byte Saltos => saltos;
         public byte Lanzamientos => lanzamientos;
-        public bool AgarrarPulsado => !ControladorBicho.EntradaBloqueada && accionAgarrar != null && accionAgarrar.IsPressed();
+        public byte Empezar => empezar;
+        public bool AgarrarPulsado => !Pausado && accionAgarrar != null && accionAgarrar.IsPressed();
 
         /// <summary>Hacia dónde empuja el stick, ya en el mundo (girado con la cámara de este ordenador).</summary>
         public Vector2 DireccionMundo
         {
             get
             {
-                if (ControladorBicho.EntradaBloqueada || accionMover == null) return Vector2.zero;
+                if (Pausado || accionMover == null) return Vector2.zero;
                 Vector2 stick = Vector2.ClampMagnitude(accionMover.ReadValue<Vector2>(), 1f);
                 var cam = Camera.main;
                 if (cam == null) return stick;
@@ -67,13 +78,15 @@ namespace BichoShow
             accionSaltar = entrada.actions.FindAction("Saltar");
             accionAgarrar = entrada.actions.FindAction("Agarrar");
             accionLanzarse = entrada.actions.FindAction("Lanzarse");
+            accionEmpezar = entrada.actions.FindAction("Empezar");
         }
 
         void Update()
         {
-            if (ControladorBicho.EntradaBloqueada) return;
+            if (Pausado) return;
             if (accionSaltar != null && accionSaltar.WasPressedThisFrame()) saltos++;
             if (accionLanzarse != null && accionLanzarse.WasPressedThisFrame()) lanzamientos++;
+            if (accionEmpezar != null && accionEmpezar.WasPressedThisFrame()) empezar++;
         }
 
         void OnDestroy()

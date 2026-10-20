@@ -258,7 +258,6 @@ namespace BichoShow
 
         void DibujarIndicador(Vector2 pos, Vector2 dir, float tam, Color color, string etiqueta)
         {
-            var antes = GUI.color;
             var matriz = GUI.matrix;
 
             // Flecha: un "▲" girado hacia donde está el bicho, un poco por fuera del cuadro.
@@ -266,18 +265,15 @@ namespace BichoShow
             Vector2 puntaFlecha = pos + dir.normalized * tam * 0.7f;
             GUIUtility.RotateAroundPivot(angulo, puntaFlecha);
             estiloIndicador.normal.textColor = color;
-            GUI.Label(new Rect(puntaFlecha.x - tam * 0.5f, puntaFlecha.y - tam * 0.5f, tam, tam), "▲", estiloIndicador);
+            EstiloShow.Etiqueta(new Rect(puntaFlecha.x - tam * 0.5f, puntaFlecha.y - tam * 0.5f, tam, tam), "▲", estiloIndicador);
             GUI.matrix = matriz;
 
             var r = new Rect(pos.x - tam * 0.5f, pos.y - tam * 0.5f, tam, tam);
-            GUI.color = new Color(0f, 0f, 0f, 0.55f);
-            GUI.DrawTexture(new Rect(r.x - 2f, r.y - 2f, r.width + 4f, r.height + 4f), Texture2D.whiteTexture);
-            GUI.color = color;
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = antes;
+            EstiloShow.Rectangulo(new Rect(r.x - 2f, r.y - 2f, r.width + 4f, r.height + 4f), new Color(0f, 0f, 0f, 0.55f));
+            EstiloShow.Rectangulo(r, color);
 
             estiloIndicador.normal.textColor = Color.black;
-            GUI.Label(r, etiqueta, estiloIndicador);
+            EstiloShow.Etiqueta(r, etiqueta, estiloIndicador);
         }
     }
 }

@@ -61,6 +61,8 @@ namespace BichoShow
         /// <summary>Hace sonar un efecto. "posicion" (opcional) solo sirve para el panorama izquierda/derecha.</summary>
         public static void Reproducir(Sonido sonido, Vector3? posicion = null, float volumenExtra = 1f, float tono = 1f, float variacion = 0.07f)
         {
+            // Partida online: el anfitrión se lo cuenta a los invitados, y ellos solo oyen lo que les llega.
+            if (!RedShow.SonidoLocal(sonido, posicion, volumenExtra, tono, variacion)) return;
             if (Volumen <= 0.001f || volumenExtra <= 0.001f) return;
 
             var def = Definicion(sonido);

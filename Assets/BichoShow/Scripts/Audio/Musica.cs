@@ -40,7 +40,11 @@ namespace BichoShow
             }
         }
 
-        public static void Poner(Tema tema) => Reproductor.Obtener().Cambiar(tema);
+        public static void Poner(Tema tema)
+        {
+            RedShow.AnotarMusica(tema); // partida online: los invitados oyen la misma
+            Reproductor.Obtener().Cambiar(tema);
+        }
 
         static AudioClip ClipDe(Tema tema)
         {

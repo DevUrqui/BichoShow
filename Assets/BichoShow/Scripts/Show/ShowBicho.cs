@@ -120,7 +120,7 @@ namespace BichoShow
                 Debug.LogError("Bicho Show: no hay ninguna prueba en la lista del build. Crea las escenas desde el menú BichoShow.");
                 return;
             }
-            Estadisticas.Texto($"EMPIEZA EL SHOW · bots: {(bots ? "sí" : "no")} · habilidad de los bots: {habilidadBots:0.00} · rondas de {duracionRondas:0} s · humanos: {PlayerInput.all.Count} · " +
+            Estadisticas.Texto($"EMPIEZA EL SHOW · bots: {(bots ? "sí" : "no")} · habilidad de los bots: {habilidadBots:0.00} · rondas de {duracionRondas:0} s · humanos: {(GestorJugadores.Instancia != null ? GestorJugadores.Instancia.NumeroHumanos : PlayerInput.all.Count)}{(RedShow.EnLinea ? " (online)" : "")} · " +
                                $"pruebas: {string.Join(", ", programa.Select(p => p.nombre))}");
             saboteadorSiguiente = -1;
             RondaActual = 0;
@@ -230,6 +230,9 @@ namespace BichoShow
 
         static bool AlguienConfirma()
         {
+            // Los jugadores de una partida online también pueden darle a seguir.
+            if (EntradaRemota.AlgunoPulso(EntradaRemota.Boton.Saltar) || EntradaRemota.AlgunoPulso(EntradaRemota.Boton.Empezar))
+                return true;
             foreach (var entrada in PlayerInput.all)
             {
                 if (entrada.actions == null) continue;
@@ -319,6 +322,15 @@ namespace BichoShow
                 esHumano[i] = true;
                 participa[i] = true;
             }
+            if (GestorJugadores.Instancia != null)
+                foreach (var remoto in GestorJugadores.Instancia.Remotos)
+                {
+                    if (remoto == null) continue;
+                    int i = remoto.IndiceJugador;
+                    if (i < 0 || i >= 4) continue;
+                    esHumano[i] = true;
+                    participa[i] = true;
+                }
         }
 
         /// <summary>

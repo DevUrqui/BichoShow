@@ -354,7 +354,7 @@ namespace BichoShow
             {
                 var s = b.gameObject.AddComponent<Saboteador>();
                 s.Configurar(this, b.GetComponent<PlayerInput>(), b.ColorJugador, $"Saboteador J{b.IndiceJugador + 1}",
-                             agresividadMaquina, saboteadores.Count, b.IndiceJugador);
+                             agresividadMaquina, saboteadores.Count, b.IndiceJugador, b.GetComponent<EntradaRemota>());
                 b.Retirar(true);
                 saboteadores.Add(s);
             }

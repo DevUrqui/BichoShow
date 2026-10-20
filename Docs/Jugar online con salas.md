@@ -2,15 +2,16 @@
 
 Cada uno juega desde su casa con su mando o su teclado. Uno crea una sala y los demás entran con un código de 6 letras.
 
-## Qué funciona ya (fase 1)
+## Qué funciona ya
 
 - **Jugar online → Crear una sala**: el juego te da un código y lo copia solo al portapapeles. Pégalo en el chat de tus amigos.
 - **Jugar online → Unirse con código**: escribe el código con el teclado (también vale Ctrl+V) o con el mando, como en las recreativas: arriba y abajo cambian la letra, izquierda y derecha mueven el cursor y A entra.
 - En la sala todos corren, saltan, se agarran y se placan por el plató. Se ven los colores y la ropa de cada uno y se oyen los saltos y los golpes.
 - **START → Salir de la sala** (o **Cerrar la sala**, si eres el anfitrión). Si el anfitrión cierra, los demás vuelven al menú con un aviso.
 - Caben 4 jugadores en total. Desde un mismo ordenador pueden jugar varios, pero tienen que unirse (pulsar un botón) **antes** de crear la sala o de entrar en ella.
-
-Todavía no se puede empezar el show online: eso es la fase 2.
+- **El show entero, online**: cuando estéis todos, el anfitrión pulsa START → **¡Empezar el show!**. Se juegan las mismas pruebas que en local, con bots en los huecos, saboteadores, marcadores y la tabla de estrellas. Entre rondas, cualquiera puede darle a A para seguir.
+- Los invitados ven exactamente lo que ve el anfitrión: la misma cámara, los mismos carteles y los mismos sonidos.
+- Si alguien entra en la sala con el show ya empezado, mira hasta que se vuelve al menú y juega en el siguiente.
 
 ## Antes de la primera vez: Unity Cloud
 
@@ -32,12 +33,12 @@ También vale con dos copias del `.exe` en el mismo PC.
 
 ## Con amigos
 
-1. Compila el juego (**BichoShow → Compilar el juego**) y pásales la carpeta, igual que para Parsec.
+1. Compila el juego (**BichoShow → Compilar el juego para Windows**) y pásales la carpeta, igual que para Parsec.
 2. Tú creas la sala y les mandas el código; ellos entran con **Unirse con código**.
 
 Quien crea la sala hace de anfitrión: su ordenador mueve el juego entero. Conviene que lo cree quien tenga el mejor ordenador y la mejor conexión.
 
-## Cómo está hecho (para seguir con la fase 2)
+## Cómo está hecho
 
 - `Scripts/Red/RedShow.cs`: salas (Multiplayer Services con Relay) y mensajes de Netcode, sin NetworkObjects.
   - El invitado manda `BS.Mando` (stick ya girado con su cámara, botones como contadores y ropa).
@@ -45,12 +46,15 @@ Quien crea la sala hace de anfitrión: su ordenador mueve el juego entero. Convi
 - `EntradaRemota`: en el anfitrión, el mando de un jugador de fuera, como si fuera un bot.
 - `MandoRemoto`: en el invitado, esconde su bicho y solo lee el mando.
 - `MarionetaBicho`: en el invitado, la copia de cada bicho. Se dibuja 0,1 s en el pasado, interpolando entre dos fotos.
+- `EspejoEscena`: el show. El anfitrión manda `BS.Escena` y los invitados cargan la misma prueba, pero sin su lógica (se apagan los scripts del juego y los cuerpos físicos quedan quietos). Luego el anfitrión manda:
+  - `BS.Mov`: lo que se mueve (vigila `transform.hasChanged`).
+  - `BS.Cambios`: objetos que aparecen, con su malla y sus materiales, o que desaparecen, y colores que cambian.
+  - Cada objeto de la escena se reconoce por su ruta en la jerarquía.
+- `GrabadorPantalla`: todo lo que dibuja `EstiloShow` en el anfitrión se graba como órdenes de dibujo (`BS.Pantalla`, 12 por segundo) y los invitados lo reproducen escalado a su pantalla.
+- Sonidos, partículas, cámara lenta y música van en `BS.Avisos`. En un invitado solo suena lo que llega del anfitrión, más los ruiditos de su propio menú.
+- Para que algo nuevo se vea online no hay que hacer nada especial. La única condición es dibujar la interfaz con `EstiloShow` (`Texto`, `Panel`, `Rectangulo`, `Etiqueta`…) y no con `GUI.Label` ni `GUI.DrawTexture` directamente.
 
 Lo que falta:
 
-- **Fase 2: el show online.**
-  - Que el anfitrión ordene cargar cada escena.
-  - Que en los invitados no corra la lógica de las pruebas.
-  - Pasar a los invitados los marcadores, el reloj y los mensajes.
-- **Fase 3: los objetos de cada prueba.** Muebles, pelota, bomba, corona y pintura, con el mismo sistema de fotos.
-- **Fase 4: desconexiones a mitad del show.**
+- Que los invitados vean las partículas que lanzan las propias pruebas, si alguna no pasa por `Efectos`.
+- Desconexiones a mitad del show. Si se va un invitado, su bicho desaparece. Si se va el anfitrión, los demás vuelven al menú.

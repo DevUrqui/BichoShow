@@ -75,7 +75,8 @@ namespace BichoShow
             foreach (var b in ControladorBicho.Todos)
                 if (!b.EsBot) humanos.Add(b);
 
-            if (humanos.Count < 2)
+            // Online cada uno juega en su pantalla: no tiene sentido partirla.
+            if (humanos.Count < 2 || RedShow.EnLinea)
             {
                 dividido = false;
             }
@@ -198,10 +199,7 @@ namespace BichoShow
         {
             if (division >= 0.999f) return;
             float x = division * Screen.width;
-            var antes = GUI.color;
-            GUI.color = new Color(0.08f, 0.06f, 0.12f, 1f);
-            GUI.DrawTexture(new Rect(x - grosorLinea * 0.5f, 0f, grosorLinea, Screen.height), Texture2D.whiteTexture);
-            GUI.color = antes;
+            EstiloShow.Rectangulo(new Rect(x - grosorLinea * 0.5f, 0f, grosorLinea, Screen.height), new Color(0.08f, 0.06f, 0.12f, 1f));
         }
     }
 }

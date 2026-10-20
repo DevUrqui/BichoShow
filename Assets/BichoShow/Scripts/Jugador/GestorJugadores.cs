@@ -344,7 +344,7 @@ namespace BichoShow
 
         void OnGUI()
         {
-            if (!mostrarAyuda) return;
+            if (!mostrarAyuda || RedShow.EsInvitado) return; // el invitado ve la pantalla del anfitrión
 
             if (estiloAyuda == null)
             {
@@ -374,9 +374,9 @@ namespace BichoShow
         {
             var rect = new Rect(16f, y, 900f, 32f);
             estiloAyuda.normal.textColor = new Color(0f, 0f, 0f, 0.6f * color.a);
-            GUI.Label(new Rect(rect.x + 2f, rect.y + 2f, rect.width, rect.height), texto, estiloAyuda);
+            EstiloShow.Etiqueta(new Rect(rect.x + 2f, rect.y + 2f, rect.width, rect.height), texto, estiloAyuda);
             estiloAyuda.normal.textColor = color;
-            GUI.Label(rect, texto, estiloAyuda);
+            EstiloShow.Etiqueta(rect, texto, estiloAyuda);
             y += 30f;
         }
     }

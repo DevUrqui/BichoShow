@@ -15,13 +15,14 @@ namespace BichoShow
         public int Puntos { get; private set; }
         public string Etiqueta { get; private set; } = "Saboteador";
         public Color ColorSaboteador { get; private set; } = new Color(0.75f, 0.4f, 1f);
-        public bool EsMaquina => entrada == null;
+        public bool EsMaquina => entrada == null && remota == null;
         /// <summary>Número del jugador que sabotea (-1 si es la máquina).</summary>
         public int IndiceJugador { get; private set; } = -1;
         public TrampaSaboteable Seleccionada => seleccionada;
 
         RondaBase ronda;
         PlayerInput entrada;
+        EntradaRemota remota; // jugador de una partida online que sabotea desde su casa
         InputAction accionMover, accionSaltar, accionAgarrar;
         float agresividad = 0.5f;
         int filaHud;
@@ -45,10 +46,11 @@ namespace BichoShow
         static readonly int IdBaseColor = Shader.PropertyToID("_BaseColor");
 
         public void Configurar(RondaBase rondaActual, PlayerInput mando, Color color, string etiqueta,
-                               float agresividadMaquina, int fila, int indiceJugador)
+                               float agresividadMaquina, int fila, int indiceJugador, EntradaRemota mandoRemoto = null)
         {
             ronda = rondaActual;
             entrada = mando;
+            remota = mandoRemoto;
             IndiceJugador = indiceJugador;
             ColorSaboteador = color;
             Etiqueta = etiqueta;
@@ -111,7 +113,7 @@ namespace BichoShow
 
         void LeerMando()
         {
-            Vector2 stick = accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
+            Vector2 stick = remota != null ? remota.Mover : accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
             if (stick.magnitude < 0.3f)
             {
                 stickCentrado = true;
@@ -123,7 +125,8 @@ namespace BichoShow
             }
 
             bool activar = (accionSaltar != null && accionSaltar.WasPressedThisFrame()) ||
-                           (accionAgarrar != null && accionAgarrar.WasPressedThisFrame());
+                           (accionAgarrar != null && accionAgarrar.WasPressedThisFrame()) ||
+                           (remota != null && (remota.PulsadoEsteFrame(EntradaRemota.Boton.Saltar) || remota.PulsadoEsteFrame(EntradaRemota.Boton.Agarrar)));
             if (activar) Activar(seleccionada);
         }
 
@@ -310,13 +313,9 @@ namespace BichoShow
             if (Time.time < finMensaje) texto += $"   {mensaje}";
 
             var r = new Rect(w * 0.1f, y, w * 0.8f, alto);
-            var antes = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.45f);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = antes;
-
+            EstiloShow.Rectangulo(r, new Color(0f, 0f, 0f, 0.45f));
             estilo.normal.textColor = ColorSaboteador;
-            GUI.Label(r, texto, estilo);
+            EstiloShow.Etiqueta(r, texto, estilo);
         }
 
         static Vector3 Plano(Vector3 v) => new Vector3(v.x, 0f, v.z);
