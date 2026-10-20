@@ -100,6 +100,14 @@ namespace BichoShow
 
         /// <summary>Crea un bot en ese número de jugador (con el cerebro que toque en esta prueba).</summary>
         protected abstract void CrearBot(int indice);
+        /// <summary>Pone el cerebro de bot de esta prueba a un bicho que ya existe.</summary>
+        protected abstract IEntradaBicho PonerCerebroBot(GameObject bicho);
+
+        /// <summary>
+        /// Partida online: a un jugador de fuera se le ha cortado la conexión. Un bot de esta prueba
+        /// le lleva el bicho hasta que vuelva (sigue siendo su bicho: las estrellas son para él).
+        /// </summary>
+        public IEntradaBicho CrearSuplente(GameObject bicho) => PonerCerebroBot(bicho);
 
         /// <summary>Al pulsar START: limpiar la ronda anterior (antes de saboteadores y bots).</summary>
         protected virtual void AlPrepararRonda() { }

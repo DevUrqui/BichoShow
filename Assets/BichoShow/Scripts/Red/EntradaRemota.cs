@@ -70,10 +70,44 @@ namespace BichoShow
             ultimoMensaje = Time.unscaledTime;
         }
 
-        bool Activo => Time.unscaledTime - ultimoMensaje < tiempoSinMando;
+        /// <summary>Está llegando su mando.</summary>
+        public bool Activo => !Desconectado && Time.unscaledTime - ultimoMensaje < tiempoSinMando;
+        /// <summary>Segundos sin recibir su mando.</summary>
+        public float SinMando => Time.unscaledTime - ultimoMensaje;
+
+        // ------------------------------------------------------------------
+        // Suplente: un bot le lleva el bicho mientras no llega su mando
+        // ------------------------------------------------------------------
+
+        /// <summary>Su ordenador se ha ido de la sala (puede volver con el mismo código).</summary>
+        public bool Desconectado { get; set; }
+        /// <summary>Id del jugador en los servicios de Unity: así se le reconoce si vuelve.</summary>
+        public string Jugador { get; set; }
+        public IEntradaBicho Suplente { get; private set; }
+        int frameSuplente;
+
+        /// <summary>El bot empieza a mandar en el fotograma siguiente (antes tiene que hacer su Start).</summary>
+        bool UsarSuplente => !Activo && Suplente != null && (Suplente as Behaviour) != null && Time.frameCount > frameSuplente;
+
+        public void PonerSuplente(IEntradaBicho bot)
+        {
+            QuitarSuplente();
+            Suplente = bot;
+            frameSuplente = Time.frameCount;
+        }
+
+        /// <summary>Al cambiar de prueba el bot de la anterior ya no vale.</summary>
+        public void QuitarSuplente()
+        {
+            if (Suplente is Component c && c != null) Destroy(c);
+            Suplente = null;
+        }
 
         /// <summary>El bicho espera el stick relativo a la cámara: se deshace el giro de la cámara de aquí.</summary>
-        public Vector2 Mover
+        public Vector2 Mover => UsarSuplente ? Suplente.Mover : MoverPropio;
+
+        /// <summary>Solo su stick (sin el bot): para elegir trampas siendo saboteador.</summary>
+        public Vector2 MoverPropio
         {
             get
             {
@@ -86,10 +120,11 @@ namespace BichoShow
             }
         }
 
-        public bool Agarrar => Activo && agarrar;
+        public bool Agarrar => UsarSuplente ? Suplente.Agarrar : Activo && agarrar;
 
         public bool ConsumirSaltar()
         {
+            if (UsarSuplente) return Suplente.ConsumirSaltar();
             if (saltos == saltosVistos) return false;
             saltosVistos = saltos;
             return true;
@@ -97,6 +132,7 @@ namespace BichoShow
 
         public bool ConsumirLanzarse()
         {
+            if (UsarSuplente) return Suplente.ConsumirLanzarse();
             if (lanzamientos == lanzamientosVistos) return false;
             lanzamientosVistos = lanzamientos;
             return true;

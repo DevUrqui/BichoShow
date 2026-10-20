@@ -12,6 +12,10 @@ Cada uno juega desde su casa con su mando o su teclado. Uno crea una sala y los 
 - **El show entero, online**: cuando estéis todos, el anfitrión pulsa START → **¡Empezar el show!**. Se juegan las mismas pruebas que en local, con bots en los huecos, saboteadores, marcadores y la tabla de estrellas. Entre rondas, cualquiera puede darle a A para seguir.
 - Los invitados ven exactamente lo que ve el anfitrión: la misma cámara, los mismos carteles y los mismos sonidos.
 - Si alguien entra en la sala con el show ya empezado, mira hasta que se vuelve al menú y juega en el siguiente.
+- **Si a alguien se le corta internet**:
+  - Si su mando deja de llegar más de 1,5 s, un bot de la prueba le lleva el bicho y sale un cartel. En cuanto vuelve la conexión, vuelve a mandar él.
+  - Si se cae del todo, su bicho sigue en el show con el bot y sus estrellas se guardan. Al volver al menú tendrá el código ya escrito: **Unirse con código → A** y recupera su bicho donde esté. Tiene que ser con la misma copia del juego abierta; si la cierra, entra como nuevo y mira hasta el menú.
+  - Si se cae el anfitrión, los demás vuelven al menú con un aviso.
 
 ## Antes de la primera vez: Unity Cloud
 
@@ -54,7 +58,11 @@ Quien crea la sala hace de anfitrión: su ordenador mueve el juego entero. Convi
 - Sonidos, partículas, cámara lenta y música van en `BS.Avisos`. En un invitado solo suena lo que llega del anfitrión, más los ruiditos de su propio menú.
 - Para que algo nuevo se vea online no hay que hacer nada especial. La única condición es dibujar la interfaz con `EstiloShow` (`Texto`, `Panel`, `Rectangulo`, `Etiqueta`…) y no con `GUI.Label` ni `GUI.DrawTexture` directamente.
 
+- Conexiones que se cortan:
+  - `EntradaRemota` tiene un **suplente**: el cerebro de bot de la prueba (`RondaBase.CrearSuplente`), puesto en el mismo bicho. Se usa mientras no llega el mando.
+  - Al volver, el invitado manda `BS.Hola` con su id de jugador de Unity, y así recupera su bicho.
+
 Lo que falta:
 
 - Que los invitados vean las partículas que lanzan las propias pruebas, si alguna no pasa por `Efectos`.
-- Desconexiones a mitad del show. Si se va un invitado, su bicho desaparece. Si se va el anfitrión, los demás vuelven al menú.
+- Si se cae el anfitrión, el show se acaba para todos (no hay cambio de anfitrión).

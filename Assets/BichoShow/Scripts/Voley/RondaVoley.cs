@@ -143,6 +143,13 @@ namespace BichoShow
             if (bot != null) bot.Configurar(this, habilidadBots);
         }
 
+        protected override IEntradaBicho PonerCerebroBot(GameObject bicho)
+        {
+            var bot = bicho.AddComponent<BotVoley>();
+            bot.Configurar(this, habilidadBots);
+            return bot;
+        }
+
         protected override void AlEmpezarRonda()
         {
             ultimoAvisoGolpe = Time.time; // el primer aviso, a los 30 s si nadie golpea

@@ -37,7 +37,8 @@ namespace BichoShow
 
         const string MensajeMando = "BS.Mando", MensajeEstado = "BS.Estado", MensajeEvento = "BS.Evento";
         const string MensajeEscena = "BS.Escena", MensajeListo = "BS.Listo", MensajeCambios = "BS.Cambios",
-                     MensajeMovimientos = "BS.Mov", MensajePantalla = "BS.Pantalla", MensajeAvisos = "BS.Avisos";
+                     MensajeMovimientos = "BS.Mov", MensajePantalla = "BS.Pantalla", MensajeAvisos = "BS.Avisos",
+                     MensajeHola = "BS.Hola";
         const byte EventoAccion = 0, EventoGolpe = 1, EventoReaparecer = 2;
 
         public static Modo ModoActual { get; private set; }
@@ -193,6 +194,7 @@ namespace BichoShow
                 ConnectionApproval = false,
                 TickRate = 30,
             };
+            transporte.DisconnectTimeoutMS = 10000; // darse cuenta antes de que alguien se ha ido (por defecto, 30 s)
             nm.RunInBackground = true; // con dos ventanas en el mismo PC, la de atrás sigue jugando
             instancia = go.AddComponent<RedShow>();
             instancia.red = nm;
@@ -259,9 +261,11 @@ namespace BichoShow
                 if (gestor != null) gestor.PermitirUnirse(false);
                 try { GUIUtility.systemCopyBuffer = Codigo; } catch { /* sin portapapeles */ }
             }
-            else if (gestor != null)
+            else
             {
-                gestor.ConvertirEnMandos();
+                if (gestor != null) gestor.ConvertirEnMandos();
+                UltimoCodigo = Codigo;
+                EnviarHola();
             }
             Debug.Log($"Bicho Show: sala {Codigo} ({(modo == Modo.Anfitrion ? "anfitrión" : "invitado")}).");
         }
@@ -281,7 +285,7 @@ namespace BichoShow
             var s = sesion;
             sesion = null;
             if (s != null) _ = s.LeaveAsync();
-            Limpiar(EsInvitado ? "Se ha perdido la conexión con el anfitrión." : "Se ha cerrado la sala.");
+            Limpiar(EsInvitado ? "Se ha perdido la conexión. Si la sala sigue abierta, vuelve a entrar con el mismo código." : "Se ha cerrado la sala.");
         }
 
         /// <summary>Vuelve a la partida local: fuera marionetas y jugadores de fuera; vuelven los bichos de aquí.</summary>
@@ -292,6 +296,10 @@ namespace BichoShow
             espejo.PararInvitado();
             conEscena.Clear();
             pantallas.Clear();
+            huerfanos.Clear();
+            conRetraso.Clear();
+            jugadorDe.Clear();
+            carteles.Clear();
             memAvisos.SetLength(0);
             GrabadorPantalla.Grabando = false;
             MandoRemoto.Pausado = false;
@@ -335,24 +343,8 @@ namespace BichoShow
             mensajes.RegisterNamedMessageHandler(MensajeMovimientos, RecibirMovimientos);
             mensajes.RegisterNamedMessageHandler(MensajePantalla, RecibirPantalla);
             mensajes.RegisterNamedMessageHandler(MensajeAvisos, RecibirAvisos);
+            mensajes.RegisterNamedMessageHandler(MensajeHola, RecibirHola);
             manejadores = true;
-        }
-
-        void AlIrseCliente(ulong cliente)
-        {
-            if (!EsAnfitrion || red == null || !red.IsServer) return;
-            espejo.Quitar(cliente);
-            conEscena.Remove(cliente);
-            // Se van sus bichos.
-            var gestor = GestorJugadores.Instancia;
-            var claves = new List<(ulong, byte)>(entradas.Keys);
-            foreach (var clave in claves)
-            {
-                if (clave.Item1 != cliente) continue;
-                var e = entradas[clave];
-                entradas.Remove(clave);
-                if (e != null && gestor != null) gestor.QuitarRemoto(e.GetComponent<ControladorBicho>());
-            }
         }
 
         void Update()
@@ -371,6 +363,7 @@ namespace BichoShow
 
             if (EsAnfitrion)
             {
+                VigilarConexiones();
                 EnviarEstado();
                 VigilarEscena();
                 EnviarAvisos();
@@ -671,8 +664,13 @@ namespace BichoShow
                 // Una prueba del show: los invitados la cargan y la copian. El menú: cada uno el suyo.
                 bool show = ShowBicho.Instancia != null && ShowBicho.Instancia.Estado != ShowBicho.EstadoShow.Inactivo &&
                             escena.name != EscenaMenu;
+                rondaActual = null;
                 if (show) espejo.EmpezarAnfitrion(escena);
-                else espejo.Parar();
+                else
+                {
+                    espejo.Parar();
+                    SoltarHuerfanos();
+                }
                 pantallas.Clear();
                 if (red != null && red.IsListening && PrepararDestinos())
                 {
@@ -818,6 +816,7 @@ namespace BichoShow
 
         void OnGUI()
         {
+            if (EsAnfitrion) DibujarCarteles();
             if (!EsInvitado || !espejo.Activo || pantallas.Count == 0) return;
             // El fotograma que toca: el último que no se adelante a lo que se ve (los bichos van 0,1 s en el pasado).
             float t = (float)TiempoDibujo;
@@ -947,6 +946,157 @@ namespace BichoShow
             finally
             {
                 reproduciendoRed = false;
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Conexiones que se cortan
+        // ---------------------------------------------------------------------
+
+        /// <summary>Si a un jugador de fuera no le llega el mando este rato, un bot le lleva el bicho.</summary>
+        const float SinMandoParaSuplente = 1.5f;
+
+        readonly Dictionary<ulong, string> jugadorDe = new Dictionary<ulong, string>();
+        readonly List<EntradaRemota> huerfanos = new List<EntradaRemota>();
+        readonly HashSet<EntradaRemota> conRetraso = new HashSet<EntradaRemota>();
+        readonly List<(string texto, Color color, float hasta)> carteles = new List<(string, Color, float)>();
+        RondaBase rondaActual;
+
+        /// <summary>Código de la última sala (para volver a entrar si se corta).</summary>
+        public static string UltimoCodigo { get; private set; }
+
+        static bool ShowEnMarcha => ShowBicho.Instancia != null && ShowBicho.Instancia.Estado != ShowBicho.EstadoShow.Inactivo;
+
+        static string NombreDe(EntradaRemota e) =>
+            e != null && e.TryGetComponent(out ControladorBicho b) ? $"J{b.IndiceJugador + 1}" : "Un jugador";
+
+        /// <summary>Un cartel arriba, en la pantalla del anfitrión (y, en el show, en la de todos).</summary>
+        void Cartel(string texto, Color color) => carteles.Add((texto, color, Time.unscaledTime + 4f));
+
+        /// <summary>El invitado se presenta con su id de jugador: si ya estuvo en este show, recupera su bicho.</summary>
+        void EnviarHola()
+        {
+            string id;
+            try { id = AuthenticationService.Instance.PlayerId ?? ""; } catch { id = ""; }
+            using var w = new FastBufferWriter(256, Allocator.Temp);
+            w.WriteValueSafe(id);
+            red.CustomMessagingManager.SendNamedMessage(MensajeHola, NetworkManager.ServerClientId, w, NetworkDelivery.ReliableSequenced);
+        }
+
+        void RecibirHola(ulong cliente, FastBufferReader r)
+        {
+            if (!EsAnfitrion) return;
+            r.ReadValueSafe(out string id);
+            if (string.IsNullOrEmpty(id)) return;
+            jugadorDe[cliente] = id;
+            foreach (var par in entradas) if (par.Key.Item1 == cliente && par.Value != null) par.Value.Jugador = id;
+
+            // ¿Vuelve alguien que se fue a mitad del show?
+            for (int i = huerfanos.Count - 1; i >= 0; i--)
+            {
+                var e = huerfanos[i];
+                if (e == null) { huerfanos.RemoveAt(i); continue; }
+                if (e.Jugador != id) continue;
+                huerfanos.RemoveAt(i);
+                e.Cliente = cliente;
+                e.Desconectado = false;
+                entradas[(cliente, e.Local)] = e;
+                Cartel($"¡{NombreDe(e)} ha vuelto!", EstiloShow.Verde);
+                Sonidos.Reproducir(Sonido.Aparecer);
+            }
+        }
+
+        /// <summary>
+        /// Un invitado se ha ido de la sala. En el menú, sus bichos se van con él; con el show en
+        /// marcha se quedan, llevados por un bot, por si vuelve con el mismo código.
+        /// </summary>
+        void AlIrseCliente(ulong cliente)
+        {
+            if (!EsAnfitrion || red == null || !red.IsServer) return;
+            espejo.Quitar(cliente);
+            conEscena.Remove(cliente);
+            jugadorDe.TryGetValue(cliente, out string id);
+            jugadorDe.Remove(cliente);
+
+            var gestor = GestorJugadores.Instancia;
+            var claves = new List<(ulong, byte)>(entradas.Keys);
+            foreach (var clave in claves)
+            {
+                if (clave.Item1 != cliente) continue;
+                var e = entradas[clave];
+                entradas.Remove(clave);
+                if (e == null) continue;
+                if (ShowEnMarcha && !string.IsNullOrEmpty(e.Jugador))
+                {
+                    e.Desconectado = true;
+                    conRetraso.Remove(e);
+                    huerfanos.Add(e);
+                    Cartel($"{NombreDe(e)} se ha desconectado: juega un bot por él hasta que vuelva", EstiloShow.Rosa);
+                }
+                else
+                {
+                    if (ShowEnMarcha) Cartel($"{NombreDe(e)} se ha ido del show", EstiloShow.Rosa);
+                    if (gestor != null) gestor.QuitarRemoto(e.GetComponent<ControladorBicho>());
+                }
+            }
+
+            // Que deje su sitio libre en la sala (si no, al volver podría estar "llena").
+            if (!string.IsNullOrEmpty(id) && sesion != null && sesion.IsHost) _ = QuitarDeLaSala(id);
+        }
+
+        async Task QuitarDeLaSala(string id)
+        {
+            try { await sesion.AsHost().RemovePlayerAsync(id); }
+            catch (Exception e) { Debug.Log($"Bicho Show: no se ha podido sacar de la sala a {id} ({e.Message})."); }
+        }
+
+        /// <summary>
+        /// En el anfitrión, cada vuelta: a quien no le llega el mando (red lenta o cortada) le
+        /// lleva el bicho un bot de la prueba hasta que vuelva.
+        /// </summary>
+        void VigilarConexiones()
+        {
+            if (!ShowEnMarcha) return;
+            if (rondaActual == null) rondaActual = FindAnyObjectByType<RondaBase>();
+            bool jugando = rondaActual != null && (rondaActual.EstadoActual == RondaBase.Estado.Jugando ||
+                                                   rondaActual.EstadoActual == RondaBase.Estado.CuentaAtras);
+            foreach (var e in EntradaRemota.Todas)
+            {
+                if (e == null) continue;
+                if (e.Activo)
+                {
+                    if (conRetraso.Remove(e)) Cartel($"{NombreDe(e)} vuelve a tener conexión", EstiloShow.Verde);
+                    continue;
+                }
+                if (e.SinMando < SinMandoParaSuplente || !jugando) continue;
+                if (e.Suplente == null || (e.Suplente as Behaviour) == null)
+                    e.PonerSuplente(rondaActual.CrearSuplente(e.gameObject));
+                if (!e.Desconectado && conRetraso.Add(e))
+                    Cartel($"A {NombreDe(e)} no le llega la conexión: le echa una mano un bot", EstiloShow.Oro);
+            }
+        }
+
+        /// <summary>De vuelta al menú: los que se fueron y no han vuelto ya no tienen bicho.</summary>
+        void SoltarHuerfanos()
+        {
+            var gestor = GestorJugadores.Instancia;
+            foreach (var e in huerfanos)
+                if (e != null && gestor != null) gestor.QuitarRemoto(e.GetComponent<ControladorBicho>());
+            huerfanos.Clear();
+            conRetraso.Clear();
+        }
+
+        void DibujarCarteles()
+        {
+            carteles.RemoveAll(c => Time.unscaledTime > c.hasta);
+            float y = EstiloShow.Px(150f);
+            foreach (var c in carteles)
+            {
+                float queda = c.hasta - Time.unscaledTime;
+                var color = c.color.WithAlpha(Mathf.Clamp01(queda * 2f));
+                EstiloShow.TextoEnPastilla(new Vector2(Screen.width * 0.5f, y), c.texto, Mathf.RoundToInt(EstiloShow.Px(30f)), Color.white.WithAlpha(color.a),
+                                           Color.Lerp(color, EstiloShow.MoradoOscuro, 0.35f).WithAlpha(0.92f * color.a));
+                y += EstiloShow.Px(64f);
             }
         }
 

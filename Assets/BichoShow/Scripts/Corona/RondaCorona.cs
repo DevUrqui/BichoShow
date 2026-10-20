@@ -81,6 +81,13 @@ namespace BichoShow
             if (bot != null) bot.Configurar(this, habilidadBots);
         }
 
+        protected override IEntradaBicho PonerCerebroBot(GameObject bicho)
+        {
+            var bot = bicho.AddComponent<BotCorona>();
+            bot.Configurar(this, habilidadBots);
+            return bot;
+        }
+
         protected override void AlPrepararRonda()
         {
             for (int i = 0; i < puntos.Length; i++) puntos[i] = 0f;

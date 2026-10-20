@@ -103,6 +103,8 @@ namespace BichoShow
             foreach (var j in jugadores)
             {
                 foreach (var s in j.GetComponents<Saboteador>()) Destroy(s);
+                // El bot que suplía a un jugador de fuera era de la prueba que se acaba.
+                if (j.TryGetComponent(out EntradaRemota remota)) remota.QuitarSuplente();
                 j.Retirar(false);
             }
         }

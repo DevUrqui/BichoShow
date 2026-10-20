@@ -322,7 +322,14 @@ namespace BichoShow
             pantalla = Pantalla.Codigo;
             System.Array.Clear(codigo, 0, codigo.Length);
             cursor = 0;
-            RedShow.LimpiarAviso();
+            // Si se cortó la conexión, el código de la última sala ya está puesto: A y dentro.
+            string ultimo = RedShow.UltimoCodigo;
+            if (!string.IsNullOrEmpty(ultimo) && ultimo.Length == codigo.Length)
+            {
+                for (int i = 0; i < codigo.Length; i++) codigo[i] = char.ToUpperInvariant(ultimo[i]);
+                cursor = codigo.Length - 1;
+            }
+            else RedShow.LimpiarAviso();
             // Mientras se escribe, una tecla no debe unir a un jugador nuevo.
             if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(false);
         }

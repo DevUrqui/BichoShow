@@ -15,7 +15,8 @@ namespace BichoShow
         public int Puntos { get; private set; }
         public string Etiqueta { get; private set; } = "Saboteador";
         public Color ColorSaboteador { get; private set; } = new Color(0.75f, 0.4f, 1f);
-        public bool EsMaquina => entrada == null && remota == null;
+        /// <summary>La máquina elige (también si es un jugador de fuera al que no le llega la conexión).</summary>
+        public bool EsMaquina => entrada == null && (remota == null || !remota.Activo);
         /// <summary>Número del jugador que sabotea (-1 si es la máquina).</summary>
         public int IndiceJugador { get; private set; } = -1;
         public TrampaSaboteable Seleccionada => seleccionada;
@@ -113,7 +114,7 @@ namespace BichoShow
 
         void LeerMando()
         {
-            Vector2 stick = remota != null ? remota.Mover : accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
+            Vector2 stick = remota != null ? remota.MoverPropio : accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
             if (stick.magnitude < 0.3f)
             {
                 stickCentrado = true;

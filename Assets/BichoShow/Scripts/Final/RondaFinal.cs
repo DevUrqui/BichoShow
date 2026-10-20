@@ -129,6 +129,13 @@ namespace BichoShow
             if (bot != null) bot.Configurar(this, habilidadBots);
         }
 
+        protected override IEntradaBicho PonerCerebroBot(GameObject bicho)
+        {
+            var bot = bicho.AddComponent<BotFinal>();
+            bot.Configurar(this, habilidadBots);
+            return bot;
+        }
+
         protected override void AlEmpezarRonda()
         {
             TiempoRestante = Mathf.Max(TiempoRestante, duracionMinima);
