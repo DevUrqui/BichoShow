@@ -21,6 +21,19 @@ namespace BichoShow
         public Animator animador;
         public Transform ojoIzq, ojoDer;
         public Transform brazoIzq, brazoDer, antebrazoIzq, antebrazoDer, manoIzq, manoDer;
+        [Tooltip("Antenas (opcional): se bambolean como un muelle con los acelerones, frenazos y botes.")]
+        public Transform antenaIzq, antenaDer, puntaAntenaIzq, puntaAntenaDer;
+
+        [Header("Antenas")]
+        public float rigidezAntenas = 110f;
+        public float amortiguacionAntenas = 6f;
+        [Tooltip("Grados que se doblan por cada m/s² de acelerón.")]
+        public float fuerzaAntenas = 1.4f;
+
+        [Header("Giro")]
+        [Tooltip("Inclinación hacia dentro de la curva al girar corriendo (grados por cada grado/segundo de giro).")]
+        public float inclinacionEnCurva = 0.035f;
+        public float inclinacionEnCurvaMaxima = 16f;
 
         [Header("Orientación del dibujo")]
         [Range(0f, 1f)] public float inclinacionFisica = 0.3f;
@@ -56,6 +69,12 @@ namespace BichoShow
         Vector3 brazoAManoIzq, brazoAManoDer;
         Quaternion antebrazoReposoIzq, antebrazoReposoDer;
         float pesoAgarre;
+
+        // Antenas (muelle) y giro
+        Vector2 desvioAntenas, velocidadDesvio;
+        Vector3 posicionAnterior, velocidadAnterior;
+        bool hayPosicionAnterior;
+        float inclinacionCurva;
 
         void Awake()
         {
@@ -130,7 +149,51 @@ namespace BichoShow
             float dt = Time.deltaTime;
             Orientar(dt);
             BrazosAlAgarrar(dt);
+            Antenas(dt);
             Ojos();
+        }
+
+        /// <summary>
+        /// Las antenas se comportan como un muelle: se quedan atrás al arrancar, se van hacia
+        /// delante al frenar, se doblan al aterrizar y se balancean solas un poco.
+        /// </summary>
+        void Antenas(float dt)
+        {
+            if (antenaIzq == null && antenaDer == null) return;
+            if (dt <= 0f || raizVisual == null) return;
+
+            Vector3 posicion = raizVisual.position;
+            if (!hayPosicionAnterior) { posicionAnterior = posicion; hayPosicionAnterior = true; }
+            Vector3 velocidad = (posicion - posicionAnterior) / dt;
+            Vector3 acelera = Vector3.ClampMagnitude((velocidad - velocidadAnterior) / dt, 60f);
+            posicionAnterior = posicion;
+            velocidadAnterior = velocidad;
+            Vector3 local = raizVisual.InverseTransformDirection(acelera);
+
+            // x: hacia los lados; y: adelante/atrás. La aceleración las empuja al revés (inercia).
+            Vector2 empuje = new Vector2(local.x, -local.z + local.y * 0.35f) * fuerzaAntenas;
+            float pasos = Mathf.Ceil(dt / 0.01f); // integrar en pasos pequeños: estable aunque baje el FPS
+            float h = dt / pasos;
+            for (int i = 0; i < pasos; i++)
+            {
+                velocidadDesvio += (-rigidezAntenas * desvioAntenas - amortiguacionAntenas * velocidadDesvio + empuje) * h;
+                desvioAntenas += velocidadDesvio * h;
+            }
+            desvioAntenas = Vector2.ClampMagnitude(desvioAntenas, 50f);
+
+            float vaiven = Mathf.Sin(Time.time * 2.3f) * 3f;
+            Torcer(antenaIzq, desvioAntenas + new Vector2(vaiven, 0f), 1f);
+            Torcer(antenaDer, desvioAntenas + new Vector2(-vaiven, 0f), 1f);
+            Torcer(puntaAntenaIzq, desvioAntenas, 0.8f);
+            Torcer(puntaAntenaDer, desvioAntenas, 0.8f);
+        }
+
+        void Torcer(Transform hueso, Vector2 desvio, float factor)
+        {
+            if (hueso == null) return;
+            hueso.rotation = Quaternion.AngleAxis(desvio.y * factor, raizVisual.right)
+                           * Quaternion.AngleAxis(-desvio.x * factor, raizVisual.forward)
+                           * hueso.rotation;
         }
 
         /// <summary>
@@ -150,6 +213,7 @@ namespace BichoShow
             else
             {
                 Vector3 adelante = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+                Vector3 adelanteAntes = ultimoAdelante;
                 if (adelante.sqrMagnitude > 0.01f) ultimoAdelante = adelante.normalized;
                 Quaternion rumbo = Quaternion.LookRotation(ultimoAdelante, Vector3.up);
 
@@ -157,7 +221,15 @@ namespace BichoShow
                 inclinacion.ToAngleAxis(out float angulo, out Vector3 eje);
                 if (angulo > 180f) angulo -= 360f;
                 float anguloVisual = Mathf.Clamp(angulo * inclinacionFisica, -inclinacionMaxima, inclinacionMaxima);
-                objetivo = Quaternion.AngleAxis(anguloVisual, eje) * rumbo;
+
+                // Al girar corriendo se inclina hacia dentro de la curva, como una moto.
+                float giroPorSegundo = dt > 0f ? Vector3.SignedAngle(adelanteAntes, ultimoAdelante, Vector3.up) / dt : 0f;
+                Vector3 v = rb != null ? rb.linearVelocity : Vector3.zero;
+                float rapidez = Mathf.Clamp01(new Vector2(v.x, v.z).magnitude / 4f);
+                float objetivoCurva = Mathf.Clamp(-giroPorSegundo * inclinacionEnCurva * rapidez, -inclinacionEnCurvaMaxima, inclinacionEnCurvaMaxima);
+                inclinacionCurva = Mathf.Lerp(inclinacionCurva, objetivoCurva, 1f - Mathf.Exp(-8f * dt));
+
+                objetivo = Quaternion.AngleAxis(anguloVisual, eje) * rumbo * Quaternion.AngleAxis(inclinacionCurva, Vector3.forward);
             }
 
             rotacionVisual = Quaternion.Slerp(rotacionVisual, objetivo, 1f - Mathf.Exp(-suavizadoGiro * dt));

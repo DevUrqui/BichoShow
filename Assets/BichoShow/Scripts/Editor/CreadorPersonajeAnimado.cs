@@ -7,11 +7,12 @@ using E = BichoShow.Herramientas.CreadorEscenaPrueba;
 namespace BichoShow.Herramientas
 {
     /// <summary>
-    /// Menú "BichoShow > Personaje: aplicar Triangulín animado (con esqueleto)".
-    /// Pone en el prefab del bicho el modelo con esqueleto y animaciones hecho en Blender
-    /// (Arte/Blender/crear_triangulin_animado.py → Modelos/TriangulinAnimado.fbx):
+    /// Menús "BichoShow > Personaje: aplicar Bichete" (el concursante de ahora) y
+    /// "… Triangulín animado". Ponen en el prefab del bicho un modelo con esqueleto y
+    /// animaciones hecho en Blender (Arte/Blender/crear_bichete.py → Modelos/Bichete.fbx, o
+    /// crear_triangulin_animado.py → Modelos/TriangulinAnimado.fbx):
     ///  1. Ajusta la importación: rig genérico, animaciones en bucle con nombres limpios.
-    ///  2. Crea el Animator Controller (Animaciones/Triangulin.controller):
+    ///  2. Crea el Animator Controller (Animaciones/&lt;Personaje&gt;.controller):
     ///     Locomoción (Quieto → Andar → Correr según la velocidad), Aire (Saltar → Caer según
     ///     la velocidad vertical), Tumbado y Celebrar.
     ///  3. Cambia el aspecto del prefab, pone materiales de URP (la Piel primero: se tiñe con el
@@ -19,13 +20,57 @@ namespace BichoShow.Herramientas
     /// </summary>
     public static class CreadorPersonajeAnimado
     {
-        const string RutaModelo = E.Raiz + "/Modelos/TriangulinAnimado.fbx";
         const string CarpetaAnimaciones = E.Raiz + "/Animaciones";
-        const string RutaControlador = CarpetaAnimaciones + "/Triangulin.controller";
         static readonly string[] Animaciones = { "Quieto", "Andar", "Correr", "Saltar", "Caer", "Tumbado", "Celebrar" };
 
+        // El personaje que se está aplicando (los pone cada menú)
+        static string RutaModelo, RutaControlador, ScriptBlender;
+
+        [MenuItem("BichoShow/Personaje: aplicar Bichete (el concursante)")]
+        public static void AplicarBichete()
+        {
+            RutaModelo = E.Raiz + "/Modelos/Bichete.fbx";
+            RutaControlador = CarpetaAnimaciones + "/Bichete.controller";
+            ScriptBlender = "Arte/Blender/crear_bichete.py";
+            E.CrearCarpeta(E.Raiz, "Materiales");
+            // Los que empiezan por "Piel" y "Caparazon" se tiñen con el color del jugador (ControladorBicho).
+            Aplicar(new Dictionary<string, Material>
+            {
+                { "Piel", E.CrearMaterial("PielBichete", new Color(1f, 0.42f, 0.36f), 0.35f) },
+                { "Caparazon", E.CrearMaterial("CaparazonBichete", new Color(0.82f, 0.18f, 0.2f), 0.8f) },
+                { "Barriga", E.CrearMaterial("BarrigaBichete", new Color(1f, 0.93f, 0.78f), 0.3f) },
+                { "Mancha", E.CrearMaterial("ManchaBichete", new Color(0.16f, 0.08f, 0.14f), 0.7f) },
+                { "Ojo", E.CrearMaterial("OjoBichete", new Color(0.98f, 0.97f, 0.95f), 0.7f) },
+                { "Pupila", E.CrearMaterial("PupilaBichete", new Color(0.06f, 0.04f, 0.06f), 0.85f) },
+                { "Brillo", E.CrearMaterial("Brillo", Color.white, 0.9f) },
+                { "Boca", E.CrearMaterial("BocaBichete", new Color(0.28f, 0.06f, 0.1f), 0.4f) },
+                { "Lengua", E.CrearMaterial("LenguaBichete", new Color(1f, 0.45f, 0.55f), 0.5f) },
+                { "Rubor", E.CrearMaterial("RuborBichete", new Color(1f, 0.55f, 0.6f), 0.2f) },
+                { "Bota", E.CrearMaterial("ZapatillaBichete", new Color(0.2f, 0.75f, 0.75f), 0.45f) },
+                { "Suela", E.CrearMaterial("SuelaBichete", new Color(0.95f, 0.95f, 0.92f), 0.3f) },
+            });
+        }
+
         [MenuItem("BichoShow/Personaje: aplicar Triangulín animado (con esqueleto)")]
-        public static void Aplicar()
+        public static void AplicarTriangulin()
+        {
+            RutaModelo = E.Raiz + "/Modelos/TriangulinAnimado.fbx";
+            RutaControlador = CarpetaAnimaciones + "/Triangulin.controller";
+            ScriptBlender = "Arte/Blender/crear_triangulin_animado.py";
+            E.CrearCarpeta(E.Raiz, "Materiales");
+            Aplicar(new Dictionary<string, Material>
+            {
+                { "Piel", E.CrearMaterial("Piel", new Color(0.88f, 0.30f, 0.24f), 0.25f) },
+                { "Ojo", E.CrearMaterial("OjoTriangulin", new Color(0.97f, 0.94f, 0.88f), 0.65f) },
+                { "Pupila", E.CrearMaterial("PupilaTriangulin", new Color(0.06f, 0.04f, 0.04f), 0.85f) },
+                { "Brillo", E.CrearMaterial("Brillo", Color.white, 0.9f) },
+                { "Boca", E.CrearMaterial("BocaTriangulin", new Color(0.32f, 0.08f, 0.06f), 0.4f) },
+                { "Bota", E.CrearMaterial("Bota", new Color(0.06f, 0.42f, 0.42f), 0.4f) },
+                { "Suela", E.CrearMaterial("Suela", new Color(0.04f, 0.28f, 0.28f), 0.2f) },
+            });
+        }
+
+        static void Aplicar(Dictionary<string, Material> materiales)
         {
             if (!PrepararImportacion()) return;
             var modeloAsset = AssetDatabase.LoadAssetAtPath<GameObject>(RutaModelo);
@@ -43,18 +88,6 @@ namespace BichoShow.Herramientas
                     return;
                 }
             var controlador = CrearControlador(clips);
-
-            E.CrearCarpeta(E.Raiz, "Materiales");
-            var materiales = new Dictionary<string, Material>
-            {
-                { "Piel", E.CrearMaterial("Piel", new Color(0.88f, 0.30f, 0.24f), 0.25f) },
-                { "Ojo", E.CrearMaterial("OjoTriangulin", new Color(0.97f, 0.94f, 0.88f), 0.65f) },
-                { "Pupila", E.CrearMaterial("PupilaTriangulin", new Color(0.06f, 0.04f, 0.04f), 0.85f) },
-                { "Brillo", E.CrearMaterial("Brillo", Color.white, 0.9f) },
-                { "Boca", E.CrearMaterial("BocaTriangulin", new Color(0.32f, 0.08f, 0.06f), 0.4f) },
-                { "Bota", E.CrearMaterial("Bota", new Color(0.06f, 0.42f, 0.42f), 0.4f) },
-                { "Suela", E.CrearMaterial("Suela", new Color(0.04f, 0.28f, 0.28f), 0.2f) },
-            };
 
             var raiz = PrefabUtility.LoadPrefabContents(E.RutaPrefabBicho);
             try
@@ -120,6 +153,10 @@ namespace BichoShow.Herramientas
                 anim.antebrazoDer = B("AntebrazoDer");
                 anim.manoIzq = B("ManoIzq");
                 anim.manoDer = B("ManoDer");
+                anim.antenaIzq = B("AntenaIzq1");
+                anim.antenaDer = B("AntenaDer1");
+                anim.puntaAntenaIzq = B("AntenaIzq2");
+                anim.puntaAntenaDer = B("AntenaDer2");
 
                 PrefabUtility.SaveAsPrefabAsset(raiz, E.RutaPrefabBicho);
                 Debug.Log("Bicho Show: Triangulín animado aplicado al prefab del bicho. Dale a Play en cualquier escena.");
@@ -137,7 +174,7 @@ namespace BichoShow.Herramientas
             if (importador == null)
             {
                 EditorUtility.DisplayDialog("Bicho Show",
-                    $"No encuentro el modelo en:\n{RutaModelo}\n\nGenéralo con Arte/Blender/crear_triangulin_animado.py.", "Vale");
+                    $"No encuentro el modelo en:\n{RutaModelo}\n\nGenéralo con {ScriptBlender}.", "Vale");
                 return false;
             }
 

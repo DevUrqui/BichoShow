@@ -812,9 +812,16 @@ namespace BichoShow
             foreach (var r in renderersColor)
             {
                 if (r == null) continue;
-                var mat = r.material; // instancia propia para este bicho
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-                else mat.color = color;
+                // Instancias propias para este bicho. Se tiñe el primer material (la piel) y,
+                // si el modelo tiene caparazón, ese también, un poco más oscuro.
+                var mats = r.materials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    string nombre = mats[i].name;
+                    if (i == 0 || nombre.StartsWith("Piel")) Pintar(mats[i], color);
+                    else if (nombre.StartsWith("Caparazon")) Pintar(mats[i], Color.Lerp(color, Color.black, 0.3f));
+                }
+                r.materials = mats;
             }
 
             // La mano y el brazo comparten el material ya teñido del cuerpo.
@@ -824,6 +831,12 @@ namespace BichoShow
                 if (mano != null) mano.GetComponent<Renderer>().sharedMaterial = matCuerpo;
                 if (brazo != null) brazo.GetComponent<Renderer>().sharedMaterial = matCuerpo;
             }
+        }
+
+        static void Pintar(Material m, Color c)
+        {
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            else m.color = c;
         }
 
         // ---------------------------------------------------------------------
