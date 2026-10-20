@@ -35,10 +35,12 @@ COLORES = {
     "GuanteRojo": (0.92, 0.18, 0.20), "Peligro": (1.00, 0.82, 0.15), "PeligroNegro": (0.10, 0.10, 0.10),
     "Espuma": (0.30, 0.85, 0.75), "RosaPlato": (1.00, 0.45, 0.75),
     "BombaNegra": (0.13, 0.12, 0.16), "Mecha": (0.78, 0.62, 0.40), "Chispa": (1.00, 0.62, 0.15), "Seta": (0.95, 0.25, 0.30),
+    "GemaRoja": (0.95, 0.12, 0.25), "GemaAzul": (0.2, 0.45, 1.0), "Cera": (1.0, 0.86, 0.9), "CeraRaya": (0.98, 0.55, 0.7),
+    "Llama": (1.0, 0.7, 0.2), "Hierro": (0.32, 0.33, 0.38), "PianoNegro": (0.1, 0.09, 0.12),
 }
 
-crear_materiales(COLORES, brillantes=("Oro", "OjoBlanco", "PupilaNegra", "Lente", "GuanteRojo", "Metal", "BombaNegra", "Seta"),
-                 emisivos=("Luz", "LuzRoja", "PantallaPlato", "Chispa"))
+crear_materiales(COLORES, brillantes=("Oro", "OjoBlanco", "PupilaNegra", "Lente", "GuanteRojo", "Metal", "BombaNegra", "Seta", "GemaRoja", "GemaAzul", "PianoNegro"),
+                 emisivos=("Luz", "LuzRoja", "PantallaPlato", "Chispa", "Llama"))
 
 objetos = []
 
@@ -228,6 +230,62 @@ for a, r in ((0, 0.6), (120, 0.6), (240, 0.6), (60, 0.2), (200, 0.32), (300, 0.8
 objetos.append(p.crear(bisel=0.0))
 
 # ---------------------------------------------------------------------------
+# La Corona, Lluvia de muebles y Pintabichos
+# ---------------------------------------------------------------------------
+
+p = Pieza("Corona")
+p.toro((0, 0, 0.1), 0.34, 0.09, "Oro", segmentos=28, segmentos_tubo=10)                        # aro de abajo
+p.cilindro((0, 0, 0.22), 0.36, 0.26, "Oro", radio_arriba=0.4, segmentos=28)                      # banda
+for i in range(5):
+    a = 2 * math.pi * i / 5
+    x, y = 0.36 * math.cos(a), 0.36 * math.sin(a)
+    p.cilindro((x, y, 0.47), 0.1, 0.32, "Oro", radio_arriba=0.02, segmentos=10)                 # pico
+    p.esfera((x * 1.05, y * 1.05, 0.66), (0.06, 0.06, 0.06), "Oro", segmentos=10, anillos=6)
+    p.esfera((x * 1.07, y * 1.07, 0.24), (0.07, 0.04, 0.07), "GemaRoja" if i % 2 == 0 else "GemaAzul",
+             rotacion=(90, 0, math.degrees(a) + 90), segmentos=12, anillos=6)                      # joya
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Vela")
+p.cilindro((0, 0, 1.2), 0.38, 2.4, "Cera", segmentos=24, rayas=("Cera", "CeraRaya", 10))
+p.esfera((0, 0, 2.4), (0.38, 0.38, 0.08), "Cera", segmentos=24, anillos=8)                        # borde derretido
+for a in (20, 110, 230, 300):
+    r = math.radians(a)
+    p.esfera((0.36 * math.cos(r), 0.36 * math.sin(r), 2.2), (0.08, 0.08, 0.25), "Cera", segmentos=10, anillos=6)  # gotas
+p.tubo((0, 0, 2.42), (0, 0, 2.6), 0.025, "PupilaNegra", segmentos=6)                              # mecha
+p.esfera((0, 0, 2.82), (0.13, 0.13, 0.24), "Llama", segmentos=14, anillos=8)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Yunque")
+p.caja((0, 0, 0.12), (0.7, 0.45, 0.24), "Hierro")
+p.caja((0, 0, 0.36), (0.36, 0.28, 0.26), "Hierro")
+p.caja((0.1, 0, 0.62), (1.0, 0.42, 0.28), "Hierro")
+p.cilindro((-0.62, 0, 0.66), 0.17, 0.5, "Hierro", radio_arriba=0.01, rotacion=(0, -90, 0), segmentos=16)  # cuerno
+p.caja((0.1, 0, 0.765), (1.0, 0.42, 0.01), "Metal")
+objetos.append(p.crear(bisel=0.03))
+
+p = Pieza("Piano")
+p.caja((0, 0, 0.75), (1.7, 1.1, 0.36), "PianoNegro")                                              # caja
+p.caja((0, -0.62, 0.62), (1.5, 0.22, 0.1), "Blanco")                                              # teclas
+for k in range(10):
+    p.caja((-0.62 + k * 0.14, -0.66, 0.68), (0.06, 0.12, 0.05), "PianoNegro")
+p.caja((0.1, 0.25, 1.25), (1.6, 0.95, 0.04), "PianoNegro", rotacion=(-30, 0, 0))                # tapa abierta
+p.tubo((0.6, 0.55, 0.95), (0.6, 0.45, 1.5), 0.02, "Oro", segmentos=6)                              # varilla
+for x, y in ((-0.7, -0.4), (0.7, -0.4), (0.0, 0.45)):
+    p.cilindro((x, y, 0.3), 0.07, 0.6, "PianoNegro", radio_arriba=0.05, segmentos=10)
+    p.esfera((x, y, 0.04), (0.08, 0.08, 0.04), "Oro", segmentos=10, anillos=6)
+objetos.append(p.crear(bisel=0.04))
+
+p = Pieza("BotePintura")
+p.cilindro((0, 0, 0.25), 0.3, 0.5, "Blanco", segmentos=24)
+p.cilindro((0, 0, 0.52), 0.31, 0.05, "Metal", segmentos=24)                                       # tapa
+p.toro((0, 0, 0.6), 0.16, 0.02, "Metal", rotacion=(90, 0, 0), segmentos=16, segmentos_tubo=6, arco=180)  # asa
+for a, largo, mat in ((0, 0.28, "RosaPlato"), (70, 0.18, "Oro"), (150, 0.32, "Espuma"), (230, 0.22, "RosaPlato"), (300, 0.26, "Oro")):
+    r = math.radians(a)
+    p.esfera((0.3 * math.cos(r), 0.3 * math.sin(r), 0.5 - largo * 0.5), (0.06, 0.06, largo * 0.55), mat, segmentos=10, anillos=6)  # chorretones
+p.cilindro((0, 0, 0.25), 0.302, 0.18, "Oro", segmentos=24, rayas=("RosaPlato", "Espuma", 6))      # etiqueta
+objetos.append(p.crear(bisel=0.0))
+
+# ---------------------------------------------------------------------------
 # Exportar y vistas
 # ---------------------------------------------------------------------------
 
@@ -237,6 +295,7 @@ vistas(objetos, CARPETA_VISTAS, "kit_plato", [
     ("gradas", ["TorreFocos", "Grada", "Publico", "PublicoBrazos", "CamaraTV", "Altavoz"], 0.8, (0, -30, 10), (0, 0, 2.5)),
     ("meta", ["ArcoMeta", "Trofeo", "CanonConfeti", "Guante", "Barredora"], 0.8, (0, -26, 7), (0, 0, 2.0)),
     ("patata", ["Bomba", "Seta"], 0.8, (0, -8, 3), (0, 0, 0.6)),
+    ("fiesta", ["Corona", "Vela", "Yunque", "Piano", "BotePintura"], 0.8, (0, -12, 4), (0, 0, 1.0)),
     ("pantalla", ["Pantalla"], 0.8, (0, -26, 7), (0, 0, 4.5)),
 ], color_fondo=(0.30, 0.20, 0.45), material_suelo="GradaB")
 
