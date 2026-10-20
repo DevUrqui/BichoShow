@@ -146,6 +146,14 @@ def hueso(nombre, cabeza, cola, padre=None, conectado=False):
 hueso("Raiz", (0, 0, 0), (0, 0, 0.2))
 hueso("Cadera", (0, 0, 0.40), (0, 0, 0.70), "Raiz")
 hueso("Cuerpo", (0, 0, 0.70), (0, 0, 1.40), "Cadera")
+# Anclajes del vestuario (sin pesos): Unity cuelga de aquí gorros y complementos.
+#   AnclaGorro: en lo alto de la cabeza · AnclaCara: delante de los ojos · AnclaPecho: encima de la barriga
+_ojo = delante(0.17, 1.16, -0.07)
+hueso("AnclaGorro", (0, 0.0, 1.37), (0, 0.0, 1.55), "Cuerpo")
+hueso("AnclaCara", (0, _ojo.y - 0.12, 1.16), (0, _ojo.y - 0.25, 1.16), "Cuerpo")
+_pecho = delante(0.0, 0.76, 0.0)
+hueso("AnclaPecho", _pecho, _pecho + Vector((0, -0.12, 0)), "Cuerpo")
+print("Anclas: cara y =", round(_ojo.y - 0.12, 3), "· pecho =", tuple(round(v, 3) for v in _pecho))
 for lado, s in LADOS:
     ojo = delante(0.17 * lado, 1.16, 0.0)
     hueso(f"Ojo{s}", ojo, ojo + Vector((0, -0.12, 0)), "Cuerpo")

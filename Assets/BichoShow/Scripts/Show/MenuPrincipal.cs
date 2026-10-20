@@ -5,14 +5,14 @@ using UnityEngine.InputSystem;
 namespace BichoShow
 {
     /// <summary>
-    /// Menú mínimo del juego: Empezar el show · Opciones · Salir.
+    /// Menú del juego: Empezar el show · Vestuario · Opciones · Salir.
     /// Cualquier jugador unido lo maneja con el stick (arriba/abajo para elegir, izquierda/
     /// derecha para cambiar un valor) y A / START para aceptar. Las opciones se guardan.
     /// Mientras el menú está abierto, los bichos no se mueven (el stick es para el menú).
     /// </summary>
     public class MenuPrincipal : MonoBehaviour
     {
-        enum Pantalla { Principal, Opciones }
+        enum Pantalla { Principal, Opciones, Vestuario }
 
         static readonly string[] NombresHabilidad = { "Torpes", "Normales", "Hábiles" };
         static readonly float[] ValoresHabilidad = { 0.25f, 0.55f, 0.85f };
@@ -41,7 +41,7 @@ namespace BichoShow
         }
 
 
-        int NumeroOpciones => pantalla == Pantalla.Principal ? 3 : 6;
+        int NumeroOpciones => pantalla == Pantalla.Principal ? 4 : 6;
         const int OpcionVolver = 5;
 
         void Update()
@@ -58,6 +58,7 @@ namespace BichoShow
                 ignorarHasta = Time.unscaledTime + 0.4f;
             }
             if (Time.unscaledTime < ignorarHasta || PlayerInput.all.Count == 0) return;
+            if (pantalla == Pantalla.Vestuario) { ActualizarVestuario(); return; }
 
             foreach (var entrada in PlayerInput.all)
             {
@@ -115,15 +116,157 @@ namespace BichoShow
                 switch (seleccion)
                 {
                     case 0: EmpezarShow(); break;
-                    case 1: pantalla = Pantalla.Opciones; seleccion = 0; break;
-                    case 2: Salir(); break;
+                    case 1: EntrarVestuario(); break;
+                    case 2: pantalla = Pantalla.Opciones; seleccion = 0; break;
+                    case 3: Salir(); break;
                 }
             }
             else
             {
-                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 1; }
+                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 2; }
                 else CambiarValor(+1);
             }
+        }
+
+        // ---------------------------------------------------------------------
+        // Vestuario: cada jugador elige con su mando, a la vez que los demás
+        // ---------------------------------------------------------------------
+
+        readonly Dictionary<PlayerInput, int> filaVestuario = new Dictionary<PlayerInput, int>();
+        readonly HashSet<PlayerInput> listos = new HashSet<PlayerInput>();
+        float salirVestuarioEn = -1f;
+
+        void EntrarVestuario()
+        {
+            pantalla = Pantalla.Vestuario;
+            filaVestuario.Clear();
+            listos.Clear();
+            salirVestuarioEn = -1f;
+        }
+
+        void SalirVestuario()
+        {
+            pantalla = Pantalla.Principal;
+            seleccion = 1;
+            Sonidos.Reproducir(Sonido.MenuAceptar);
+        }
+
+        void ActualizarVestuario()
+        {
+            if (salirVestuarioEn > 0f)
+            {
+                if (Time.unscaledTime >= salirVestuarioEn) SalirVestuario();
+                return;
+            }
+
+            foreach (var entrada in PlayerInput.all)
+            {
+                if (entrada.actions == null) continue;
+                var mover = entrada.actions.FindAction("Mover");
+                Vector2 stick = mover != null ? mover.ReadValue<Vector2>() : Vector2.zero;
+                stickAnterior.TryGetValue(entrada, out Vector2 antes);
+                stickAnterior[entrada] = stick;
+                filaVestuario.TryGetValue(entrada, out int fila);
+                bool listo = listos.Contains(entrada);
+
+                if (!listo)
+                {
+                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + 1) % 2; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % 2; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.x > 0.6f && antes.x <= 0.6f) CambiarPrenda(entrada, fila, +1);
+                    if (stick.x < -0.6f && antes.x >= -0.6f) CambiarPrenda(entrada, fila, -1);
+                    filaVestuario[entrada] = fila;
+                }
+
+                var saltar = entrada.actions.FindAction("Saltar");
+                var empezar = entrada.actions.FindAction("Empezar");
+                if (saltar != null && saltar.WasPressedThisFrame())
+                {
+                    // A: "¡listo!" (o volver a cambiar algo).
+                    if (listo) listos.Remove(entrada); else listos.Add(entrada);
+                    Sonidos.Reproducir(listo ? Sonido.MenuMover : Sonido.MenuAceptar);
+                    if (!listo && entrada.TryGetComponent(out AnimadorBicho a)) a.Celebrar(1.5f);
+                }
+                if (empezar != null && empezar.WasPressedThisFrame())
+                {
+                    SalirVestuario();
+                    return;
+                }
+            }
+
+            if (listos.Count >= PlayerInput.all.Count && PlayerInput.all.Count > 0)
+                salirVestuarioEn = Time.unscaledTime + 0.8f; // un momento para ver el "¡listo!" de todos
+        }
+
+        void CambiarPrenda(PlayerInput entrada, int fila, int sentido)
+        {
+            if (!entrada.TryGetComponent(out Vestuario v)) return;
+            int gorro = v.Gorro, complemento = v.Complemento;
+            if (fila == 0) gorro = (gorro + sentido + Vestuario.Gorros.Length) % Vestuario.Gorros.Length;
+            else complemento = (complemento + sentido + Vestuario.Complementos.Length) % Vestuario.Complementos.Length;
+            v.Poner(gorro, complemento);
+            Vestuario.Guardar(entrada.playerIndex, gorro, complemento);
+            Sonidos.Reproducir(Sonido.Aparecer, entrada.transform.position, 0.8f, 1.2f);
+            if (entrada.TryGetComponent(out JugoBicho jugo)) jugo.Aplastar(); // ¡boing! al cambiarse
+        }
+
+        void DibujarVestuario(float w, float h)
+        {
+            System.Func<float, float> px = EstiloShow.Px;
+            System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
+
+            var jugadores = new List<PlayerInput>(PlayerInput.all);
+            jugadores.Sort((a, b) => a.playerIndex.CompareTo(b.playerIndex));
+            float hueco = px(20f);
+            float ancho = Mathf.Min(px(430f), (w * 0.94f - hueco * (jugadores.Count - 1)) / Mathf.Max(1, jugadores.Count));
+            float alto = px(250f);
+            float x = w * 0.5f - (jugadores.Count * ancho + (jugadores.Count - 1) * hueco) * 0.5f;
+            float y = h - alto - px(120f);
+
+            EstiloShow.Texto(new Rect(0, y - px(90f), w, px(80f)), "VESTUARIO", tam(72f), EstiloShow.Oro);
+
+            foreach (var j in jugadores)
+            {
+                int i = j.playerIndex;
+                Color color = GestorJugadores.Instancia != null ? GestorJugadores.Instancia.ColorDe(i) : Color.white;
+                bool listo = listos.Contains(j);
+                filaVestuario.TryGetValue(j, out int fila);
+                var panel = new Rect(x, y, ancho, alto);
+                EstiloShow.Panel(panel, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.45f).WithAlpha(0.94f), px(30f));
+                EstiloShow.Texto(new Rect(panel.x, panel.y + px(8f), panel.width, px(54f)), $"J{i + 1}", tam(46f), Color.white);
+
+                j.TryGetComponent(out Vestuario v);
+                if (v == null)
+                {
+                    EstiloShow.Texto(new Rect(panel.x + px(16f), panel.y + px(70f), panel.width - px(32f), px(120f)),
+                        "Aplica a Bichete (menú BichoShow) para usar el vestuario", tam(22f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+                }
+                else
+                {
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(68f), panel.width - px(28f), px(56f)), "Gorro",
+                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 0);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(130f), panel.width - px(28f), px(56f)), "Cara",
+                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 1);
+                }
+                var boton = new Rect(panel.x + panel.width * 0.2f, panel.yMax - px(56f), panel.width * 0.6f, px(46f));
+                EstiloShow.Panel(boton, listo ? EstiloShow.Verde : EstiloShow.Morado.WithAlpha(0.9f), boton.height * 0.5f, -1f, false);
+                EstiloShow.Texto(boton, listo ? "¡LISTO!" : "A = listo", tam(26f), Color.white);
+                x += ancho + hueco;
+            }
+
+            EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                ("Stick", EstiloShow.GlifoTecla, "elegir y cambiar"), ("A", EstiloShow.GlifoA, "listo"), ("START", EstiloShow.GlifoTecla, "volver"));
+        }
+
+        static void FilaPrenda(Rect r, string etiqueta, string valor, bool elegida)
+        {
+            int tamano = Mathf.RoundToInt(r.height * 0.46f);
+            EstiloShow.Panel(r, elegida ? EstiloShow.Oro : EstiloShow.MoradoOscuro.WithAlpha(0.6f), r.height * 0.5f, -1f, false);
+            float m = r.height * 0.4f;
+            EstiloShow.Texto(new Rect(r.x + m, r.y, r.width * 0.35f, r.height), etiqueta, Mathf.RoundToInt(tamano * 0.8f), Color.white,
+                             TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
+            string texto = elegida ? $"<  {valor}  >" : valor;
+            EstiloShow.Texto(new Rect(r.x + r.width * 0.3f, r.y, r.width * 0.7f - m * 0.5f, r.height), texto, tamano, Color.white);
         }
 
         void EmpezarShow()
@@ -186,13 +329,19 @@ namespace BichoShow
                 return;
             }
 
+            if (pantalla == Pantalla.Vestuario)
+            {
+                DibujarVestuario(w, h);
+                return;
+            }
+
             // --- Opciones (columna a la izquierda: el escenario con los bichos queda a la vista) ---
             float x = w * 0.05f, ancho = px(pantalla == Pantalla.Principal ? 560f : 780f);
-            float alto = px(pantalla == Pantalla.Principal ? 92f : 74f), paso = alto + px(pantalla == Pantalla.Principal ? 26f : 16f);
+            float alto = px(pantalla == Pantalla.Principal ? 84f : 74f), paso = alto + px(pantalla == Pantalla.Principal ? 18f : 16f);
             float y = h * 0.36f;
             if (pantalla == Pantalla.Principal)
             {
-                string[] opciones = { "¡Empezar el show!", "Opciones", "Salir" };
+                string[] opciones = { "¡Empezar el show!", "Vestuario", "Opciones", "Salir" };
                 for (int i = 0; i < opciones.Length; i++)
                 {
                     EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(46f));

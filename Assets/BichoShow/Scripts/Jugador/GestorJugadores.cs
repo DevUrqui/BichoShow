@@ -140,6 +140,7 @@ namespace BichoShow
             int indice = entrada.playerIndex;
             if (persistente) DontDestroyOnLoad(entrada.gameObject);
             Preparar(bicho, indice, $"J{indice + 1} ({entrada.currentControlScheme})");
+            Vestuario.PonerGuardado(bicho);
         }
 
         void AlSalir(PlayerInput entrada)
@@ -209,6 +210,7 @@ namespace BichoShow
             var bicho = go.GetComponent<ControladorBicho>();
             bicho.AsignarIndice(indice);
             Preparar(bicho, indice, $"Bot {indice + 1}");
+            Vestuario.PonerAlAzar(bicho);
             bots.Add(bicho);
             return cerebro;
         }

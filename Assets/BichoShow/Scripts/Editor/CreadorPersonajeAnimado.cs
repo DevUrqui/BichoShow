@@ -33,6 +33,7 @@ namespace BichoShow.Herramientas
             RutaControlador = CarpetaAnimaciones + "/Bichete.controller";
             ScriptBlender = "Arte/Blender/crear_bichete.py";
             E.CrearCarpeta(E.Raiz, "Materiales");
+            CreadorVestuario.Preparar();
             // Los que empiezan por "Piel" y "Caparazon" se tiñen con el color del jugador (ControladorBicho).
             Aplicar(new Dictionary<string, Material>
             {
@@ -157,6 +158,16 @@ namespace BichoShow.Herramientas
                 anim.antenaDer = B("AntenaDer1");
                 anim.puntaAntenaIzq = B("AntenaIzq2");
                 anim.puntaAntenaDer = B("AntenaDer2");
+
+                // Vestuario (si el modelo tiene anclajes para gorros y complementos)
+                if (B("AnclaGorro") != null)
+                {
+                    if (!raiz.TryGetComponent(out Vestuario vestuario)) vestuario = raiz.AddComponent<Vestuario>();
+                    vestuario.anclaGorro = B("AnclaGorro");
+                    vestuario.anclaCara = B("AnclaCara");
+                    vestuario.anclaPecho = B("AnclaPecho");
+                    vestuario.referencia = aspecto;
+                }
 
                 PrefabUtility.SaveAsPrefabAsset(raiz, E.RutaPrefabBicho);
                 Debug.Log("Bicho Show: Triangulín animado aplicado al prefab del bicho. Dale a Play en cualquier escena.");
