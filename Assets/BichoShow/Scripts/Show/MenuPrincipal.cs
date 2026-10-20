@@ -27,7 +27,6 @@ namespace BichoShow
         int jugadoresAntes;
         float ignorarHasta;
         readonly Dictionary<PlayerInput, Vector2> stickAnterior = new Dictionary<PlayerInput, Vector2>();
-        GUIStyle estiloTitulo, estiloOpcion, estiloPequeno;
 
         void Start()
         {
@@ -105,12 +104,6 @@ namespace BichoShow
             return paso / 5f;
         }
 
-        static string Barrita(float volumen)
-        {
-            int llenas = Mathf.RoundToInt(volumen * 5f);
-            return llenas == 0 ? "sin sonido" : new string('|', llenas * 2) + new string('.', (5 - llenas) * 2);
-        }
-
         void Aceptar()
         {
             Sonidos.Reproducir(Sonido.MenuAceptar);
@@ -168,66 +161,108 @@ namespace BichoShow
 
         void OnGUI()
         {
-            PrepararEstilos();
             float w = Screen.width, h = Screen.height;
+            System.Func<float, float> px = EstiloShow.Px;
+            System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
 
-            RondaBase.Texto(new Rect(0, h * 0.05f, w, h * 0.16f), "BICHO SHOW", estiloTitulo, new Color(1f, 0.85f, 0.3f));
-            RondaBase.Texto(new Rect(0, h * 0.2f, w, h * 0.05f), "El concurso de bichos más torpe de la tele", estiloPequeno, Color.white);
+            // --- Título con letras que rebotan y cinta debajo ---
+            Color[] coloresTitulo = { EstiloShow.Oro, EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Verde, EstiloShow.Lila };
+            EstiloShow.TituloRebote(new Rect(0, h * 0.04f, w, px(190f)), "BICHO SHOW", tam(170f), coloresTitulo);
+            var cinta = new Rect(w * 0.5f - px(430f), h * 0.04f + px(185f), px(860f), px(58f));
+            EstiloShow.Panel(cinta, EstiloShow.Rosa.WithAlpha(0.95f), cinta.height * 0.5f);
+            EstiloShow.Texto(cinta, "El concurso de bichos más torpe de la tele", tam(34f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo);
 
             if (PlayerInput.all.Count == 0)
             {
-                RondaBase.Texto(new Rect(0, h * 0.45f, w, h * 0.08f), "Pulsa cualquier botón del mando (o una tecla) para unirte", estiloOpcion, RondaBase.Parpadeo(Color.white));
+                // Nadie unido aún: un cartel grande que late.
+                var cartel = EstiloShow.Escalar(new Rect(w * 0.5f - px(520f), h * 0.5f, px(1040f), px(110f)), 1f + Mathf.Sin(Time.unscaledTime * 4f) * 0.02f);
+                EstiloShow.Panel(cartel, EstiloShow.Morado.WithAlpha(0.92f), cartel.height * 0.5f);
+                EstiloShow.Texto(cartel, "¡Pulsa cualquier botón para unirte!", tam(56f), EstiloShow.Oro);
+                EstiloShow.Ayuda(new Rect(0, h * 0.5f + px(140f), w, px(52f)),
+                    ("A", EstiloShow.GlifoA, "en el mando"), ("Espacio", EstiloShow.GlifoTecla, "en el teclado"));
                 return;
             }
 
-            string[] opciones = pantalla == Pantalla.Principal
-                ? new[] { "Empezar el show", "Opciones", "Salir" }
-                : new[]
-                {
-                    $"Bots en los huecos:  < {(bots ? "Sí" : "No")} >",
-                    $"Habilidad de los bots:  < {NombresHabilidad[nivelHabilidad]} >",
-                    $"Duración de cada ronda:  < {Duraciones[nivelDuracion]} s >",
-                    $"Volumen de efectos:  < {Barrita(Sonidos.Volumen)} >",
-                    $"Volumen de la música:  < {Barrita(Musica.Volumen)} >",
-                    "Volver",
-                };
-
-            float y = h * 0.34f;
-            for (int i = 0; i < opciones.Length; i++)
+            // --- Opciones (columna a la izquierda: el escenario con los bichos queda a la vista) ---
+            float x = w * 0.05f, ancho = px(pantalla == Pantalla.Principal ? 560f : 780f);
+            float alto = px(pantalla == Pantalla.Principal ? 92f : 74f), paso = alto + px(pantalla == Pantalla.Principal ? 26f : 16f);
+            float y = h * 0.36f;
+            if (pantalla == Pantalla.Principal)
             {
-                bool elegida = i == seleccion;
-                var fila = new Rect(w * 0.3f, y, w * 0.4f, h * 0.075f);
-                if (elegida)
+                string[] opciones = { "¡Empezar el show!", "Opciones", "Salir" };
+                for (int i = 0; i < opciones.Length; i++)
                 {
-                    var antes = GUI.color;
-                    GUI.color = new Color(1f, 0.85f, 0.3f, 0.25f);
-                    GUI.DrawTexture(fila, Texture2D.whiteTexture);
-                    GUI.color = antes;
+                    EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(46f));
+                    y += paso;
                 }
-                RondaBase.Texto(fila, (elegida ? "> " : "") + opciones[i], estiloOpcion, elegida ? new Color(1f, 0.9f, 0.4f) : Color.white);
-                y += h * 0.085f;
+            }
+            else
+            {
+                EstiloShow.Texto(new Rect(x, y - px(84f), ancho, px(70f)), "OPCIONES", tam(60f), Color.white, TextAnchor.MiddleLeft);
+                Fila(new Rect(x, y, ancho, alto), 0, "Bots en los huecos", bots ? "Sí" : "No", null); y += paso;
+                Fila(new Rect(x, y, ancho, alto), 1, "Habilidad de los bots", NombresHabilidad[nivelHabilidad], null); y += paso;
+                Fila(new Rect(x, y, ancho, alto), 2, "Duración de cada ronda", $"{Duraciones[nivelDuracion]} s", null); y += paso;
+                Fila(new Rect(x, y, ancho, alto), 3, "Efectos", null, Sonidos.Volumen); y += paso;
+                Fila(new Rect(x, y, ancho, alto), 4, "Música", null, Musica.Volumen); y += paso;
+                EstiloShow.Boton(new Rect(x, y, ancho * 0.5f, alto), "Volver", seleccion == OpcionVolver, tam(40f));
             }
 
-            // Jugadores unidos
-            string lista = "";
-            foreach (var entrada in PlayerInput.all) lista += $"   J{entrada.playerIndex + 1} ({entrada.currentControlScheme})";
-            RondaBase.Texto(new Rect(0, h * 0.78f, w, h * 0.05f), $"Jugando:{lista}", estiloPequeno, Color.white);
-            RondaBase.Texto(new Rect(0, h * 0.83f, w, h * 0.05f), "Más jugadores: pulsad un botón en otro mando   ·   1 y 3 = equipo Rojo, 2 y 4 = equipo Azul", estiloPequeno, new Color(1f, 1f, 1f, 0.75f));
-            RondaBase.Texto(new Rect(0, h * 0.9f, w, h * 0.05f), "Stick: elegir   ·   A / START: aceptar   ·   izquierda / derecha: cambiar opción", estiloPequeno, new Color(1f, 1f, 1f, 0.6f));
+            // --- Jugadores unidos: una ficha de su color cada uno ---
+            var jugadores = new List<PlayerInput>(PlayerInput.all);
+            jugadores.Sort((a, b) => a.playerIndex.CompareTo(b.playerIndex));
+            float anchoFicha = px(250f), altoFicha = px(78f), hueco = px(18f);
+            float fx = w * 0.5f - (jugadores.Count * anchoFicha + (jugadores.Count - 1) * hueco) * 0.5f;
+            float fy = h - px(200f);
+            foreach (var j in jugadores)
+            {
+                int i = j.playerIndex;
+                Color color = GestorJugadores.Instancia != null ? GestorJugadores.Instancia.ColorDe(i) : Color.white;
+                var ficha = new Rect(fx, fy + Mathf.Sin(Time.unscaledTime * 3f + i) * px(4f), anchoFicha, altoFicha);
+                EstiloShow.Panel(ficha, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.25f).WithAlpha(0.95f), altoFicha * 0.5f);
+                string mando = j.currentControlScheme == "Teclado" ? "Teclado" : "Mando";
+                EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), $"J{i + 1}", tam(44f), Color.white);
+                EstiloShow.Texto(new Rect(ficha.x, ficha.y + ficha.height * 0.48f, ficha.width, ficha.height * 0.45f),
+                                 $"{mando} · equipo {(i % 2 == 0 ? "Rojo" : "Azul")}", tam(22f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+                fx += anchoFicha + hueco;
+            }
+            if (jugadores.Count < 4)
+                EstiloShow.Texto(new Rect(0, fy - px(52f), w, px(44f)), "¿Más jugadores? ¡Pulsad un botón en otro mando!", tam(28f),
+                                 new Color(1f, 1f, 1f, 0.9f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+
+            // --- Ayuda de botones ---
+            EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                ("Stick", EstiloShow.GlifoTecla, pantalla == Pantalla.Principal ? "elegir" : "elegir y cambiar"),
+                ("A", EstiloShow.GlifoA, "aceptar"),
+                ("START", EstiloShow.GlifoTecla, "empezar"));
         }
 
-        void PrepararEstilos()
+        /// <summary>Una fila de opciones: nombre a la izquierda y su valor (o una barra) a la derecha.</summary>
+        void Fila(Rect r, int indice, string nombre, string valor, float? barra)
         {
-            int tamano = Mathf.Max(12, Screen.height / 28);
-            if (estiloTitulo == null)
+            bool elegida = seleccion == indice;
+            if (elegida) r = EstiloShow.Escalar(r, 1.03f + Mathf.Sin(Time.unscaledTime * 6f) * 0.01f);
+            EstiloShow.Panel(r, elegida ? EstiloShow.Oro : EstiloShow.Morado.WithAlpha(0.88f), r.height * 0.5f);
+
+            float m = r.height * 0.45f;
+            int tamano = Mathf.RoundToInt(r.height * 0.46f);
+            EstiloShow.Texto(new Rect(r.x + m, r.y, r.width * 0.55f, r.height), nombre, tamano, Color.white, TextAnchor.MiddleLeft);
+
+            var zonaValor = new Rect(r.x + r.width * 0.56f, r.y, r.width * 0.44f - m, r.height);
+            string flechaIzq = elegida ? "<" : "", flechaDer = elegida ? ">" : "";
+            EstiloShow.Texto(new Rect(zonaValor.x - m * 0.2f, r.y, m, r.height), flechaIzq, tamano, Color.white);
+            EstiloShow.Texto(new Rect(zonaValor.xMax - m * 0.8f, r.y, m, r.height), flechaDer, tamano, Color.white);
+            var centroValor = new Rect(zonaValor.x + m * 0.6f, r.y, zonaValor.width - m * 1.2f, r.height);
+            if (barra.HasValue)
             {
-                estiloTitulo = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-                estiloOpcion = new GUIStyle(estiloTitulo);
-                estiloPequeno = new GUIStyle(estiloTitulo) { fontStyle = FontStyle.Normal };
+                var b = new Rect(centroValor.x, r.center.y - r.height * 0.17f, centroValor.width, r.height * 0.34f);
+                EstiloShow.Barra(b, barra.Value, barra.Value <= 0.001f ? new Color(0.6f, 0.6f, 0.65f) : EstiloShow.Verde);
+                if (barra.Value <= 0.001f)
+                    EstiloShow.Texto(centroValor, "sin sonido", Mathf.RoundToInt(tamano * 0.8f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
             }
-            estiloTitulo.fontSize = tamano * 4;
-            estiloOpcion.fontSize = Mathf.RoundToInt(tamano * 1.3f);
-            estiloPequeno.fontSize = Mathf.RoundToInt(tamano * 0.8f);
+            else
+            {
+                EstiloShow.Texto(centroValor, valor, tamano, elegida ? Color.white : EstiloShow.Oro);
+            }
         }
     }
 }

@@ -63,7 +63,6 @@ namespace BichoShow
         string resumenSabotaje = "";
         RondaBase ronda;
         float inicioEstado;
-        GUIStyle estiloGrande, estiloMedio, estiloPequeno;
 
         void Awake()
         {
@@ -300,102 +299,159 @@ namespace BichoShow
         void OnGUI()
         {
             if (Estado == EstadoShow.Inactivo || Estado == EstadoShow.EnRonda || Estado == EstadoShow.Resultado) return;
-            PrepararEstilos();
             float w = Screen.width, h = Screen.height;
 
             switch (Estado)
             {
                 case EstadoShow.Cargando:
                 case EstadoShow.Presentando:
-                    Fondo(new Rect(0, h * 0.25f, w, h * 0.42f));
-                    var prueba = pruebas[RondaActual];
-                    RondaBase.Texto(new Rect(0, h * 0.27f, w, h * 0.07f), $"RONDA {RondaActual + 1} DE {pruebas.Length}", estiloMedio, new Color(1f, 0.9f, 0.4f));
-                    RondaBase.Texto(new Rect(0, h * 0.34f, w, h * 0.13f), prueba.nombre.ToUpper(), estiloGrande, Color.white);
-                    float y = h * 0.49f;
-                    if (prueba.multiplicador > 1)
-                    {
-                        RondaBase.Texto(new Rect(0, y, w, h * 0.06f), $"¡ESTRELLAS x{prueba.multiplicador}!", estiloMedio, RondaBase.Parpadeo(Color.yellow));
-                        y += h * 0.07f;
-                    }
-                    if (saboteadorSiguiente >= 0)
-                        RondaBase.Texto(new Rect(0, y, w, h * 0.06f), $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda SABOTEA!", estiloMedio, new Color(0.85f, 0.6f, 1f));
+                    DibujarPresentacion(w, h);
                     break;
 
                 case EstadoShow.Marcador:
-                    DibujarTabla(w, h, $"MARCADOR TRAS LA RONDA {RondaActual + 1}");
+                {
+                    EstiloShow.FondoPlato(0.95f);
+                    EstiloShow.Texto(new Rect(0, h * 0.04f, w, Px(120f)), "MARCADOR", Tam(110f), EstiloShow.Oro, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo, false, 1.2f);
+                    EstiloShow.Texto(new Rect(0, h * 0.04f + Px(108f), w, Px(50f)), $"tras la ronda {RondaActual + 1} de {pruebas.Length}", Tam(36f), Color.white);
+                    DibujarTabla(w, h, h * 0.27f);
+
                     var siguiente = pruebas[RondaActual + 1];
-                    RondaBase.Texto(new Rect(0, h * 0.76f, w, h * 0.05f), $"Siguiente: {siguiente.nombre}" + (siguiente.multiplicador > 1 ? $"  (¡estrellas x{siguiente.multiplicador}!)" : ""), estiloMedio, Color.white);
+                    var cartel = new Rect(w * 0.5f - Px(560f), h - Px(250f), Px(1120f), Px(76f));
+                    EstiloShow.Panel(cartel, EstiloShow.Morado.WithAlpha(0.92f), cartel.height * 0.5f);
+                    EstiloShow.Texto(cartel, $"Siguiente: {siguiente.nombre}" + (siguiente.multiplicador > 1 ? $"  ·  ¡estrellas x{siguiente.multiplicador}!" : ""), Tam(40f), Color.white);
                     if (saboteadorSiguiente >= 0)
-                        RondaBase.Texto(new Rect(0, h * 0.81f, w, h * 0.05f), $"{NombreDe(saboteadorSiguiente)} va último y será SABOTEADOR", estiloPequeno, new Color(0.85f, 0.6f, 1f));
-                    RondaBase.Texto(new Rect(0, h * 0.88f, w, h * 0.06f), "A / START para seguir", estiloMedio, RondaBase.Parpadeo(Color.yellow));
+                        EstiloShow.Texto(new Rect(0, h - Px(168f), w, Px(46f)), $"{NombreDe(saboteadorSiguiente)} va último y será SABOTEADOR", Tam(32f), EstiloShow.Lila);
+                    if (Time.time - inicioEstado > 1f)
+                        EstiloShow.Ayuda(new Rect(0, h - Px(98f), w, Px(54f)), ("A", EstiloShow.GlifoA, "seguir"));
                     break;
+                }
 
                 case EstadoShow.Final:
+                {
                     int ganador = Enumerable.Range(0, 4).Where(i => participa[i]).OrderByDescending(i => estrellas[i]).FirstOrDefault();
                     bool empate = Enumerable.Range(0, 4).Count(i => participa[i] && estrellas[i] == estrellas[ganador]) > 1;
-                    DibujarTabla(w, h, "¡FIN DEL BICHO SHOW!");
-                    RondaBase.Texto(new Rect(0, h * 0.74f, w, h * 0.1f),
-                        empate ? "¡EMPATE EN LO MÁS ALTO!" : $"¡GANA {NombreDe(ganador).ToUpper()}!",
-                        estiloGrande, empate ? Color.white : ColorDe(ganador));
-                    RondaBase.Texto(new Rect(0, h * 0.88f, w, h * 0.06f), "A / START para volver al menú", estiloMedio, RondaBase.Parpadeo(Color.yellow));
+                    Color colorGanador = empate ? EstiloShow.Oro : ColorDe(ganador);
+                    EstiloShow.FondoPlato(0.95f, new Vector2(w * 0.5f, h * 0.13f), colorGanador);
+
+                    string titulo = empate ? "¡EMPATE EN LO MÁS ALTO!" : $"¡GANA {NombreDe(ganador).ToUpper()}!";
+                    EstiloShow.TituloRebote(new Rect(0, h * 0.03f, w, Px(170f)), titulo, Ajustar(titulo, Tam(140f), w * 0.8f),
+                                            new[] { colorGanador, EstiloShow.Oro, Color.white });
+                    // Estrellas girando a los lados del título
+                    for (int s = -1; s <= 1; s += 2)
+                    {
+                        float tamano = Px(110f) * (1f + Mathf.Sin(Time.unscaledTime * 4f + s) * 0.08f);
+                        var r = new Rect(w * 0.5f + s * Mathf.Min(Px(700f), w * 0.44f) - tamano * 0.5f, h * 0.03f + Px(85f) - tamano * 0.5f, tamano, tamano);
+                        EstiloShow.Estrella(r, EstiloShow.Oro, Time.unscaledTime * 40f * s);
+                    }
+                    EstiloShow.Texto(new Rect(0, h * 0.03f + Px(165f), w, Px(50f)), "¡FIN DEL BICHO SHOW!", Tam(40f), Color.white);
+                    DibujarTabla(w, h, h * 0.29f);
+                    if (Time.time - inicioEstado > 2f)
+                        EstiloShow.Ayuda(new Rect(0, h - Px(98f), w, Px(54f)), ("A", EstiloShow.GlifoA, "volver al menú"));
                     break;
+                }
             }
         }
 
-        void DibujarTabla(float w, float h, string titulo)
+        /// <summary>Cartel de la siguiente prueba mientras carga y se presenta la ronda.</summary>
+        void DibujarPresentacion(float w, float h)
         {
-            Fondo(new Rect(w * 0.18f, h * 0.06f, w * 0.64f, h * 0.66f));
-            RondaBase.Texto(new Rect(0, h * 0.08f, w, h * 0.09f), titulo, estiloGrande, Color.white);
+            EstiloShow.FondoPlato(0.97f);
+            var prueba = pruebas[RondaActual];
+
+            var cinta = new Rect(w * 0.5f - Px(250f), h * 0.2f, Px(500f), Px(74f));
+            EstiloShow.Panel(cinta, EstiloShow.Rosa, cinta.height * 0.5f);
+            EstiloShow.Texto(cinta, $"RONDA {RondaActual + 1} DE {pruebas.Length}", Tam(46f), Color.white);
+
+            string nombre = prueba.nombre.ToUpper();
+            EstiloShow.TituloRebote(new Rect(0, h * 0.3f, w, Px(180f)), nombre, Ajustar(nombre, Tam(140f), w * 0.9f),
+                                    new[] { Color.white, EstiloShow.Oro, EstiloShow.Cian, EstiloShow.Rosa });
+
+            float y = h * 0.3f + Px(210f);
+            if (prueba.multiplicador > 1)
+            {
+                var r = EstiloShow.Escalar(new Rect(w * 0.5f - Px(330f), y, Px(660f), Px(90f)), 1f + Mathf.Sin(Time.unscaledTime * 6f) * 0.03f);
+                EstiloShow.Panel(r, EstiloShow.Oro, r.height * 0.5f);
+                EstiloShow.Texto(r, $"¡ESTRELLAS x{prueba.multiplicador}!", Tam(54f), Color.white);
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    float lado = Px(96f);
+                    EstiloShow.Estrella(new Rect(r.center.x + s * (r.width * 0.5f + lado * 0.45f) - lado * 0.5f, r.center.y - lado * 0.5f, lado, lado),
+                                        EstiloShow.Oro, Time.unscaledTime * 60f * s);
+                }
+                y += Px(120f);
+            }
+            if (saboteadorSiguiente >= 0)
+            {
+                var r = new Rect(w * 0.5f - Px(560f), y, Px(1120f), Px(78f));
+                EstiloShow.Panel(r, new Color(0.45f, 0.2f, 0.7f, 0.95f), r.height * 0.5f);
+                EstiloShow.Texto(r, $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda SABOTEA!", Tam(42f), EstiloShow.Lila);
+            }
+
+            // Barra que se llena hasta que empieza la prueba
+            float progreso = Estado == EstadoShow.Presentando ? Mathf.Clamp01((Time.time - inicioEstado) / Mathf.Max(0.1f, duracionPresentacion)) : 0f;
+            var barra = new Rect(w * 0.5f - Px(300f), h - Px(140f), Px(600f), Px(30f));
+            EstiloShow.Barra(barra, progreso, EstiloShow.Verde);
+            EstiloShow.Texto(new Rect(0, barra.y - Px(56f), w, Px(48f)), progreso < 1f ? "¡Preparados…!" : "¡YA!", Tam(40f), Color.white);
+        }
+
+        /// <summary>Tabla de estrellas: una fila por jugador que entra deslizándose, con su puesto, barra y estrellas.</summary>
+        void DibujarTabla(float w, float h, float y)
+        {
             if (!string.IsNullOrEmpty(resumenSabotaje))
-                RondaBase.Texto(new Rect(0, h * 0.18f, w, h * 0.04f), resumenSabotaje, estiloPequeno, new Color(0.85f, 0.6f, 1f));
+                EstiloShow.Texto(new Rect(0, y - Px(52f), w, Px(44f)), resumenSabotaje, Tam(30f), EstiloShow.Lila, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
 
             var orden = Enumerable.Range(0, 4).Where(i => participa[i]).OrderByDescending(i => estrellas[i]).ToList();
             int maximo = Mathf.Max(1, orden.Count > 0 ? estrellas[orden[0]] : 1);
-            float y = h * 0.25f;
-            int puesto = 1;
+            Color[] medallas = { EstiloShow.Oro, new Color(0.82f, 0.86f, 0.92f), new Color(0.88f, 0.56f, 0.3f), EstiloShow.Morado };
+            float anchoFila = Mathf.Min(Px(1150f), w * 0.9f), altoFila = Px(100f);
+            float t = Time.time - inicioEstado;
+
+            int puesto = 0;
             foreach (int i in orden)
             {
-                var fila = new Rect(w * 0.22f, y, w * 0.56f, h * 0.1f);
+                // Entrada deslizando desde la derecha, una detrás de otra
+                float k = Mathf.Clamp01((t - 0.15f * puesto) / 0.45f);
+                k = 1f - Mathf.Pow(1f - k, 3f);
+                var fila = new Rect(w * 0.5f - anchoFila * 0.5f + (1f - k) * w, y + puesto * (altoFila + Px(16f)), anchoFila, altoFila);
                 Color color = ColorDe(i);
+                EstiloShow.Panel(fila, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.35f).WithAlpha(0.95f), altoFila * 0.3f);
 
-                estiloMedio.alignment = TextAnchor.MiddleLeft;
-                RondaBase.Texto(new Rect(fila.x, fila.y, fila.width * 0.3f, fila.height), $"{puesto}º  {NombreDe(i)}", estiloMedio, color);
-                estiloMedio.alignment = TextAnchor.MiddleCenter;
+                // Medalla con el puesto
+                float d = altoFila * 0.78f;
+                var medalla = new Rect(fila.x + altoFila * 0.15f, fila.center.y - d * 0.5f, d, d);
+                EstiloShow.Panel(medalla, medallas[Mathf.Min(puesto, 3)], d * 0.5f, -1f, false);
+                EstiloShow.Texto(medalla, $"{puesto + 1}º", Tam(40f), Color.white);
 
-                // Barra de estrellas totales
-                var barra = new Rect(fila.x + fila.width * 0.3f, fila.y + fila.height * 0.3f, fila.width * 0.45f, fila.height * 0.4f);
-                RondaBase.Barra(barra, estrellas[i] / (float)maximo, color);
+                // Nombre, barra y estrellas
+                float xNombre = medalla.xMax + Px(22f);
+                EstiloShow.Texto(new Rect(xNombre, fila.y, fila.width * 0.22f, fila.height), NombreDe(i), Tam(50f), Color.white, TextAnchor.MiddleLeft);
+                var barra = new Rect(fila.x + fila.width * 0.36f, fila.center.y - fila.height * 0.16f, fila.width * 0.34f, fila.height * 0.32f);
+                EstiloShow.Barra(barra, estrellas[i] / (float)maximo * k, color);
+                float lado = altoFila * 0.62f;
+                var estrella = new Rect(fila.x + fila.width * 0.73f, fila.center.y - lado * 0.5f, lado, lado);
+                EstiloShow.Estrella(estrella, EstiloShow.Oro, Mathf.Sin(Time.unscaledTime * 2f + i) * 10f);
+                EstiloShow.Texto(new Rect(estrella.xMax + Px(10f), fila.y, Px(120f), fila.height), estrellas[i].ToString(), Tam(56f), EstiloShow.Oro, TextAnchor.MiddleLeft);
 
-                estiloPequeno.alignment = TextAnchor.MiddleLeft;
-                string extra = estrellasRonda[i] > 0 ? $"  (+{estrellasRonda[i]})" : "";
-                RondaBase.Texto(new Rect(fila.x + fila.width * 0.77f, fila.y, fila.width * 0.25f, fila.height), $"{estrellas[i]} estrellas{extra}", estiloPequeno, Color.white);
-                estiloPequeno.alignment = TextAnchor.MiddleCenter;
-
-                y += h * 0.11f;
+                // Lo ganado en esta ronda, en una pastilla verde que salta al aparecer
+                if (estrellasRonda[i] > 0)
+                {
+                    float salto = 1f + 0.4f * Mathf.Exp(-Mathf.Max(0f, t - 0.6f - 0.15f * puesto) * 6f);
+                    var pastilla = EstiloShow.Escalar(new Rect(fila.xMax - Px(130f), fila.center.y - Px(28f), Px(108f), Px(56f)), salto);
+                    EstiloShow.Panel(pastilla, EstiloShow.Verde, pastilla.height * 0.5f, -1f, false);
+                    EstiloShow.Texto(pastilla, $"+{estrellasRonda[i]}", Tam(36f), Color.white);
+                }
                 puesto++;
             }
         }
 
-        static void Fondo(Rect r)
-        {
-            var antes = GUI.color;
-            GUI.color = new Color(0.08f, 0.05f, 0.14f, 0.82f);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = antes;
-        }
+        static float Px(float v) => EstiloShow.Px(v);
+        static int Tam(float v) => Mathf.RoundToInt(EstiloShow.Px(v));
 
-        void PrepararEstilos()
+        /// <summary>Reduce el tamaño de un texto si no cabe en el ancho dado.</summary>
+        static int Ajustar(string texto, int tamano, float anchoMaximo)
         {
-            int tamano = Mathf.Max(12, Screen.height / 28);
-            if (estiloGrande == null)
-            {
-                estiloGrande = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, wordWrap = false };
-                estiloMedio = new GUIStyle(estiloGrande);
-                estiloPequeno = new GUIStyle(estiloGrande) { fontStyle = FontStyle.Normal };
-            }
-            estiloGrande.fontSize = Mathf.RoundToInt(tamano * 2.2f);
-            estiloMedio.fontSize = Mathf.RoundToInt(tamano * 1.2f);
-            estiloPequeno.fontSize = Mathf.RoundToInt(tamano * 0.85f);
+            float ancho = EstiloShow.Ancho(texto, tamano);
+            return ancho > anchoMaximo ? Mathf.FloorToInt(tamano * anchoMaximo / ancho) : tamano;
         }
     }
 }

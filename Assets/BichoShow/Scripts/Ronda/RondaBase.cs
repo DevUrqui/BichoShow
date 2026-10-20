@@ -394,10 +394,18 @@ namespace BichoShow
                     break;
 
                 case Estado.CuentaAtras:
-                    int n = Mathf.CeilToInt(finCuentaAtras - Time.time);
-                    float pulso = 1f - Mathf.Repeat(finCuentaAtras - Time.time, 1f);
-                    Texto(new Rect(0, h * 0.3f, w, h * 0.25f), n.ToString(), estiloGrande, new Color(1f, 1f, 1f, 1f - pulso * 0.6f));
-                    Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.7f));
+                    {
+                        // Cada número entra grande y se encoge, con su color.
+                        int n = Mathf.CeilToInt(finCuentaAtras - Time.time);
+                        float pulso = 1f - Mathf.Repeat(finCuentaAtras - Time.time, 1f); // 0 al empezar cada segundo
+                        float escala = 1f + 0.7f * Mathf.Pow(1f - pulso, 3f);
+                        Color[] colores = { EstiloShow.Oro, EstiloShow.Rosa, EstiloShow.Cian };
+                        var centro = new Rect(0, h * 0.27f, w, h * 0.3f);
+                        EstiloShow.Texto(centro, n.ToString(), Mathf.RoundToInt(EstiloShow.Px(230f) * escala),
+                                         colores[Mathf.Abs(n) % colores.Length].WithAlpha(1f - pulso * 0.4f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo, false, 1.3f);
+                        EstiloShow.Texto(new Rect(0, h * 0.56f, w, h * 0.08f), Titulo, Mathf.RoundToInt(EstiloShow.Px(64f)), Color.white);
+                        Texto(new Rect(0, h * 0.88f, w, h * 0.05f), Controles, estiloPequeno, new Color(1f, 1f, 1f, 0.85f));
+                    }
                     break;
 
                 case Estado.Jugando:
@@ -416,10 +424,12 @@ namespace BichoShow
                     DibujarMarcador(w, h);
                     int p0 = PuntosEquipo(0), p1 = PuntosEquipo(1);
                     int ganador = p0 == p1 ? -1 : p0 > p1 ? 0 : 1;
-                    Texto(new Rect(0, h * 0.28f, w, h * 0.12f),
+                    EstiloShow.Banda(new Rect(0, h * 0.27f, w, h * 0.24f), EstiloShow.MoradoOscuro.WithAlpha(0.8f));
+                    EstiloShow.TituloRebote(new Rect(0, h * 0.28f, w, h * 0.14f),
                         ganador < 0 ? "¡EMPATE!" : $"¡GANA EL EQUIPO {NombreEquipo(ganador).ToUpper()}!",
-                        estiloGrande, ganador < 0 ? Color.white : ColorEquipo(ganador));
-                    Texto(new Rect(0, h * 0.42f, w, h * 0.06f), $"{NombreEquipo(0)} {p0}  —  {p1} {NombreEquipo(1)}", estiloMedio, Color.white);
+                        Mathf.RoundToInt(EstiloShow.Px(110f)),
+                        ganador < 0 ? new[] { Color.white, EstiloShow.Oro } : new[] { ColorEquipo(ganador), Color.white, EstiloShow.Oro });
+                    Texto(new Rect(0, h * 0.42f, w, h * 0.07f), $"{NombreEquipo(0)} {p0}  —  {p1} {NombreEquipo(1)}", estiloMedio, Color.white);
                     if (!ControladaPorShow)
                         Texto(new Rect(0, h * 0.78f, w, h * 0.07f), "START / ENTER para otra ronda", estiloMedio, Parpadeo(Color.yellow));
                     break;
@@ -450,17 +460,27 @@ namespace BichoShow
         {
             int segundos = Mathf.CeilToInt(Mathf.Max(0f, TiempoRestante));
             bool urgente = EstadoActual == Estado.Jugando && segundos <= 10;
-            Color colorReloj = urgente ? Parpadeo(new Color(1f, 0.35f, 0.3f)) : Color.white;
-            Texto(new Rect(0, h * 0.02f, w, h * 0.1f), TextoReloj, estiloGrande, colorReloj);
+
+            // Reloj en una píldora (roja y latiendo en los últimos 10 s)
+            var reloj = new Rect(w * 0.5f - EstiloShow.Px(120f), EstiloShow.Px(16f), EstiloShow.Px(240f), EstiloShow.Px(92f));
+            if (urgente) reloj = EstiloShow.Escalar(reloj, 1f + 0.06f * Mathf.Abs(Mathf.Sin(Time.time * Mathf.PI)));
+            EstiloShow.Panel(reloj, urgente ? new Color(0.8f, 0.16f, 0.22f, 0.92f) : EstiloShow.Morado.WithAlpha(0.9f), reloj.height * 0.5f);
+            EstiloShow.Texto(reloj, TextoReloj, Mathf.RoundToInt(EstiloShow.Px(64f)), urgente ? Color.white : EstiloShow.Oro);
 
             for (int i = 0; i < 2; i++)
             {
                 float x = i == 0 ? w * 0.03f : w * 0.67f;
                 var anclaje = i == 0 ? TextAnchor.UpperLeft : TextAnchor.UpperRight;
 
-                estiloMedio.alignment = anclaje;
-                Texto(new Rect(x, h * 0.03f, w * 0.3f, h * 0.06f), $"{NombreEquipo(i).ToUpper()}  {PuntosEquipo(i)}", estiloMedio, ColorEquipo(i));
-                estiloMedio.alignment = TextAnchor.MiddleCenter;
+                // Panel del equipo con su color: nombre pequeño y puntos grandes
+                var panel = new Rect(x, EstiloShow.Px(18f), w * 0.3f, EstiloShow.Px(84f));
+                EstiloShow.Panel(panel, Color.Lerp(ColorEquipo(i), EstiloShow.MoradoOscuro, 0.35f).WithAlpha(0.9f), EstiloShow.Px(26f));
+                float margen = EstiloShow.Px(22f);
+                var dentro = new Rect(panel.x + margen, panel.y, panel.width - margen * 2f, panel.height);
+                EstiloShow.Texto(dentro, NombreEquipo(i).ToUpper(), Mathf.RoundToInt(EstiloShow.Px(40f)), Color.white,
+                                 i == 0 ? TextAnchor.MiddleLeft : TextAnchor.MiddleRight);
+                EstiloShow.Texto(dentro, PuntosEquipo(i).ToString(), Mathf.RoundToInt(EstiloShow.Px(60f)), EstiloShow.Oro,
+                                 i == 0 ? TextAnchor.MiddleRight : TextAnchor.MiddleLeft);
 
                 estiloPequeno.alignment = anclaje;
                 if (JugadoresEn(i) == 0)
@@ -488,25 +508,17 @@ namespace BichoShow
             estiloPequeno.fontSize = Mathf.RoundToInt(tamano * 0.8f);
         }
 
+        /// <summary>
+        /// Texto de la interfaz con el estilo del show (contorno, sombra, brillo). Del estilo se usa
+        /// el tamaño, la alineación y si se parte en líneas; los tamaños grandes van con la fuente de títulos.
+        /// </summary>
         public static void Texto(Rect r, string texto, GUIStyle estilo, Color color)
         {
-            var sombra = new Color(0f, 0f, 0f, 0.65f * color.a);
-            estilo.normal.textColor = sombra;
-            float d = Mathf.Max(1f, estilo.fontSize * 0.06f);
-            GUI.Label(new Rect(r.x + d, r.y + d, r.width, r.height), texto, estilo);
-            estilo.normal.textColor = color;
-            GUI.Label(r, texto, estilo);
+            var fuente = estilo.fontSize >= Screen.height / 22 ? EstiloShow.Fuente.Titulo : EstiloShow.Fuente.Texto;
+            EstiloShow.Texto(r, texto, estilo.fontSize, color, estilo.alignment, fuente, estilo.wordWrap);
         }
 
-        public static void Barra(Rect r, float valor, Color color)
-        {
-            var antes = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.5f);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = color;
-            GUI.DrawTexture(new Rect(r.x + 2, r.y + 2, (r.width - 4) * Mathf.Clamp01(valor), r.height - 4), Texture2D.whiteTexture);
-            GUI.color = antes;
-        }
+        public static void Barra(Rect r, float valor, Color color) => EstiloShow.Barra(r, valor, color);
 
         public static Color Parpadeo(Color c) => Mathf.Repeat(Time.time * 2f, 1f) < 0.6f ? c : new Color(c.r, c.g, c.b, 0.35f);
     }
