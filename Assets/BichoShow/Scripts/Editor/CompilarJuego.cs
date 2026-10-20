@@ -18,7 +18,7 @@ namespace BichoShow.Herramientas
     /// </summary>
     public static class CompilarJuego
     {
-        static readonly string[] EscenasDelShow = { "Menu", "Mudanza", "Patata", "Corona", "Lluvia", "Pintura", "Voley", "Final" };
+        static readonly string[] EscenasDelShow = { "Menu", "Mudanza", "Patata", "Corona", "Lluvia", "Pintura", "Costura", "Voley", "Final" };
 
         public static string CarpetaSalida =>
             Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Builds", "Windows");

@@ -35,16 +35,7 @@ namespace BichoShow
         static void LimpiarEstaticos() => Instancia = null;
 
         [Tooltip("Todas las pruebas posibles. Cada show elige unas cuantas al azar y acaba con las finales.")]
-        public Prueba[] pruebas =
-        {
-            new Prueba { escena = "Mudanza", nombre = "Mudanza frágil" },
-            new Prueba { escena = "Patata", nombre = "Patata caliente" },
-            new Prueba { escena = "Corona", nombre = "La Corona" },
-            new Prueba { escena = "Lluvia", nombre = "Lluvia de muebles" },
-            new Prueba { escena = "Pintura", nombre = "Pintabichos" },
-            new Prueba { escena = "Voley", nombre = "Voley atados" },
-            new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2, esFinal = true },
-        };
+        public Prueba[] pruebas = PruebasPorDefecto();
         [Tooltip("Pruebas (sin contar la final) que se juegan en cada show.")]
         public int pruebasPorShow = 3;
 
@@ -85,7 +76,33 @@ namespace BichoShow
             }
             Instancia = this;
             DontDestroyOnLoad(gameObject);
+            AnadirPruebasNuevas();
         }
+
+        /// <summary>
+        /// La lista de pruebas se guarda en la escena del menú: las que se han añadido después
+        /// (y están en el código) se suman aquí, sin tener que rehacer el menú.
+        /// </summary>
+        void AnadirPruebasNuevas()
+        {
+            var lista = new List<Prueba>(pruebas ?? System.Array.Empty<Prueba>());
+            foreach (var p in PruebasPorDefecto())
+                if (!lista.Exists(x => x.escena == p.escena)) lista.Add(p);
+            pruebas = lista.ToArray();
+        }
+
+        /// <summary>Todas las pruebas que hay en el juego (instancias nuevas cada vez).</summary>
+        static Prueba[] PruebasPorDefecto() => new[]
+        {
+            new Prueba { escena = "Mudanza", nombre = "Mudanza frágil" },
+            new Prueba { escena = "Patata", nombre = "Patata caliente" },
+            new Prueba { escena = "Corona", nombre = "La Corona" },
+            new Prueba { escena = "Lluvia", nombre = "Lluvia de muebles" },
+            new Prueba { escena = "Pintura", nombre = "Pintabichos" },
+            new Prueba { escena = "Costura", nombre = "Costura a la fuga" },
+            new Prueba { escena = "Voley", nombre = "Voley atados" },
+            new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2, esFinal = true },
+        };
 
         void OnEnable()
         {
