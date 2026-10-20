@@ -157,10 +157,14 @@ namespace BichoShow
                 if (!hayHumanos || !b.EsBot)
                     destino.Add(PuntoDe(b));
 
-            // Lo que viene por delante también tiene que verse.
+            // Lo que viene por delante también tiene que verse; y un poco por detrás, para que los
+            // bichos no queden pegados al borde de abajo (ahí van los carteles de ayuda).
             if (adelanto > 0f)
                 for (int i = destino.Count - 1; i >= 0; i--)
+                {
                     destino.Add(destino[i] + Rumbo * adelanto);
+                    destino.Add(destino[i] - Rumbo * (adelanto * 0.4f));
+                }
         }
 
         public static Vector3 PuntoDe(ControladorBicho b) => b.transform.position + Vector3.up * 0.6f;
