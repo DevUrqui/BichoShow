@@ -552,7 +552,7 @@ namespace BichoShow
             {
                 foreach (var mb in raiz.GetComponentsInChildren<MonoBehaviour>(true))
                 {
-                    if (mb == null || mb is PublicoAnimado) continue;
+                    if (mb == null || mb is PublicoAnimado || mb is CamaraSinEstorbos) continue; // lo visual de cada pantalla sigue vivo
                     if (mb.GetType().Namespace == "BichoShow") mb.enabled = false;
                 }
                 foreach (var rb in raiz.GetComponentsInChildren<Rigidbody>(true))

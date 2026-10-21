@@ -17,6 +17,7 @@ namespace BichoShow
 
         ControladorBicho objetivo;
         Vector3 velocidad;
+        Vector3 rumboObjetivo = Vector3.forward;
 
         public void Grabar(ControladorBicho bicho) => objetivo = bicho;
 
@@ -26,10 +27,14 @@ namespace BichoShow
             Vector3 mirar;
             if (objetivo != null && !objetivo.Retirado)
             {
-                // Por fuera de la espiral, un poco por delante y por encima del bicho, mirándolo.
+                // Por delante del bicho (hacia donde corre) y un poco por fuera y por encima, mirándolo:
+                // así sale en el plano a su lado, sin taparlo desde la cámara.
                 Vector3 p = objetivo.transform.position;
                 Vector3 fuera = new Vector3(p.x - ejeTallo.x, 0f, p.z - ejeTallo.z).normalized;
-                destino = p + fuera * 4f + Vector3.up * 2.2f;
+                Vector3 v = objetivo.Velocidad;
+                v.y = 0f;
+                if (v.sqrMagnitude > 1f) rumboObjetivo = Vector3.Slerp(rumboObjetivo, v.normalized, 1f - Mathf.Exp(-3f * Time.deltaTime));
+                destino = p + rumboObjetivo * 4.5f + fuera * 1.2f + Vector3.up * 1.8f;
                 mirar = p + Vector3.up * 0.8f;
             }
             else

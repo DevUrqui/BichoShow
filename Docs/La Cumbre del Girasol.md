@@ -56,14 +56,17 @@ Gira alrededor del tallo y siempre mira hacia dentro, pero con calma para que no
 - Mientras el grupo siga cerca del centro del plano (16° a cada lado), no gira.
 - Cuando gira, lo hace despacio, con un tope de 22° por segundo, y un poco por delante de los bichos.
 - A quien está casi en el eje (en el centro de la cabeza) no le hace caso, así no da bandazos al final.
+- Al girar, los bichos se quedan en el centro del plano: se suaviza el punto al que mira, no la posición.
+- Mira 0,6 s por delante de cada bicho, para que los trampolines y los atajos no lo saquen por arriba. Si alguien se sale muy lejos de golpe, gira más deprisa para alcanzarlo.
+- El decorado que se pone entre la cámara y un bicho (gradas, banderolas, pétalos de la cabeza…) se vuelve invisible mientras estorba, aunque sigue dando sombra. Lo hace `CamaraSinEstorbos`, en la cámara.
 
-Si sigue mareando, en el Inspector de `Camara` sube `margenOrbita` (gira menos veces) o baja `velocidadMaximaOrbita` (gira más despacio).
+Si sigue mareando, en el Inspector de `Camara` sube `margenOrbita` (gira menos veces) o baja `velocidadMaximaOrbita` (gira más despacio). Si aún se sale alguien por arriba, sube `anticipacion`.
 
 ## Eventos de show
 
 - **La savia empieza a subir** (a los 10 s): aviso con alarma.
 - **Fiebre del polen** (al minuto): durante 20 s caen el doble de bolas, las luces parpadean doradas y suena la sirena.
-- **El abejorro con cámara:** si alguien saca 8 m de altura al segundo, el abejorro se le pone delante para grabarlo y el presentador avisa de que se escapa.
+- **El abejorro con cámara:** si alguien saca 8 m de altura al segundo, el abejorro se le pone delante (hacia donde corre, un poco por fuera) para grabarlo, y el presentador avisa de que se escapa. Así sale a su lado en el plano, sin taparlo.
 - **Cuando llega el primero:**
   - Cámara lenta y confeti en las gradas.
   - La **savia se desborda**: sube 2,5 veces más deprisa.

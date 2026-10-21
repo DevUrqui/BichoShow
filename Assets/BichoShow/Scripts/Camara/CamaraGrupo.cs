@@ -40,6 +40,8 @@ namespace BichoShow
         public bool priorizarHumanos = true;
         [Tooltip("En carreras: además de a los jugadores, encuadra este trozo por delante de ellos (m, hacia donde mira la cámara).")]
         public float adelanto;
+        [Tooltip("Encuadra también dónde estará cada bicho dentro de estos segundos (saltos y lanzamientos rápidos no se salen de plano).")]
+        public float anticipacion;
         [Header("Órbita (pruebas alrededor de una torre: la cumbre del girasol)")]
         [Tooltip("La cámara gira alrededor del eje, siempre por fuera de los jugadores y mirando hacia dentro.")]
         public bool orbitar;
@@ -54,6 +56,10 @@ namespace BichoShow
         public float adelantoOrbita;
         float anguloOrbita, velocidadAnguloOrbita;
         bool hayAnguloOrbita;
+        // En órbita se suaviza el punto al que se mira y la distancia (no la posición): así, al
+        // girar, los bichos siguen en el centro del plano en vez de irse hacia un borde.
+        Vector3 focoSuave, velocidadFoco;
+        float distanciaSuave, velocidadDistancia;
         [Tooltip("Dónde mirar cuando todavía no hay nadie jugando.")]
         public Vector3 centroSinJugadores = Vector3.zero;
 
@@ -100,8 +106,14 @@ namespace BichoShow
             Quaternion rotacion = Rotacion(inclinacionActual);
 
             // La posición se calcula con la inclinación ya suavizada para que no haya saltos.
-            Encuadre(puntos, cam.aspect, inclinacionActual, out Vector3 posicion, out _, out _);
-            posicionSinSacudida = Vector3.SmoothDamp(posicionSinSacudida, posicion, ref velocidad, suavizado);
+            Calcular(puntos, cam.aspect, inclinacionActual, out Vector3 posicion, out Vector3 foco, out float distancia, out _, out _);
+            if (orbitar)
+            {
+                focoSuave = Vector3.SmoothDamp(focoSuave, foco, ref velocidadFoco, suavizado);
+                distanciaSuave = Mathf.SmoothDamp(distanciaSuave, distancia, ref velocidadDistancia, suavizado);
+                posicionSinSacudida = focoSuave - rotacion * Vector3.forward * distanciaSuave;
+            }
+            else posicionSinSacudida = Vector3.SmoothDamp(posicionSinSacudida, posicion, ref velocidad, suavizado);
 
             // Sacudida (golpes, roturas): se suma encima sin afectar al seguimiento.
             Efectos.Sacudida(out Vector3 temblor, out float giroTemblor);
@@ -117,10 +129,11 @@ namespace BichoShow
             if (orbitar) Orbitar(true);
             Encuadre(puntos, a, null, out _, out inclinacionActual, out _);
             transform.rotation = Rotacion(inclinacionActual);
-            Encuadre(puntos, a, inclinacionActual, out Vector3 posicion, out _, out _);
+            Calcular(puntos, a, inclinacionActual, out Vector3 posicion, out focoSuave, out distanciaSuave, out _, out _);
             transform.position = posicion;
             posicionSinSacudida = posicion;
-            velocidad = Vector3.zero;
+            velocidad = velocidadFoco = Vector3.zero;
+            velocidadDistancia = 0f;
             velocidadInclinacion = 0f;
         }
 
@@ -148,8 +161,10 @@ namespace BichoShow
                 {
                     float delta = Mathf.DeltaAngle(anguloOrbita, objetivo);
                     float sobra = Mathf.Sign(delta) * Mathf.Max(0f, Mathf.Abs(delta) - margenOrbita);
+                    // Si el grupo se ha ido muy lejos de golpe (un trampolín, un atajo), se permite ir más deprisa.
+                    float tope = velocidadMaximaOrbita * (1f + Mathf.Abs(sobra) / 30f);
                     anguloOrbita = Mathf.SmoothDampAngle(anguloOrbita, anguloOrbita + sobra, ref velocidadAnguloOrbita,
-                                                         suavizado * 3f, velocidadMaximaOrbita);
+                                                         suavizado * 3f, tope);
                 }
             }
             float rad = anguloOrbita * Mathf.Deg2Rad;
@@ -191,7 +206,7 @@ namespace BichoShow
             if (objetivosForzados != null)
             {
                 foreach (var b in objetivosForzados)
-                    if (b != null) destino.Add(PuntoDe(b));
+                    if (b != null) Anotar(destino, b);
                 return;
             }
 
@@ -203,7 +218,7 @@ namespace BichoShow
 
             foreach (var b in bichos)
                 if (!hayHumanos || !b.EsBot)
-                    destino.Add(PuntoDe(b));
+                    Anotar(destino, b);
 
             // Lo que viene por delante también tiene que verse; y un poco por detrás, para que los
             // bichos no queden pegados al borde de abajo (ahí van los carteles de ayuda).
@@ -217,13 +232,29 @@ namespace BichoShow
 
         public static Vector3 PuntoDe(ControladorBicho b) => b.transform.position + Vector3.up * 0.6f;
 
+        /// <summary>El bicho y, si hay anticipación, dónde estará en un momento (la subida cuenta la mitad, para no dar botes).</summary>
+        void Anotar(List<Vector3> destino, ControladorBicho b)
+        {
+            Vector3 p = PuntoDe(b);
+            destino.Add(p);
+            if (anticipacion <= 0f) return;
+            Vector3 v = b.Velocidad;
+            if (v.y > 0f) v.y *= 0.5f;
+            destino.Add(p + Vector3.ClampMagnitude(v, 14f) * anticipacion);
+        }
+
         /// <summary>
         /// Calcula dónde poner la cámara para que quepan estos puntos con esta forma de pantalla.
         /// Si se pasa una inclinación, usa esa; si no, la calcula. "distanciaNecesaria" es la
         /// distancia que haría falta sin aplicar el máximo (sirve para decidir si dividir).
         /// </summary>
         public void Encuadre(List<Vector3> pts, float aspecto, float? inclinacionFija,
-                             out Vector3 posicion, out float inclinacionObjetivo, out float distanciaNecesaria)
+                             out Vector3 posicion, out float inclinacionObjetivo, out float distanciaNecesaria) =>
+            Calcular(pts, aspecto, inclinacionFija, out posicion, out _, out _, out inclinacionObjetivo, out distanciaNecesaria);
+
+        /// <summary>Como Encuadre, y además el punto al que se mira ("foco") y la distancia a él.</summary>
+        void Calcular(List<Vector3> pts, float aspecto, float? inclinacionFija, out Vector3 posicion, out Vector3 foco,
+                      out float distanciaFinal, out float inclinacionObjetivo, out float distanciaNecesaria)
         {
             Vector3 centro = centroSinJugadores;
             float largo = 0f;
@@ -267,6 +298,8 @@ namespace BichoShow
             distanciaNecesaria = distancia;
             distancia = Mathf.Min(distancia, distanciaMaxima);
 
+            foco = centro;
+            distanciaFinal = distancia;
             posicion = centro - adelante * distancia;
         }
 

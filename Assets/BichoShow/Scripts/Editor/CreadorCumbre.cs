@@ -198,6 +198,7 @@ namespace BichoShow.Herramientas
             camara.margenOrbita = 16f;
             camara.velocidadMaximaOrbita = 22f;
             camara.adelantoOrbita = -10f; // un poco por delante: la carrera va hacia ángulos menores
+            camara.anticipacion = 0.6f;   // trampolines y atajos: que no se salgan por arriba
             camara.centroSinJugadores = Punto(6f, 0.5f);
             camara.ColocarAlInstante();
 
@@ -206,6 +207,8 @@ namespace BichoShow.Herramientas
             obstaculos = M.Grupo(mapa, "Obstaculos");
             decorado = M.Grupo(mapa, "Decorado");
             rutaBots = M.Grupo(mapa, "RutaBots");
+            // El decorado que se ponga entre la cámara y un bicho se vuelve invisible (deja la sombra).
+            camara.gameObject.AddComponent<CamaraSinEstorbos>().raices = new[] { decorado };
 
             CrearPista();
             CrearValla();
