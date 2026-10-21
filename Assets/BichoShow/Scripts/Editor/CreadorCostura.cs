@@ -9,13 +9,14 @@ using A = BichoShow.Herramientas.CreadorArena;
 namespace BichoShow.Herramientas
 {
     /// <summary>
-    /// Menú "BichoShow > Crear escena: Costura a la fuga". Versión de prueba (bloques y colores
-    /// planos) de la carrera sobre la mesa de costura, en cinco zonas a lo largo del eje Z:
-    ///  1. Salida: la Tabla de Corte (z 0-23): arco de salida, un hueco pequeño y un escalón.
-    ///  2. Los Carretes Viajeros (z 23-44): tres franjas con un carrete rodando de lado a lado.
-    ///  3. El Puente Acordeón (z 44-79): paneles que se inclinan en ola, o el camino largo del lado.
-    ///  4. Las Cremalleras Gemelas (z 79-108): ancha y lenta (izquierda) o estrecha y rápida (derecha).
-    ///  5. La Subida del Dedal (z 108-147): tres alfileteros en terrazas (el del medio se hunde) y la meta.
+    /// Menú "BichoShow > Crear escena: Costura a la fuga". La carrera sobre la mesa de costura,
+    /// a lo largo del eje Z. Tras la salida hay cuatro cruces: en cada uno se elige entre dos
+    /// caminos con pruebas distintas, que se juntan en un descanso (cada vez más a un lado):
+    ///  1. Salida: la Tabla de Corte (z 0-23) y el escalón ancho.
+    ///  2. Botones giratorios (derecha) o Carretes viajeros (izquierda) → Descanso 1 (z 46-53).
+    ///  3. Puente acordeón (izquierda) o Cinta métrica rodante con agujas de tejer (derecha) → Descanso 2 (z 72-78).
+    ///  4. Cremallera estrecha y rápida (derecha) o ancha y lenta (izquierda) → Destino (z 100-107).
+    ///  5. Escalera de carretes (derecha) o Alfileteros (izquierda) → Meta junto al dedal (z 137-146).
     ///
     /// Medidas pensadas para el bicho: corre a 6 m/s, salta ~2,1 m de alto y ~6,5 m de largo
     /// corriendo. Saltos: huecos de 1,5-2,5 m y escalones de hasta 1,2 m.
@@ -96,7 +97,7 @@ namespace BichoShow.Herramientas
             var controles = new List<PuntoControlCarrera>();
 
             // =================================================================
-            // 1. SALIDA: la Tabla de Corte
+            // 1. SALIDA: la Tabla de Corte. Tras un saltito, el escalón ancho donde se elige camino.
             // =================================================================
             Losa("TablaCorte", -9f, 9f, 0f, 14f, 0f, tablaCorte);
             Cuadricula(-9f, 9f, 0f, 14f, 0f);
@@ -106,173 +107,192 @@ namespace BichoShow.Herramientas
             Guirnalda(new Vector3(8.3f, 0f, 0.8f), new Vector3(8.3f, 0f, 13.2f));
             Arco("SALIDA", 4f, 0f, 18f);
             Flecha(new Vector3(0f, 0f, 10.5f), 0f, crema);
-            // Primer saltito (1,5 m) a un escalón (+0,6 m): para aprender a saltar.
-            Losa("Escalon", -6f, 6f, 15.5f, 23f, 0.6f, telaVichyClaro);
-            Pespunte(-6f, 6f, 15.5f, 23f, 0.6f);
-            Parches(-6f, 6f, 15.5f, 23f, 0.6f, parcheLunares);
-            Flecha(new Vector3(0f, 0.6f, 20.5f), 0f, azul);
-            controles.Add(PuntoControl(1, 18f, -6f, 6f, 0.6f));
+            Losa("Escalon", -12f, 12f, 15.5f, 23f, 0.6f, telaVichyClaro);
+            Pespunte(-12f, 12f, 15.5f, 23f, 0.6f);
+            Parches(-12f, 12f, 15.5f, 23f, 0.6f, parcheLunares);
+            Flecha(new Vector3(-7f, 0.6f, 21f), -12f, azul);     // a los carretes
+            Flecha(new Vector3(7.5f, 0.6f, 21f), 12f, azul);     // a los botones
+            controles.Add(PuntoControl(1, 18f, -12f, 12f, 0.6f));
 
             // =================================================================
-            // 2. LOS CARRETES VIAJEROS
+            // 2a. LOS CARRETES VIAJEROS (izquierda): esperar el hueco y cruzar
             // =================================================================
-            Losa("SueloCarretes", -6f, 6f, 23f, 44f, 0.6f, telaLunares);
-            float[] franjas = { 26f, 32.5f, 39f };                 // centro de cada franja (4 m de fondo)
+            Losa("SueloCarretes", -12f, -2f, 23f, 46f, 0.6f, telaLunares);
+            float[] franjas = { 27f, 34f, 41f };                   // centro de cada franja (4 m de fondo)
             float[] periodos = { 5.5f, 4.5f, 3.4f };               // de más lento a más rápido
             float[] desfases = { 0f, 0.35f, 0.7f };
             Material[] hilos = { coral, azul, turquesa };
             var carretes = new CarreteViajero[3];
             for (int i = 0; i < 3; i++)
             {
-                // La guía del carrete en el suelo (su recorrido) y los topes de los lados.
-                Pegatina($"Guia carrete {i + 1}", -6f, 6f, franjas[i] - 1.7f, franjas[i] + 1.7f, 0.6f, azul);
-                Pegatina($"Guia carrete {i + 1} centro", -5.6f, 5.6f, franjas[i] - 0.08f, franjas[i] + 0.08f, 0.615f, crema);
-                carretes[i] = Carrete($"Carrete {i + 1}", franjas[i], periodos[i], desfases[i], hilos[i]);
+                Pegatina($"Guia carrete {i + 1}", -12f, -2f, franjas[i] - 1.7f, franjas[i] + 1.7f, 0.6f, azul);
+                Pegatina($"Guia carrete {i + 1} centro", -11.6f, -2.4f, franjas[i] - 0.08f, franjas[i] + 0.08f, 0.615f, crema);
+                carretes[i] = Carrete($"Carrete {i + 1}", -7f, 5f, franjas[i], periodos[i], desfases[i], hilos[i]);
             }
-            // Zonas seguras entre franjas, con un pespunte que las marca.
-            Pespunte(-6f, 6f, 28f, 30.5f, 0.6f);
-            Pespunte(-6f, 6f, 34.5f, 37f, 0.6f);
-
-            // Descanso y bifurcación
-            Losa("Descanso1", -10f, 13f, 44f, 51f, 0.6f, telaVichy);
-            Pespunte(-10f, 13f, 44f, 51f, 0.6f);
-            Parches(-10f, 13f, 44f, 51f, 0.6f, parcheLunares);
-            Guirnalda(new Vector3(-9.4f, 0.6f, 44.6f), new Vector3(-9.4f, 0.6f, 50.4f));
-            controles.Add(PuntoControl(2, 46.5f, -10f, 13f, 0.6f));
-            Flecha(new Vector3(-3f, 0.6f, 49.3f), 0f, crema);
-            Flecha(new Vector3(7.5f, 0.6f, 48.8f), 25f, crema);
+            Pespunte(-12f, -2f, 29f, 32f, 0.6f);
+            Pespunte(-12f, -2f, 36f, 39f, 0.6f);
 
             // =================================================================
-            // 3. EL PUENTE ACORDEÓN (y el camino largo del lado)
+            // 2b. LOS BOTONES GIRATORIOS (derecha): de botón en botón, saltando, mientras giran
             // =================================================================
-            // Seis paneles seguidos (juntas de 15 cm). Cada uno se inclina 0,525 s después del
-            // anterior: lo que tarda un bicho en cruzar uno. Quien entra cuando el primero se
-            // pone plano, cruza todo en "ola verde"; si no, hay que saltar los inclinados.
+            var botones = new[] { new Vector2(6.5f, 26.8f), new Vector2(9f, 32.6f), new Vector2(6.5f, 38.4f), new Vector2(9f, 44f) };
+            for (int i = 0; i < botones.Length; i++)
+                BotonGiratorio($"Boton giratorio {i + 1}", botones[i], 0.6f, 2f, i % 2 == 0 ? 28f : -34f, i % 2 == 0 ? coral : mostaza);
+
+            // Descanso 1 (hacia la derecha): se juntan los dos caminos.
+            Losa("Descanso1", -12f, 14f, 46f, 53f, 0.6f, telaVichy);
+            Pespunte(-12f, 14f, 46f, 53f, 0.6f);
+            Parches(-12f, 14f, 46f, 53f, 0.6f, parcheLunares);
+            Guirnalda(new Vector3(-11.4f, 0.6f, 46.6f), new Vector3(-11.4f, 0.6f, 52.4f));
+            Guirnalda(new Vector3(13.4f, 0.6f, 46.6f), new Vector3(13.4f, 0.6f, 52.4f));
+            controles.Add(PuntoControl(2, 48.5f, -12f, 14f, 0.6f));
+            Flecha(new Vector3(-6f, 0.6f, 51.3f), 0f, crema);
+            Flecha(new Vector3(8f, 0.6f, 51.3f), 0f, crema);
+
+            // =================================================================
+            // 3a. EL PUENTE ACORDEÓN (izquierda)
+            // =================================================================
+            // Seis paneles seguidos; cada uno se inclina 0,525 s después del anterior (lo que tarda
+            // un bicho en cruzarlo): quien entra cuando el primero se pone plano cruza en "ola verde".
             var paneles = new PanelAcordeon[6];
             for (int i = 0; i < 6; i++)
             {
-                float z0 = 51.15f + 3.15f * i;
-                paneles[i] = Panel(i, -3f, z0, z0 + 3f, 0.6f, i % 2 == 0 ? 1f : -1f, 0.525f * i, i % 2 == 0 ? coral : azul);
+                float z0 = 53.15f + 3.15f * i;
+                paneles[i] = Panel(i, -6f, z0, z0 + 3f, 0.6f, i % 2 == 0 ? 1f : -1f, 0.525f * i, i % 2 == 0 ? coral : azul);
             }
             paneles[0].ventanaBot = 1.0f;
-            Bisagras(-3f, 51.15f, 6, 3.15f, 0.6f);
+            Bisagras(-6f, 53.15f, 6, 3.15f, 0.6f);
 
-            // Camino del lado: más largo (sale a x=13,5 y vuelve), plano y con barandilla de hilo.
-            var lado = new[]
-            {
-                (6.5f, 9.5f, 51f, 58.5f), (6.5f, 15f, 58.5f, 61.5f), (12f, 15f, 61.5f, 68.5f),
-                (6.5f, 15f, 68.5f, 71.5f), (6.5f, 9.5f, 71.5f, 73f),
-            };
-            for (int i = 0; i < lado.Length; i++)
-            {
-                Losa($"Camino lateral {i + 1}", lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, telaLunares);
-                Parches(lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, parcheVichy);
-            }
-            Barandillas(0.6f,
-                (6.5f, 51f, 6.5f, 58.5f), (9.5f, 51f, 9.5f, 58.5f),
-                (6.5f, 58.5f, 6.5f, 61.5f), (6.5f, 61.5f, 12f, 61.5f), (9.5f, 58.5f, 15f, 58.5f), (15f, 58.5f, 15f, 71.5f),
-                (12f, 61.5f, 12f, 68.5f), (6.5f, 68.5f, 12f, 68.5f), (9.5f, 71.5f, 15f, 71.5f),
-                (6.5f, 68.5f, 6.5f, 73f), (9.5f, 71.5f, 9.5f, 73f));
-            Flecha(new Vector3(8f, 0.6f, 55f), 0f, azul);
-            Flecha(new Vector3(11f, 0.6f, 60f), 90f, azul);
-            Flecha(new Vector3(13.5f, 0.6f, 65f), 0f, azul);
-            Flecha(new Vector3(11f, 0.6f, 70f), -90f, azul);
+            // =================================================================
+            // 3b. LA CINTA MÉTRICA RODANTE (derecha): va hacia atrás y la barren agujas de tejer
+            // =================================================================
+            CintaRodante(8f, 6f, 53f, 72f, 0.6f);
+            Aguja("Aguja de tejer 1", new Vector3(8f, 0.6f, 59f), 70f, coral);
+            Aguja("Aguja de tejer 2", new Vector3(8f, 0.6f, 66f), -85f, azul);
 
-            // Descanso 2: se juntan las dos rutas.
-            Losa("Descanso2", -10f, 16f, 73f, 79f, 0.6f, telaVichy);
-            Pespunte(-10f, 16f, 73f, 79f, 0.6f);
-            Parches(-10f, 16f, 73f, 79f, 0.6f, parcheLunares);
-            Guirnalda(new Vector3(-9.4f, 0.6f, 73.6f), new Vector3(-9.4f, 0.6f, 78.4f));
-            Guirnalda(new Vector3(15.4f, 0.6f, 73.6f), new Vector3(15.4f, 0.6f, 78.4f));
-            controles.Add(PuntoControl(3, 75.5f, -10f, 16f, 0.6f));
-            Flecha(new Vector3(-4.5f, 0.6f, 77.5f), 0f, crema);
-            Flecha(new Vector3(4.5f, 0.6f, 77.5f), 0f, crema);
+            // Descanso 2 (hacia la izquierda)
+            Losa("Descanso2", -14f, 12f, 72f, 78f, 0.6f, telaVichy);
+            Pespunte(-14f, 12f, 72f, 78f, 0.6f);
+            Parches(-14f, 12f, 72f, 78f, 0.6f, parcheLunares);
+            Guirnalda(new Vector3(-13.4f, 0.6f, 72.6f), new Vector3(-13.4f, 0.6f, 77.4f));
+            Guirnalda(new Vector3(11.4f, 0.6f, 72.6f), new Vector3(11.4f, 0.6f, 77.4f));
+            controles.Add(PuntoControl(3, 74.5f, -14f, 12f, 0.6f));
+            Flecha(new Vector3(-8f, 0.6f, 76.6f), 0f, crema);
+            Flecha(new Vector3(4f, 0.6f, 76.6f), 0f, crema);
 
             // =================================================================
             // 4. LAS CREMALLERAS GEMELAS
             // =================================================================
             // Izquierda: ancha (4,4 m) y lenta, en dos mitades con un descansillo entre medias.
-            var izq1 = Cremallera("Cremallera ancha 1", -4.5f, 4.4f, 79f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 0f, coral);
-            Losa("Descansillo", -6.7f, -2.3f, 89f, 91.5f, 0.6f, telaLunares);
-            Pespunte(-6.7f, -2.3f, 89f, 91.5f, 0.6f);
-            var izq2 = Cremallera("Cremallera ancha 2", -4.5f, 4.4f, 91.5f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 4.5f, coral);
+            var izq1 = Cremallera("Cremallera ancha 1", -8f, 4.4f, 78f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 0f, coral);
+            Losa("Descansillo", -10.2f, -5.8f, 88f, 90.5f, 0.6f, telaLunares);
+            Pespunte(-10.2f, -5.8f, 88f, 90.5f, 0.6f);
+            var izq2 = Cremallera("Cremallera ancha 2", -8f, 4.4f, 90.5f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 4.5f, coral);
             // Derecha: estrecha (2,4 m) y de una tirada, con el cursor más rápido.
-            var der = Cremallera("Cremallera estrecha", 4.5f, 2.4f, 79f, 9, 2.5f, 0.6f, 4.6f, 1.4f, 0.8f, 0f, azul);
+            var der = Cremallera("Cremallera estrecha", 4f, 2.4f, 78f, 9, 2.5f, 0.6f, 4.6f, 1.4f, 0.8f, 0f, azul);
 
-            Losa("Destino", -9f, 9f, 101.5f, 108f, 0.6f, telaVichy);
-            Pespunte(-9f, 9f, 101.5f, 108f, 0.6f);
-            Parches(-9f, 9f, 101.5f, 108f, 0.6f, parcheLunares);
-            Guirnalda(new Vector3(-8.4f, 0.6f, 102.1f), new Vector3(-8.4f, 0.6f, 107.4f));
-            Guirnalda(new Vector3(8.4f, 0.6f, 102.1f), new Vector3(8.4f, 0.6f, 107.4f));
-            controles.Add(PuntoControl(4, 104.5f, -9f, 9f, 0.6f));
-            Flecha(new Vector3(0f, 0.6f, 106.5f), 0f, crema);
-
-            // =================================================================
-            // 5. LA SUBIDA DEL DEDAL
-            // =================================================================
-            Rampa("Rampa alfiletero", 0f, 6f, 108f, 0.6f, 111f, 1.6f, crema);
-            Cojin("Alfiletero 1", -6f, 6f, 111f, 118f, 1.6f, mostaza, false);
-            controles.Add(PuntoControl(5, 113.5f, -6f, 6f, 1.6f));
-            Flecha(new Vector3(0f, 1.6f, 116.3f), 0f, azul);
-            // Hueco de 2 m y +1 m al segundo: este se hunde si te quedas encima.
-            var blando = Cojin("Alfiletero 2 (blando)", -6f, 6f, 120f, 127f, 2.6f, coral, true);
-            // Al lado del blando, un escalón fijo y una rampa al tercero (por si está hundido).
-            Losa("Escalon lateral", 6f, 8.5f, 123f, 126f, 2.6f, maderaVeta);
-            Rampa("Rampa lateral", 7.25f, 2.5f, 126f, 2.6f, 129.5f, 3.8f, crema);
-            Cojin("Alfiletero 3", -6f, 8.5f, 129.5f, 136f, 3.8f, turquesaClaro, false);
-            // La cinta métrica hace de puente hasta la meta.
-            SoloColision(Losa("Cinta metrica", -3f, 3f, 136f, 138f, 3.8f, mostaza, 0.25f, false));
-            Kit("PuenteCinta", decorado, new Vector3(0f, 3.8f, 137f));
-            Losa("Meta", -9f, 9f, 138f, 147f, 3.8f, tablaCorte);
-            Cuadricula(-9f, 9f, 138f, 147f, 3.8f);
-            Regla(-9f, 138f, 147f, 3.8f);
-            Barandillas(3.8f, (-8.85f, 138.2f, -8.85f, 146.85f), (8.85f, 138.2f, 8.85f, 146.85f), (-8.85f, 146.85f, 8.85f, 146.85f));
-            Guirnalda(new Vector3(-8.3f, 3.8f, 138.8f), new Vector3(-8.3f, 3.8f, 146.3f));
-            Guirnalda(new Vector3(8.3f, 3.8f, 138.8f), new Vector3(8.3f, 3.8f, 146.3f));
-            Arco("META", 142f, 3.8f, 18f);
-            var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, 3.8f + 1.5f, 144.5f), new Vector3(18f, 3f, 5f));
-            Dedal(new Vector3(12f, 3.8f, 144f));
+            Losa("Destino", -12f, 12f, 100.5f, 107f, 0.6f, telaVichy);
+            Pespunte(-12f, 12f, 100.5f, 107f, 0.6f);
+            Parches(-12f, 12f, 100.5f, 107f, 0.6f, parcheLunares);
+            Guirnalda(new Vector3(-11.4f, 0.6f, 101.1f), new Vector3(-11.4f, 0.6f, 106.4f));
+            Guirnalda(new Vector3(11.4f, 0.6f, 101.1f), new Vector3(11.4f, 0.6f, 106.4f));
+            controles.Add(PuntoControl(4, 103.5f, -12f, 12f, 0.6f));
+            Flecha(new Vector3(-4f, 0.6f, 105.6f), 0f, crema);
+            Flecha(new Vector3(9f, 0.6f, 105.6f), 0f, crema);
 
             // =================================================================
-            // Ruta de los bots
+            // 5a. LOS ALFILETEROS (izquierda): el del medio se hunde si te quedas encima
+            // =================================================================
+            Rampa("Rampa alfiletero", -4f, 6f, 107f, 0.6f, 110f, 1.6f, crema);
+            Cojin("Alfiletero 1", -10f, 2f, 110f, 117f, 1.6f, mostaza, false);
+            controles.Add(PuntoControl(5, 112.5f, -10f, 2f, 1.6f));
+            Flecha(new Vector3(-4f, 1.6f, 115.3f), 0f, azul);
+            Cojin("Alfiletero 2 (blando)", -10f, 2f, 119f, 126f, 2.6f, coral, true);
+            Losa("Escalon lateral", 2f, 4.5f, 122f, 125f, 2.6f, maderaVeta);
+            Rampa("Rampa lateral", 3.25f, 2.5f, 125f, 2.6f, 128.5f, 3.8f, crema);
+            Cojin("Alfiletero 3", -10f, 4.5f, 128.5f, 135f, 3.8f, turquesaClaro, false);
+            SoloColision(Losa("Cinta metrica", -7f, -1f, 135f, 137f, 3.8f, mostaza, 0.25f, false));
+            Kit("PuenteCinta", decorado, new Vector3(-4f, 3.8f, 136f));
+
+            // =================================================================
+            // 5b. LA ESCALERA DE CARRETES (derecha): de pie, cada uno más alto; dos giran
+            // =================================================================
+            var pilares = new[] { (9f, 110.5f, 1.2f, 0f), (11f, 115.8f, 1.9f, 40f), (9f, 121.1f, 2.6f, 0f), (11f, 126.4f, 3.2f, -45f), (9f, 131.7f, 3.8f, 0f) };
+            Material[] hilosPilar = { turquesa, coral, mostaza, azul, coral };
+            for (int i = 0; i < pilares.Length; i++)
+                CarretePilar($"Carrete escalera {i + 1}", pilares[i].Item1, pilares[i].Item2, pilares[i].Item3, pilares[i].Item4, hilosPilar[i]);
+            controles.Add(PuntoControl(5, 121.1f, 7.3f, 10.7f, 2.6f, 0.5f));
+            SoloColision(Losa("Cinta metrica 2", 7.5f, 10.5f, 133.5f, 137f, 3.8f, mostaza, 0.25f, false));
+            var cintaDerecha = Kit("PuenteCinta", decorado, new Vector3(9f, 3.8f, 135.25f), 90f);
+            cintaDerecha.transform.localScale = Vector3.Scale(cintaDerecha.transform.localScale, new Vector3(0.58f, 1f, 1.5f));
+
+            // =================================================================
+            // META
+            // =================================================================
+            Losa("Meta", -12f, 12f, 137f, 146f, 3.8f, tablaCorte);
+            Cuadricula(-12f, 12f, 137f, 146f, 3.8f);
+            Regla(-12f, 137f, 146f, 3.8f);
+            Barandillas(3.8f, (-11.85f, 137.2f, -11.85f, 145.85f), (11.85f, 137.2f, 11.85f, 145.85f), (-11.85f, 145.85f, 11.85f, 145.85f));
+            Guirnalda(new Vector3(-11.3f, 3.8f, 137.8f), new Vector3(-11.3f, 3.8f, 145.3f));
+            Guirnalda(new Vector3(11.3f, 3.8f, 137.8f), new Vector3(11.3f, 3.8f, 145.3f));
+            Arco("META", 141f, 3.8f, 18f);
+            var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, 3.8f + 1.5f, 143.5f), new Vector3(24f, 3f, 5f));
+            Dedal(new Vector3(15.5f, 3.8f, 143f));
+
+            // =================================================================
+            // Ruta de los bots ([difícil, fácil] en cada cruce)
             // =================================================================
             var w0 = Ruta("Salida", 0f, 0f, 9f, 3f);
             var w1 = Ruta("Salto escalon", 0f, 0f, 13.6f, 3f, saltar: true);
-            var c0 = Ruta("Espera carrete 1", 0f, 0.6f, 23.4f, 2.5f, esperar: carretes[0]);
-            var c1 = Ruta("Espera carrete 2", 0f, 0.6f, 29.9f, 2.5f, esperar: carretes[1]);
-            var c2 = Ruta("Espera carrete 3", 0f, 0.6f, 36.4f, 2.5f, esperar: carretes[2]);
-            var c3 = Ruta("Fin carretes", 0f, 0.6f, 43f, 2.5f);
-            var f = Ruta("Bifurcacion acordeon", 0f, 0.6f, 47.5f, 2f);
-            var a0 = Ruta("Entrada acordeon", -3f, 0.6f, 50.6f, 0.8f, esperar: paneles[0]);
-            var a1 = Ruta("Salida acordeon", -3f, 0.6f, 70.6f, 0.8f);
-            var b0 = Ruta("Lateral 1", 8f, 0.6f, 51.5f, 0.6f);
-            var b1 = Ruta("Lateral 2", 8f, 0.6f, 60f, 0.6f);
-            var b2 = Ruta("Lateral 3", 13.5f, 0.6f, 60f, 0.6f);
-            var b3 = Ruta("Lateral 4", 13.5f, 0.6f, 70f, 0.6f);
-            var b4 = Ruta("Lateral 5", 8f, 0.6f, 70f, 0.6f);
-            var b5 = Ruta("Lateral 6", 8f, 0.6f, 74f, 0.6f);
-            var g = Ruta("Bifurcacion cremalleras", 0f, 0.6f, 76.3f, 2f);
-            var rc0 = Ruta("Entrada cremallera estrecha", 4.5f, 0.6f, 78.6f, 0.35f, esperar: der);
-            var rc1 = Ruta("Salida cremallera estrecha", 4.5f, 0.6f, 102.8f, 0.35f);
-            var lc0 = Ruta("Entrada cremallera ancha", -4.5f, 0.6f, 78.6f, 1.2f, esperar: izq1);
-            var lc1 = Ruta("Descansillo cremalleras", -4.5f, 0.6f, 90.3f, 1.2f, esperar: izq2);
-            var lc2 = Ruta("Salida cremallera ancha", -4.5f, 0.6f, 102.8f, 1.2f);
-            var d = Ruta("Destino", 0f, 0.6f, 104.5f, 2f);
-            var e1 = Ruta("Pie de la rampa", 0f, 0.6f, 107.6f, 1.5f);
-            var e2 = Ruta("Alfiletero 1", 0f, 1.6f, 112f, 2f);
-            var e3 = Ruta("Salto al blando", 0f, 1.6f, 117.6f, 2f, saltar: true);
-            var e4 = Ruta("Salto al lateral", 5.3f, 2.6f, 124f, 0.3f, saltar: true);
-            var e5 = Ruta("Alfiletero 3", 7.25f, 3.8f, 131f, 0.5f);
-            var e6 = Ruta("Cinta metrica", 0f, 3.8f, 137f, 1.2f);
-            var e7 = Ruta("Meta", 0f, 3.8f, 144.5f, 2.5f);
-            Unir(w0, w1); Unir(w1, c0); Unir(c0, c1); Unir(c1, c2); Unir(c2, c3); Unir(c3, f);
-            Unir(f, a0, b0);                                      // [difícil, fácil]
-            Unir(a0, a1); Unir(a1, g);
-            Unir(b0, b1); Unir(b1, b2); Unir(b2, b3); Unir(b3, b4); Unir(b4, b5); Unir(b5, g);
-            Unir(g, rc0, lc0);                                    // estrecha (difícil) o ancha (fácil)
-            Unir(rc0, rc1); Unir(rc1, d);
-            Unir(lc0, lc1); Unir(lc1, lc2); Unir(lc2, d);
-            Unir(d, e1); Unir(e1, e2); Unir(e2, e3); Unir(e3, e4); Unir(e4, e5); Unir(e5, e6); Unir(e6, e7);
+            var f1 = Ruta("Cruce 1", 0f, 0.6f, 20.5f, 3f);
+            var s0 = Ruta("Salto boton 1", 6.5f, 0.6f, 22.6f, 0.6f, saltar: true);
+            var s1 = Ruta("Salto boton 2", 7.14f, 0.6f, 28.27f, 0.3f, saltar: true);
+            var s2 = Ruta("Salto boton 3", 8.36f, 0.6f, 34.07f, 0.3f, saltar: true);
+            var s3 = Ruta("Salto boton 4", 7.14f, 0.6f, 39.87f, 0.3f, saltar: true);
+            var c0 = Ruta("Espera carrete 1", -7f, 0.6f, 24.3f, 2.5f, esperar: carretes[0]);
+            var c1 = Ruta("Espera carrete 2", -7f, 0.6f, 31.3f, 2.5f, esperar: carretes[1]);
+            var c2 = Ruta("Espera carrete 3", -7f, 0.6f, 38.3f, 2.5f, esperar: carretes[2]);
+            var c3 = Ruta("Fin carretes", -7f, 0.6f, 45f, 2.5f);
+            var f2 = Ruta("Cruce 2", 1f, 0.6f, 49.5f, 2f);
+            var a0 = Ruta("Entrada acordeon", -6f, 0.6f, 52.6f, 0.8f, esperar: paneles[0]);
+            var a1 = Ruta("Salida acordeon", -6f, 0.6f, 72.6f, 0.8f);
+            var k0 = Ruta("Entrada cinta", 8f, 0.6f, 53.6f, 1.5f);
+            var k1 = Ruta("Salto aguja 1", 8f, 0.6f, 57.4f, 1.2f, saltar: true);
+            var k2 = Ruta("Salto aguja 2", 8f, 0.6f, 64.4f, 1.2f, saltar: true);
+            var k3 = Ruta("Salida cinta", 8f, 0.6f, 72.8f, 1.5f);
+            var f3 = Ruta("Cruce 3", -1f, 0.6f, 75.2f, 2f);
+            var rc0 = Ruta("Entrada cremallera estrecha", 4f, 0.6f, 77.6f, 0.35f, esperar: der);
+            var rc1 = Ruta("Salida cremallera estrecha", 4f, 0.6f, 101.6f, 0.35f);
+            var lc0 = Ruta("Entrada cremallera ancha", -8f, 0.6f, 77.6f, 1.2f, esperar: izq1);
+            var lc1 = Ruta("Descansillo cremalleras", -8f, 0.6f, 89.3f, 1.2f, esperar: izq2);
+            var lc2 = Ruta("Salida cremallera ancha", -8f, 0.6f, 101.6f, 1.2f);
+            var f4 = Ruta("Cruce 4", 0f, 0.6f, 103.6f, 2f);
+            var p0 = Ruta("Salto carrete 1", 9f, 0.6f, 106.4f, 0.4f, saltar: true);
+            var p1 = Ruta("Salto carrete 2", 9.49f, 1.2f, 111.82f, 0.2f, saltar: true);
+            var p2 = Ruta("Salto carrete 3", 10.51f, 1.9f, 117.12f, 0.2f, saltar: true);
+            var p3 = Ruta("Salto carrete 4", 9.49f, 2.6f, 122.42f, 0.2f, saltar: true);
+            var p4 = Ruta("Salto carrete 5", 10.51f, 3.2f, 127.72f, 0.2f, saltar: true);
+            var p5 = Ruta("Fin escalera", 9f, 3.8f, 133.6f, 0.4f);
+            var e1 = Ruta("Pie de la rampa", -4f, 0.6f, 106.6f, 1.5f);
+            var e2 = Ruta("Alfiletero 1", -4f, 1.6f, 111f, 2f);
+            var e3 = Ruta("Salto al blando", -4f, 1.6f, 116.6f, 2f, saltar: true);
+            var e4 = Ruta("Salto al lateral", 1.3f, 2.6f, 123f, 0.3f, saltar: true);
+            var e5 = Ruta("Alfiletero 3", 3.25f, 3.8f, 130f, 0.5f);
+            var e6 = Ruta("Cinta metrica", -4f, 3.8f, 136f, 1.2f);
+            var em = Ruta("Meta", 0f, 3.8f, 143.5f, 3f);
+            Unir(w0, w1); Unir(w1, f1);
+            Unir(f1, s0, c0);                                     // botones (difícil) o carretes (fácil)
+            Unir(s0, s1); Unir(s1, s2); Unir(s2, s3); Unir(s3, f2);
+            Unir(c0, c1); Unir(c1, c2); Unir(c2, c3); Unir(c3, f2);
+            Unir(f2, a0, k0);                                     // acordeón o cinta rodante
+            Unir(a0, a1); Unir(a1, f3);
+            Unir(k0, k1); Unir(k1, k2); Unir(k2, k3); Unir(k3, f3);
+            Unir(f3, rc0, lc0);                                   // cremallera estrecha o ancha
+            Unir(rc0, rc1); Unir(rc1, f4);
+            Unir(lc0, lc1); Unir(lc1, lc2); Unir(lc2, f4);
+            Unir(f4, p0, e1);                                     // escalera de carretes o alfileteros
+            Unir(p0, p1); Unir(p1, p2); Unir(p2, p3); Unir(p3, p4); Unir(p4, p5); Unir(p5, em);
+            Unir(e1, e2); Unir(e2, e3); Unir(e3, e4); Unir(e4, e5); Unir(e5, e6); Unir(e6, em);
 
             // =================================================================
             // Caída, decorado, jugadores y ronda
@@ -293,7 +313,7 @@ namespace BichoShow.Herramientas
             ronda.ruta = ruta.ToArray();
             ronda.inicioRuta = w0;
             ronda.zSalida = 2.5f;
-            ronda.zMeta = 142f;
+            ronda.zMeta = 141f;
 
             Ambientes.Aplicar(Ambientes.Tema.Taller);
             EditorSceneManager.SaveScene(escena, RutaEscena);
@@ -441,12 +461,12 @@ namespace BichoShow.Herramientas
         // ---------------------------------------------------------------------
 
         /// <summary>Carrete de hilo tumbado (eje a lo largo de la carrera) que rueda de lado a lado.</summary>
-        static CarreteViajero Carrete(string nombre, float z, float periodo, float desfase, Material hilo)
+        static CarreteViajero Carrete(string nombre, float x, float mitadAncho, float z, float periodo, float desfase, Material hilo)
         {
             const float radio = 1.25f;
             var go = new GameObject(nombre);
             go.transform.SetParent(obstaculos, false);
-            go.transform.position = new Vector3(0f, 0.6f + radio + 0.05f, z);
+            go.transform.position = new Vector3(x, 0.6f + radio + 0.05f, z);
             go.transform.rotation = Quaternion.Euler(90f, 0f, 0f); // el eje Y del cilindro, a lo largo de Z
             go.AddComponent<Rigidbody>().isKinematic = true;
             var capsula = go.AddComponent<CapsuleCollider>();
@@ -458,11 +478,107 @@ namespace BichoShow.Herramientas
             Kit("Carrete", go.transform, go.transform.position, 0f, hilo);
 
             var carrete = go.AddComponent<CarreteViajero>();
-            carrete.recorrido = 6f - radio - 0.35f;
+            carrete.recorrido = mitadAncho - radio - 0.35f;
             carrete.periodo = periodo;
             carrete.desfase = desfase;
             carrete.radio = radio;
             return carrete;
+        }
+
+        /// <summary>Botón gigante que gira (y arrastra a quien va encima), sobre una columna de madera.</summary>
+        static PlataformaGiratoria BotonGiratorio(string nombre, Vector2 centro, float arriba, float radio, float velocidad, Material color)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(centro.x, arriba, centro.y);
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            SoloColision(A.Disco(go.transform, "Cara", new Vector3(centro.x, 0f, centro.y), arriba, radio, 0.44f, color));
+            Kit("Boton", go.transform, new Vector3(centro.x, arriba - radio * 0.22f, centro.y), 0f, color, radio);
+            float alto = arriba - 0.5f - AlturaMesa;
+            M.Decorado(PrimitiveType.Cylinder, "Columna", decorado, new Vector3(centro.x, AlturaMesa + alto * 0.5f, centro.y), new Vector3(0.8f, alto * 0.5f, 0.8f), maderaVeta);
+            var giro = go.AddComponent<PlataformaGiratoria>();
+            giro.velocidad = velocidad;
+            giro.radio = radio;
+            giro.alturaArriba = 0f;
+            return giro;
+        }
+
+        /// <summary>Carrete de pie (la cara de arriba, Ø3,8, a la altura "arriba") sobre una columna. Si velocidad ≠ 0, gira.</summary>
+        static void CarretePilar(string nombre, float x, float z, float arriba, float velocidad, Material hilo)
+        {
+            const float radioCara = 1.9f, altoCarrete = 3.2f;
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(x, arriba, z);
+            SoloColision(A.Disco(go.transform, "Cara", new Vector3(x, 0f, z), arriba, radioCara, 0.5f, hilo));
+            Kit("CarreteDePie", go.transform, new Vector3(x, arriba - altoCarrete, z), 0f, hilo, altoCarrete / 2f);
+            float alto = arriba - altoCarrete - AlturaMesa;
+            M.Decorado(PrimitiveType.Cylinder, "Columna", decorado, new Vector3(x, AlturaMesa + alto * 0.5f, z), new Vector3(1.4f, alto * 0.5f, 1.4f), maderaVeta);
+            if (Mathf.Abs(velocidad) < 0.01f) return;
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var giro = go.AddComponent<PlataformaGiratoria>();
+            giro.velocidad = velocidad;
+            giro.radio = radioCara;
+            giro.alturaArriba = 0f;
+        }
+
+        /// <summary>Cinta métrica rodante: lleva hacia atrás a quien la pisa; sus marcas se mueven con ella.</summary>
+        static CintaTransportadora CintaRodante(float x, float ancho, float z0, float z1, float arriba)
+        {
+            Losa("Cinta rodante", x - ancho * 0.5f, x + ancho * 0.5f, z0, z1, arriba, mostazaClaro);
+            var go = new GameObject("Cinta rodante (motor)");
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(x, arriba, (z0 + z1) * 0.5f);
+            float largo = z1 - z0;
+            var marcas = new List<Transform>();
+            for (float z = -largo * 0.5f + 0.25f; z < largo * 0.5f; z += 0.5f)
+            {
+                bool metro = Mathf.Abs(Mathf.Repeat(z + largo * 0.5f, 1f) - 0.25f) < 0.01f;
+                foreach (float lado in new[] { -1f, 1f })
+                {
+                    float largoMarca = metro ? 1f : 0.5f;
+                    var m = M.Decorado(PrimitiveType.Cube, "Marca", go.transform, new Vector3(lado * (ancho * 0.5f - 0.25f - largoMarca * 0.5f), 0.014f, z),
+                                       new Vector3(largoMarca, 0.02f, 0.06f), negro, local: true);
+                    if (m != null) marcas.Add(m.transform);
+                }
+            }
+            // Flechas hacia atrás: hacia donde te lleva.
+            for (int i = 0; i < 4; i++)
+            {
+                var flecha = Kit("Flecha", go.transform, new Vector3(0f, 0.02f, -largo * 0.5f + largo * (i + 0.5f) / 4f), 180f, coral, 1.1f, local: true);
+                marcas.Add(flecha.transform);
+            }
+            var cinta = go.AddComponent<CintaTransportadora>();
+            cinta.direccion = Vector3.back;
+            cinta.velocidad = 2.2f;
+            cinta.tamano = new Vector2(ancho, largo);
+            cinta.marcas = marcas.ToArray();
+            return cinta;
+        }
+
+        /// <summary>Aguja de tejer que gira a ras de la cinta: hay que saltarla (la puede acelerar un saboteador).</summary>
+        static BarraGiratoria Aguja(string nombre, Vector3 centro, float velocidad, Material bola)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = centro;
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var caja = go.AddComponent<BoxCollider>();
+            caja.size = new Vector3(6f, 0.4f, 0.4f);
+            caja.center = new Vector3(0f, 0.5f, 0f);
+            var palo = E.Pieza(PrimitiveType.Cylinder, "Aguja", go.transform, new Vector3(0f, 0.5f, 0f), new Vector3(0.32f, 2.9f, 0.32f), dedal);
+            palo.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            var cabeza = E.Pieza(PrimitiveType.Sphere, "Cabeza", go.transform, new Vector3(2.95f, 0.5f, 0f), Vector3.one * 0.7f, bola);
+            E.Pieza(PrimitiveType.Sphere, "Punta", go.transform, new Vector3(-2.95f, 0.5f, 0f), new Vector3(0.35f, 0.2f, 0.2f), dedal);
+            E.Pieza(PrimitiveType.Cylinder, "Eje", go.transform, new Vector3(0f, 0.25f, 0f), new Vector3(0.5f, 0.25f, 0.5f), dorado);
+            var barra = go.AddComponent<BarraGiratoria>();
+            barra.velocidadGiro = velocidad;
+            barra.nombreTrampa = nombre;
+            barra.enfriamiento = 8f;
+            barra.radioEfecto = 3.5f;
+            barra.alturaMarcador = 2.5f;
+            barra.renderersAviso = new Renderer[] { palo.GetComponent<Renderer>(), cabeza.GetComponent<Renderer>() };
+            return barra;
         }
 
         /// <summary>Panel del acordeón (4 m de ancho), con su colisión y la tela acolchada encima.</summary>
@@ -629,13 +745,15 @@ namespace BichoShow.Herramientas
         }
 
         /// <summary>Punto de control: cruza el ancho de la losa en z, con banderines a los lados.</summary>
-        static PuntoControlCarrera PuntoControl(int indice, float z, float x0, float x1, float arriba)
+        static PuntoControlCarrera PuntoControl(int indice, float z, float x0, float x1, float arriba, float separacion = 1.6f)
         {
             var punto = M.ZonaTrigger<PuntoControlCarrera>($"PuntoControl {indice}", mapa, new Vector3((x0 + x1) * 0.5f, arriba + 1.5f, z), new Vector3(x1 - x0, 3f, 1.5f));
             punto.indice = indice;
+            punto.separacion = separacion;
             var reaparicion = new GameObject("Reaparicion").transform;
             reaparicion.SetParent(punto.transform, false);
-            reaparicion.position = new Vector3(Mathf.Clamp(0f, x0 + 3f, x1 - 3f), arriba + 0.2f, z);
+            float xReaparicion = x1 - x0 >= 6f ? Mathf.Clamp(0f, x0 + 3f, x1 - 3f) : (x0 + x1) * 0.5f;
+            reaparicion.position = new Vector3(xReaparicion, arriba + 0.2f, z);
             punto.reaparicion = reaparicion;
             Banderin(new Vector3(x0 + 0.4f, arriba, z), coral);
             Banderin(new Vector3(x1 - 0.4f, arriba, z), coral);

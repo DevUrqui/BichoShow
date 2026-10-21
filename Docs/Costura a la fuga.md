@@ -24,19 +24,24 @@ Con eso, los huecos que hay que saltar miden entre 1,5 y 2,5 m y los escalones s
 
 ## El recorrido (a lo largo del eje Z)
 
-Cada zona deja una bandera coral a los dos lados. Es un **punto de control**: si te caes de la mesa, vuelves a la última que cruzaste.
+Después de la salida hay **cuatro cruces**. En cada uno se elige entre dos caminos con pruebas distintas, y los dos se juntan en un descanso. Los descansos están desplazados a un lado u otro, así que la carrera va zigzagueando.
 
-| Zona | Z | Qué hay | Punto de control |
-|---|---|---|---|
-| 1. Salida: la Tabla de Corte | 0–23 | Losa de 18×14 m con cuadrícula y el arco de SALIDA. Después, un hueco de 1,5 m y un escalón de 0,6 m para aprender a saltar. | 1, en z 18 |
-| 2. Los Carretes Viajeros | 23–44 | Tres franjas de 4 m. En cada una rueda un carrete de lado a lado, cada vez más rápido (5,5 s, 4,5 s y 3,4 s por ida y vuelta). La franja azul del suelo marca su recorrido. Entre franjas hay zonas seguras con pespunte. | 2, en z 46,5 |
-| 3. El Puente Acordeón | 44–79 | Seis paneles seguidos de 3×4 m que se inclinan 30° de lado por turnos y vuelven a ponerse planos. Cada uno va 0,525 s después del anterior, lo que tarda un bicho en cruzar uno. El camino del lado es más largo, plano y con barandilla. | 3, en z 75,5 |
-| 4. Las Cremalleras Gemelas | 79–108 | Izquierda: ancha (4,4 m) y lenta, en dos mitades con un descansillo. Derecha: estrecha (2,4 m) y de una tirada, con el tirador más rápido. | 4, en z 104,5 |
-| 5. La Subida del Dedal | 108–147 | Rampa, alfiletero 1 (fijo), hueco de 2 m al alfiletero 2 (se hunde) y salto, o escalón y rampa del lado, al alfiletero 3. Después, la cinta métrica y la META. | 5, en z 113,5 |
+En cada descanso hay una bandera coral a los dos lados. Es un **punto de control**: si te caes de la mesa, vuelves a la última que cruzaste.
+
+| Tramo | Z | Camino rápido (más difícil) | Camino seguro | Punto de control |
+|---|---|---|---|---|
+| Salida | 0–23 | Tabla de corte con el arco de SALIDA, un saltito y el escalón ancho donde se elige camino | | 1, en z 18 |
+| 1 | 23–46 | **Botones giratorios** (derecha): cuatro botones gigantes que giran; hay que saltar de uno a otro | **Carretes viajeros** (izquierda): tres franjas; hay que esperar el hueco | 2, Descanso 1 (z 48,5) |
+| 2 | 53–72 | **Puente acordeón** (izquierda): seis paneles que se inclinan en ola | **Cinta métrica rodante** (derecha): va hacia atrás y la barren dos agujas de tejer que hay que saltar | 3, Descanso 2 (z 74,5) |
+| 3 | 78–100 | **Cremallera estrecha** (derecha): de una tirada, tirador rápido | **Cremallera ancha** (izquierda): lenta, con descansillo | 4, Destino (z 103,5) |
+| 4 | 107–137 | **Escalera de carretes** (derecha): carretes de pie, cada uno más alto; dos giran | **Alfileteros** (izquierda): el del medio se hunde; escalón y rampa del lado | 5: en el alfiletero 1 o en el carrete del medio |
+| Meta | 137–146 | Plataforma ancha con el arco de META y el dedal gigante | | |
 
 Cómo funcionan los obstáculos:
 
-- **Carretes:** empujan a quien tocan hacia el lado al que van, y lo tumban un momento.
+- **Botones giratorios y carretes de la escalera:** giran y te arrastran mientras vas encima. Hay que saltar al siguiente antes de que el giro te saque por el borde.
+- **Carretes viajeros:** empujan a quien tocan hacia el lado al que van, y lo tumban un momento.
+- **Cinta métrica rodante:** te lleva hacia atrás a 2,2 m/s (sus marcas y flechas se mueven). Las agujas de tejer giran a ras de la cinta: hay que saltarlas. Si en el show hay saboteador, puede acelerarlas.
 - **Puente Acordeón:** quien entra justo cuando el primer panel se pone plano cruza en "ola verde". Si no, hay que saltar los paneles inclinados. Antes de inclinarse, cada panel tiembla y hace clic.
 - **Cremalleras:** el tirador dorado va del principio al final abriendo los tramos que deja atrás: se doblan hacia abajo. Luego vuelve cerrándolos. Antes de abrirse, cada tramo tiembla y hace clic. Hay que salir justo cuando todo está cerrado e ir por delante del tirador.
 - **Alfiletero 2:** se hunde 0,8 m en un segundo si te quedas encima y tarda casi 3 s en subir. Para saltar al 3 hay que hacerlo enseguida; si no, se va por el escalón y la rampa del lado.
@@ -53,19 +58,26 @@ Cómo se gana:
 Juega solo, con los bots activados, y comprueba en orden:
 
 1. **Salida.** El salto al escalón sale sin pensar y caben los 4 bichos en la salida sin estorbarse.
-2. **Carretes.**
+2. **Botones y carretes.**
+   - Los saltos entre botones salen sin pasarse de largo.
+   - El giro se nota, pero no te tira solo.
+   - En la otra ruta:
    - Se entiende por dónde va cada carrete antes de entrar.
    - Se puede esperar tranquilo en las zonas seguras.
    - El empujón tira de la franja si te pilla cerca del borde, pero no siempre.
-3. **Acordeón.**
+3. **Acordeón y cinta.**
+   - La cinta deja avanzar corriendo, y las agujas se pueden saltar.
+   - En el acordeón:
    - Entrando en buen momento, se cruza seguido.
    - Si no, saltar un panel inclinado es posible.
-   - El camino del lado tarda más que el puente bien hecho, pero no muchísimo más.
+   - La cinta tarda más que el puente bien hecho, pero no muchísimo más.
 4. **Cremalleras.**
    - Se ve venir cuándo se abre cada tramo.
    - La ruta estrecha es más rápida si sales a tiempo.
    - La ancha nunca te tira si esperas en el descansillo.
-5. **Dedal.**
+5. **Escalera de carretes y alfileteros.**
+   - En la escalera, cada salto sube poco y sale bien, también en los dos carretes que giran.
+   - En los alfileteros:
    - El salto al alfiletero 2 sale siempre.
    - Del 2 al 3 se puede saltar enseguida; si esperas, ya no llegas.
    - La rampa del lado siempre funciona.
@@ -78,6 +90,9 @@ Si algo no va, estos son los valores a tocar. Están en el Inspector de cada obj
 | Carrete | `periodo` | Más alto = más lento |
 | Carrete | `empujon` | Fuerza del golpe |
 | Carrete | `recorrido` | Hasta dónde llega a cada lado |
+| Botón o carrete que gira | `velocidad` | Grados por segundo (negativo = al otro lado) |
+| Cinta rodante (motor) | `velocidad` | Lo rápido que te lleva hacia atrás |
+| Aguja de tejer | `velocidadGiro` | Lo rápido que barre la cinta |
 | Panel acordeón | `anguloMaximo` | Cuánto se inclina |
 | Panel acordeón | `tiempoPlano` | Cuánto rato está plano |
 | Panel acordeón | `retraso` | La ola entre paneles |
