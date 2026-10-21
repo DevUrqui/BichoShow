@@ -10,34 +10,42 @@ namespace BichoShow.Herramientas
 {
     /// <summary>
     /// Menú "BichoShow > Crear escena: Despensa Deslizante". Carrera por la encimera de una cocina
-    /// (a lo largo de +Z, unos 215 m), con tres arcos de control:
-    ///  · Zona 1 (z 0-62): salida acolchada con bajada, mantel de cuadros con dos rodillos de amasar
-    ///    que ruedan hacia la salida y vuelven, y saleros en las esquinas que echan sal (resbala).
-    ///  · Zona 2 (z 62-112): el fregadero de agua jabonosa rosa (caer = volver al arco). Por el
-    ///    centro, dos esponjas que se hunden con el peso y se empapan; por los lados, tapones que
-    ///    giran. Un grifo gigante barre el fregadero con su chorro.
-    ///  · Zona 3 (z 112-170): rampa de mantequilla (resbala; si saltas, patinas abajo), con tomates
-    ///    por el centro y arándanos por los bordes, muros de refugio y una lámpara de calor que
-    ///    derrite franjas.
-    ///  · Zona 4 (z 166-236): bandejas de postre con colchones elásticos sobre una cinta que te
-    ///    devuelve; meta bajo el marcador y podio.
-    /// Todo va sobre la encimera; caer a ella (o al agua) devuelve al último arco.
+    /// (a lo largo de +Z, unos 350 m), con cuatro arcos de control:
+    ///  · Zona 1 (z 0-95): salida acolchada con bajada y mantel de cuadros con cuatro rodillos de
+    ///    amasar que ruedan hacia la salida y vuelven; el último, por encima de un tramo de masa
+    ///    pegajosa que frena. Saleros en los bordes que echan sal (resbala).
+    ///  · Zona 2 (z 95-157): el fregadero de agua jabonosa rosa (caer = volver al arco). Por el
+    ///    centro, tres esponjas que se hunden con el peso y se empapan; por los lados, tapones que
+    ///    giran. Tres grifos gigantes barren el fregadero con su chorro.
+    ///  · Zona 3 (z 157-237): rampa de mantequilla de 70 m (resbala; si saltas, patinas abajo), con
+    ///    tomates y arándanos rodando, muros de refugio y una lámpara de calor que derrite franjas.
+    ///  · Zona 4 (z 237-288): tres filas de colchones elásticos que van y vienen, sobre una cinta
+    ///    que te devuelve.
+    ///  · Zona 5 (z 288-358): la tostadora gigante: tres ranuras demasiado anchas para saltar, que
+    ///    se cruzan sobre las tostadas cuando saltan. Después, la meta y el podio.
+    /// Todo va sobre la encimera; caer a ella (o al agua, o a una ranura) devuelve al último arco.
     /// </summary>
     public static class CreadorDespensa
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Despensa.unity";
         /// <summary>Súbela al cambiar el generador (EscenasAnticuadas avisa al darle a Play).</summary>
-        public const int Version = 2;
+        public const int Version = 3;
 
         const float Encimera = -4f;            // la encimera de la cocina, debajo de todo
-        const float ZRampa0 = 118f, ZRampa1 = 166f, AltoRampa = 12f;
+        const float ZRampa0 = 157f, ZRampa1 = 225f, AltoRampa = 16f;
         static readonly float LargoRampa = Mathf.Sqrt((ZRampa1 - ZRampa0) * (ZRampa1 - ZRampa0) + AltoRampa * AltoRampa);
-        const float ZMeta = 214f;
+        /// <summary>Las tres filas de colchones (z del centro).</summary>
+        static readonly float[] FilasColchones = { 242f, 256f, 270f };
+        /// <summary>Las ranuras de la tostadora (desde, hasta).</summary>
+        static readonly Vector2[] Ranuras = { new Vector2(293f, 300f), new Vector2(304f, 311f), new Vector2(315f, 322f) };
+        const float ZTostadora0 = 288f, ZTostadora1 = 326f;
+        const float ZMeta = 336f;
 
         static Transform mapa, suelos, obstaculos, decorado, rutaBots;
         static readonly List<PuntoRuta> ruta = new List<PuntoRuta>();
         static Material azul, azulOscuro, mantel, metal, aguaRosa, mantequilla, derretida, madera, pared, armario, pomo;
         static Material ventana, cinta, marcaCinta, sal, agua, rosa, amarillo, cian, naranja, rojo, blanco, particula;
+        static Material masa, tostadoraMat, ranura, resistencia, tostada, corteza;
 
         [MenuItem("BichoShow/Crear escena: Despensa Deslizante")]
         public static void Crear()
@@ -72,6 +80,12 @@ namespace BichoShow.Herramientas
             naranja = E.CrearMaterial("DespensaNaranja", new Color(1f, 0.55f, 0.2f), 0.35f);
             rojo = E.CrearMaterial("DespensaRojo", new Color(0.95f, 0.25f, 0.22f), 0.4f);
             blanco = E.CrearMaterial("DespensaBlanco", new Color(0.97f, 0.96f, 0.93f), 0.3f);
+            masa = E.CrearMaterial("DespensaMasa", new Color(0.98f, 0.88f, 0.7f), 0.25f);
+            tostadoraMat = E.CrearMaterial("DespensaTostadora", new Color(0.93f, 0.9f, 0.84f), 0.75f);
+            ranura = E.CrearMaterial("DespensaRanura", new Color(0.12f, 0.1f, 0.1f), 0.2f);
+            resistencia = E.CrearMaterial("DespensaResistencia", new Color(1f, 0.45f, 0.1f), 0.9f);
+            tostada = E.CrearMaterial("DespensaTostada", new Color(0.92f, 0.7f, 0.38f), 0.25f);
+            corteza = E.CrearMaterial("DespensaCorteza", new Color(0.62f, 0.38f, 0.16f), 0.25f);
             particula = AssetDatabase.LoadAssetAtPath<Material>($"{E.CarpetaMateriales}/Particula.mat");
             if (particula == null)
             {
@@ -101,22 +115,25 @@ namespace BichoShow.Herramientas
 
             var controles = new List<PuntoControlCarrera>();
             var rodillos = Zona1();
-            controles.Add(PuntoControl(1, 65f, -12f, 12f, 0f, "ZONA 2", cian));
+            controles.Add(PuntoControl(1, 91.5f, -12f, 12f, 0f, "ZONA 2", cian));
             var (esponjas, tapones) = Zona2();
-            controles.Add(PuntoControl(2, 111.5f, -12f, 12f, 0f, "ZONA 3", amarillo));
-            var (frutas, refugios, rampa) = Zona3();
-            controles.Add(PuntoControl(3, 170f, -9f, 9f, AltoRampa, "ZONA 4", naranja));
-            var (meta, podio, colchones) = Zona4();
+            controles.Add(PuntoControl(2, 151f, -12f, 12f, 0f, "ZONA 3", amarillo));
+            var frutas = Zona3();
+            controles.Add(PuntoControl(3, 229f, -9f, 9f, AltoRampa, "ZONA 4", naranja));
+            var colchones = Zona4();
+            controles.Add(PuntoControl(4, 282f, -9f, 9f, AltoRampa, "ZONA 5", rosa));
+            var tostadas = Zona5();
+            var (meta, podio) = Meta();
             Plato();
 
             // Caer a la encimera (fuera de la carrera) devuelve al último arco cruzado.
-            var caida = M.ZonaTrigger<ZonaMortal>("Encimera (caida)", mapa, new Vector3(0f, Encimera + 0.9f, 120f), new Vector3(140f, 1.8f, 340f));
+            var caida = M.ZonaTrigger<ZonaMortal>("Encimera (caida)", mapa, new Vector3(0f, Encimera + 0.9f, 175f), new Vector3(140f, 1.8f, 420f));
             caida.motivoObjeto = "se ha caído de la encimera";
 
             var apariciones = new[] { new Vector3(-4.5f, 1.6f, 4f), new Vector3(-1.5f, 1.6f, 5f), new Vector3(1.5f, 1.6f, 5f), new Vector3(4.5f, 1.6f, 4f) };
             var gestor = A.Jugadores(prefabBicho, apariciones, new Vector3(0f, 1.6f, 20f));
 
-            var inicio = RutaBots(rodillos, esponjas, tapones, colchones);
+            var inicio = RutaBots(rodillos, esponjas, tapones, colchones, tostadas);
 
             var rondaGo = new GameObject("RondaDespensa");
             var ronda = rondaGo.AddComponent<RondaDespensa>();
@@ -126,7 +143,7 @@ namespace BichoShow.Herramientas
             ronda.meta = meta;
             ronda.zSalida = 0f;
             ronda.zMeta = ZMeta;
-            ronda.duracionMinima = 140f;
+            ronda.duracionMinima = 180f;
             ronda.tiempoTrasPrimero = 25f;
             ronda.frutas = frutas;
             ronda.podio = podio;
@@ -141,7 +158,7 @@ namespace BichoShow.Herramientas
         }
 
         // =====================================================================
-        // Zona 1: el mantel de los rodillos (z 0-62)
+        // Zona 1: el mantel de los rodillos (z 0-95)
         // =====================================================================
 
         static RodilloAmasar[] Zona1()
@@ -151,24 +168,27 @@ namespace BichoShow.Herramientas
             Rampa("Bajada", 0f, 18f, 10f, 1.5f, 20.3f, 0f, azul);
             Arco("BICHO SHOW", 3f, 1.5f, 1f, rosa, true);
             // El mantel de cuadros.
-            Losa("Mantel", -11f, 11f, 20f, 62f, 0f, mantel);
+            Losa("Mantel", -11f, 11f, 20f, 88f, 0f, mantel);
 
             var g = M.Grupo(obstaculos, "Zona 1");
-            // Tres rodillos, cada uno en su tramo, desfasados.
+            // Cuatro rodillos, cada uno en su tramo, desfasados. El último, encima de la masa.
             var rodillos = new[]
             {
                 Rodillo(g, "Rodillo 1", 21.5f, 33f, 0f),
                 Rodillo(g, "Rodillo 2", 35f, 46.5f, 1.4f),
                 Rodillo(g, "Rodillo 3", 48.5f, 60f, 2.8f),
+                Rodillo(g, "Rodillo 4 (sobre la masa)", 74f, 86.5f, 0.7f),
             };
             // Saleros en los bordes: por donde se bordean los rodillos.
             int k = 0;
-            foreach (float z in new[] { 27f, 40.5f, 54f })
+            foreach (float z in new[] { 27f, 40.5f, 54f, 67f })
                 foreach (float x in new[] { -9.9f, 9.9f })
                     Salero(g, new Vector3(x, 0f, z), (k++ * 0.37f) % 1f);
+            // La masa de pan pegajosa (z 76,5-85,5), de lado a lado.
+            Masa(g, 81f, 9f);
             // Raíles de los rodillos (decorado) a los lados del mantel.
             foreach (float x in new[] { -10.95f, 10.95f })
-                M.Decorado(PrimitiveType.Cube, "Rail", decorado, new Vector3(x, 0.08f, 41f), new Vector3(0.12f, 0.16f, 40f), metal);
+                M.Decorado(PrimitiveType.Cube, "Rail", decorado, new Vector3(x, 0.08f, 54f), new Vector3(0.12f, 0.16f, 66f), metal);
             return rodillos;
         }
 
@@ -238,16 +258,35 @@ namespace BichoShow.Herramientas
             s.granos = granos;
         }
 
+        /// <summary>Masa de pan cruda extendida de lado a lado del mantel: frena a quien la pisa.</summary>
+        static void Masa(Transform padre, float z, float largo)
+        {
+            var go = new GameObject("Masa pegajosa");
+            go.transform.SetParent(padre, false);
+            go.transform.position = new Vector3(0f, 0f, z);
+            var m = go.AddComponent<MasaPegajosa>();
+            m.tamano = new Vector2(22f, largo);
+            M.Decorado(PrimitiveType.Cube, "Masa", go.transform, new Vector3(0f, 0.06f, 0f), new Vector3(21.6f, 0.12f, largo), masa, local: true);
+            // Bultos y burbujas de la masa.
+            var azar = new System.Random(11);
+            for (int i = 0; i < 26; i++)
+            {
+                float x = (float)(azar.NextDouble() * 2 - 1) * 10f, dz = (float)(azar.NextDouble() * 2 - 1) * (largo * 0.5f - 0.6f);
+                float r = 0.4f + (float)azar.NextDouble() * 0.7f;
+                M.Decorado(PrimitiveType.Sphere, "Bulto", go.transform, new Vector3(x, 0.08f, dz), new Vector3(r * 2f, r * 0.45f, r * 2f), masa, local: true);
+            }
+        }
+
         // =====================================================================
-        // Zona 2: el fregadero espumoso (z 62-112)
+        // Zona 2: el fregadero espumoso (z 88-157)
         // =====================================================================
 
         static (EsponjaFregadero[] esponjas, PlataformaGiratoria[] tapones) Zona2()
         {
-            const float z0 = 69f, z1 = 108f, interior = 10.5f;
+            const float z0 = 95f, z1 = 147f, interior = 10.5f;
             // La entrada y la salida del fregadero (acolchadas).
-            Losa("Antes del fregadero", -12f, 12f, 62f, z0, 0f, azul);
-            Losa("Despues del fregadero", -12f, 12f, z1, 118f, 0f, azul);
+            Losa("Antes del fregadero", -12f, 12f, 88f, z0, 0f, azul);
+            Losa("Despues del fregadero", -12f, 12f, z1, ZRampa0, 0f, azul);
             // El fregadero: paredes de metal altas a los lados (no se puede ir por el borde), fondo y agua.
             foreach (float s in new[] { -1f, 1f })
                 E.Bloque("Pared del fregadero", suelos, new Vector3(s * (interior + 1f), 0f, (z0 + z1) * 0.5f), new Vector3(2f, 6f, z1 - z0), metal);
@@ -257,7 +296,7 @@ namespace BichoShow.Herramientas
             agua_.motivoObjeto = "se ha caído al agua del fregadero";
             // Espuma flotando.
             var azar = new System.Random(5);
-            for (int i = 0; i < 26; i++)
+            for (int i = 0; i < 34; i++)
             {
                 float x = (float)(azar.NextDouble() * 2 - 1) * 9.5f;
                 float z = z0 + 1f + (float)azar.NextDouble() * (z1 - z0 - 2f);
@@ -266,37 +305,39 @@ namespace BichoShow.Herramientas
             }
 
             var g = M.Grupo(obstaculos, "Zona 2");
-            // Centro: dos esponjas grandes (rápido, pero se hunden).
-            var esponjas = new[] { Esponja(g, "Esponja 1", 79.2f), Esponja(g, "Esponja 2", 97.7f) };
+            // Centro: tres esponjas (rápido, pero se hunden y se empapan).
+            var esponjas = new[] { Esponja(g, "Esponja 1", 104.5f), Esponja(g, "Esponja 2", 121.5f), Esponja(g, "Esponja 3", 138.5f) };
             // Lados: tapones que giran (más lentos, pero no se hunden).
             var tapones = new List<PlataformaGiratoria>();
             int k = 0;
             foreach (float x in new[] { -6.8f, 6.8f })
-                for (float z = 72f; z < 105f; z += 4.6f, k++)
+                for (float z = 98f; z < 145.5f; z += 4.6f, k++)
                     tapones.Add(Tapon(g, new Vector3(x, -0.4f, z), k % 2 == 0 ? rojo : azul, k % 2 == 0 ? 70f : -70f));
-            // Dos grifos, uno en cada pared, a destiempo: barren las esponjas y los tapones de los dos lados.
-            Grifo(g, new Vector3(11.5f, 3f, 104f), -163f, -107f, 0f);
-            Grifo(g, new Vector3(-11.5f, 3f, 80f), 16f, 73f, 2f);
+            // Tres grifos, en las dos paredes y a destiempo: ninguna ruta se libra del chorro.
+            Grifo(g, new Vector3(11.5f, 3f, 118f), -163f, -107f, 0f);
+            Grifo(g, new Vector3(-11.5f, 3f, 113f), 16f, 73f, 1.5f);
+            Grifo(g, new Vector3(11.5f, 3f, 145f), -163f, -107f, 3f);
             return (esponjas, tapones.ToArray());
         }
 
+        const float LargoEsponja = 13f;
+
         static EsponjaFregadero Esponja(Transform padre, string nombre, float z)
         {
-            const float largo = 15.4f;
             var go = new GameObject(nombre);
             go.transform.SetParent(padre, false);
             go.transform.position = new Vector3(0f, -0.3f, z);
             go.AddComponent<Rigidbody>().isKinematic = true;
             var caja = go.AddComponent<BoxCollider>();
-            caja.size = new Vector3(6f, 1.2f, largo);
+            caja.size = new Vector3(6f, 1.2f, LargoEsponja);
             caja.center = new Vector3(0f, -0.6f, 0f);
             var visual = Kit("Esponja", go.transform, Vector3.zero, 0f, null, 1f, local: true);
-            visual.transform.localScale = Vector3.Scale(visual.transform.localScale, new Vector3(1f, 1f, largo / 11f));
+            visual.transform.localScale = Vector3.Scale(visual.transform.localScale, new Vector3(1f, 1f, LargoEsponja / 11f));
             var espuma = M.Particulas("Espuma", go.transform, go.transform.position + Vector3.up * 0.2f, new Color(1f, 0.85f, 0.95f), Color.white, 50, 2f, 5f, particula);
             var main = espuma.main;
             main.playOnAwake = false;
             var e = go.AddComponent<EsponjaFregadero>();
-            e.tamanoArriba = new Vector2(6f, largo);
+            e.tamanoArriba = new Vector2(6f, LargoEsponja);
             e.alturaArriba = 0f;
             e.hundimientoPorBicho = 0.3f;
             e.limite = 2;
@@ -323,7 +364,7 @@ namespace BichoShow.Herramientas
             return p;
         }
 
-        /// <summary>El grifo gigante en la pared derecha: su caño de 16 m barre el fregadero con el chorro.</summary>
+        /// <summary>Grifo gigante en una pared: su caño de 16 m barre el fregadero con el chorro.</summary>
         static void Grifo(Transform padre, Vector3 base_, float anguloA, float anguloB, float desfase)
         {
             const float largo = 16f, alturaCano = 4.7f;
@@ -358,10 +399,10 @@ namespace BichoShow.Herramientas
         }
 
         // =====================================================================
-        // Zona 3: la rampa de mantequilla (z 112-170)
+        // Zona 3: la rampa de mantequilla (z 157-237)
         // =====================================================================
 
-        static (FrutaRodante[] frutas, Transform[] refugios, RampaMantequilla rampa) Zona3()
+        static FrutaRodante[] Zona3()
         {
             float largo = LargoRampa;
             float angulo = Mathf.Atan2(AltoRampa, ZRampa1 - ZRampa0) * Mathf.Rad2Deg;
@@ -378,7 +419,7 @@ namespace BichoShow.Herramientas
             rampa.resbalonSalto = 8f;
             rampa.agarreDerretida = 0.05f;
             rampa.largoFranja = 10f;
-            rampa.duracionFranja = 6f;
+            rampa.duracionFranja = 7f;
             rampa.descanso = 2f;
             var franja = M.Decorado(PrimitiveType.Cube, "Franja derretida", rampaGo.transform, new Vector3(0f, 0.03f, 0f), new Vector3(14f, 0.04f, rampa.largoFranja), derretida, local: true);
             rampa.franja = franja.transform;
@@ -410,15 +451,15 @@ namespace BichoShow.Herramientas
 
             // Muros de refugio: en la base y por la rampa (la fruta revienta contra ellos).
             var refugios = new List<Transform>();
-            refugios.Add(Refugio(g, new Vector3(-4f, 0f, 115.5f), Quaternion.identity));
-            refugios.Add(Refugio(g, new Vector3(4f, 0f, 115.5f), Quaternion.identity));
-            foreach (var (x, z) in new[] { (-4f, 10f), (-1.5f, 29f), (4f, 38f) })
+            refugios.Add(Refugio(g, new Vector3(-4f, 0f, ZRampa0 - 2.5f), Quaternion.identity));
+            refugios.Add(Refugio(g, new Vector3(4f, 0f, ZRampa0 - 2.5f), Quaternion.identity));
+            foreach (var (x, z) in new[] { (-4f, 10f), (3.5f, 24f), (-1.5f, 38f), (4f, 52f), (-3f, 62f) })
                 refugios.Add(Refugio(g, rampaGo.transform.TransformPoint(x, 0f, z), giro));
 
             Vector3 arriba = new Vector3(0f, AltoRampa, ZRampa1 - 0.5f), abajo = new Vector3(0f, 0f, ZRampa0 + 0.5f);
-            var tomates = Fruta(g, "Tomates", "Tomate", 10, 1f, arriba, abajo, new Vector2(0f, 3.2f), 10f, 1.1f, 0f, new Color(0.9f, 0.15f, 0.1f), refugios);
-            var arandanos = Fruta(g, "Arandanos", "Arandano", 10, 0.7f, arriba, abajo, new Vector2(4.2f, 6.2f), 12f, 0.9f, 1f, new Color(0.35f, 0.3f, 0.8f), refugios);
-            return (new[] { tomates, arandanos }, refugios.ToArray(), rampa);
+            var tomates = Fruta(g, "Tomates", "Tomate", 12, 1f, arriba, abajo, new Vector2(0f, 3.2f), 10f, 1.1f, 0f, new Color(0.9f, 0.15f, 0.1f), refugios);
+            var arandanos = Fruta(g, "Arandanos", "Arandano", 12, 0.7f, arriba, abajo, new Vector2(4.2f, 6.2f), 12f, 0.9f, 1f, new Color(0.35f, 0.3f, 0.8f), refugios);
+            return new[] { tomates, arandanos };
         }
 
         static Transform Refugio(Transform padre, Vector3 pie, Quaternion giro)
@@ -472,64 +513,26 @@ namespace BichoShow.Herramientas
         }
 
         // =====================================================================
-        // Zona 4: las bandejas de postre y el podio (z 166-236)
+        // Zona 4: las bandejas de postre (z 225-288)
         // =====================================================================
 
-        static (MetaCarrera meta, Transform[] podio, ColchonElastico[] colchones) Zona4()
+        static ColchonElastico[] Zona4()
         {
             float y = AltoRampa;
-            Losa("Arriba de la rampa", -9f, 9f, ZRampa1, 178f, y, azul);
-            Losa("Bandeja de la meta", -9f, 9f, 205f, 236f, y, azul);
+            Losa("Arriba de la rampa", -9f, 9f, ZRampa1, 237f, y, azul);
+            Losa("Despues de los colchones", -9f, 9f, 278f, ZTostadora0, y, azul);
 
             var g = M.Grupo(obstaculos, "Zona 4");
-            // Cuatro colchones en dos filas, con huecos entre ellos; van y vienen de lado, a destiempo.
+            // Seis colchones en tres filas, con huecos entre ellos; van y vienen de lado, a destiempo.
             var colchones = new List<ColchonElastico>();
             int k = 0;
-            foreach (float z in new[] { 183f, 197f })
+            foreach (float z in FilasColchones)
                 foreach (float x in new[] { -3.5f, 3.5f })
-                    colchones.Add(Colchon(g, new Vector3(x, y, z), (k++ * 0.25f + (x > 0f ? 0.5f : 0f)) % 1f));
-            // Saleros a los lados de la bandeja de la meta (al vacío si te descuidas).
-            Salero(g, new Vector3(-8f, y, 209f), 0.2f);
-            Salero(g, new Vector3(8f, y, 209f), 0.7f);
+                    colchones.Add(Colchon(g, new Vector3(x, y, z), (k++ * 0.17f + (x > 0f ? 0.5f : 0f)) % 1f));
 
             // Debajo, la cinta que te devuelve: te lleva hacia atrás y te tira al cubo (al último arco).
-            CintaDeAbajo(180f, 212f, 3f);
-
-            // La meta: línea de cuadros bajo el marcador, y el podio detrás.
-            Kit("LineaMeta", decorado, new Vector3(0f, y, ZMeta), 180f, null, 1f);
-            Kit("PortalMeta", decorado, new Vector3(0f, y, ZMeta), 180f, rosa, 1f);
-            M.Cartel(decorado, "META", new Vector3(0f, y + 9.75f, ZMeta - 0.7f), 1.6f, Color.white);
-            foreach (float s in new[] { -1f, 1f })
-            {
-                var poste = new GameObject("Poste de la meta (colision)");
-                poste.transform.SetParent(suelos, false);
-                poste.transform.position = new Vector3(s * 9.3f, y + 4.2f, ZMeta);
-                poste.AddComponent<BoxCollider>().size = new Vector3(1f, 8.4f, 1f);
-            }
-            var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, y + 2f, ZMeta + 0.5f), new Vector3(18f, 4f, 1.5f));
-
-            var podioGo = new GameObject("Podio").transform;
-            podioGo.SetParent(suelos, false);
-            podioGo.SetPositionAndRotation(new Vector3(0f, y, 227f), Quaternion.Euler(0f, 180f, 0f));
-            Kit("Podio", podioGo, Vector3.zero, 0f, null, 1f, local: true);
-            foreach (var (x, alto) in new[] { (0f, 1.5f), (2.3f, 1f), (-2.3f, 0.7f) })
-            {
-                var escalon = podioGo.gameObject.AddComponent<BoxCollider>();
-                escalon.size = new Vector3(2.2f, alto, 2.2f);
-                escalon.center = new Vector3(x, alto * 0.5f, 0f);
-            }
-            var sitios = new List<Transform>();
-            foreach (var (nombre, local) in new[] { ("1º", new Vector3(0f, 1.6f, 0f)), ("2º", new Vector3(2.3f, 1.1f, 0f)), ("3º", new Vector3(-2.3f, 0.8f, 0f)), ("4º", new Vector3(-5.2f, 0.1f, 0.5f)) })
-            {
-                var sitio = new GameObject($"Sitio {nombre}").transform;
-                sitio.SetParent(podioGo, false);
-                sitio.localPosition = local;
-                sitio.localRotation = Quaternion.identity; // el podio mira hacia la carrera (-Z)
-                sitios.Add(sitio);
-                if (nombre != "4º") M.Cartel(decorado, nombre, podioGo.TransformPoint(local.x, local.y * 0.5f, 1.2f), 0.7f, EstiloShow.MoradoOscuro);
-            }
-            Guirnalda(new Vector3(-8.5f, y, 222f), new Vector3(8.5f, y, 222f));
-            return (meta, sitios.ToArray(), colchones.ToArray());
+            CintaDeAbajo(239f, 276f, y - 9f);
+            return colchones.ToArray();
         }
 
         static ColchonElastico Colchon(Transform padre, Vector3 pie, float desfase)
@@ -584,6 +587,122 @@ namespace BichoShow.Herramientas
         }
 
         // =====================================================================
+        // Zona 5: la tostadora gigante (z 288-326)
+        // =====================================================================
+
+        /// <summary>Por encima de la tostadora: tres ranuras con dos tostadas cada una (por ranura, a contratiempo).</summary>
+        static TostadaSaltarina[][] Zona5()
+        {
+            float y = AltoRampa;
+            var g = M.Grupo(obstaculos, "Zona 5");
+            // Lo de arriba de la tostadora, entre ranura y ranura.
+            float desde = ZTostadora0;
+            for (int i = 0; i <= Ranuras.Length; i++)
+            {
+                float hasta = i < Ranuras.Length ? Ranuras[i].x : ZTostadora1;
+                E.Bloque("Tostadora (arriba)", suelos, new Vector3(0f, y - 0.25f, (desde + hasta) * 0.5f), new Vector3(18f, 0.5f, hasta - desde), tostadoraMat);
+                if (i < Ranuras.Length) desde = Ranuras[i].y;
+            }
+            // El cuerpo de la tostadora: los costados, el fondo de las ranuras con su resistencia y la palanca.
+            float centro = (ZTostadora0 + ZTostadora1) * 0.5f, largo = ZTostadora1 - ZTostadora0;
+            foreach (float s in new[] { -1f, 1f })
+                M.Decorado(PrimitiveType.Cube, "Costado de la tostadora", decorado, new Vector3(s * 9.4f, (y + Encimera) * 0.5f, centro), new Vector3(0.8f, y - Encimera, largo), tostadoraMat);
+            M.Decorado(PrimitiveType.Cube, "Frente de la tostadora", decorado, new Vector3(0f, (y - 0.5f + Encimera) * 0.5f, ZTostadora0 + 0.4f), new Vector3(18f, y - 0.5f - Encimera, 0.8f), tostadoraMat);
+            M.Decorado(PrimitiveType.Cube, "Palanca", decorado, new Vector3(10.6f, y - 3f, centro), new Vector3(1.6f, 0.8f, 3f), ranura);
+            M.Decorado(PrimitiveType.Sphere, "Pomo de la palanca", decorado, new Vector3(11.6f, y - 3f, centro), new Vector3(1.2f, 1.2f, 1.2f), rojo);
+
+            var todas = new TostadaSaltarina[Ranuras.Length][];
+            for (int i = 0; i < Ranuras.Length; i++)
+            {
+                var r = Ranuras[i];
+                float zc = (r.x + r.y) * 0.5f, ancho = r.y - r.x;
+                M.Decorado(PrimitiveType.Cube, "Fondo de la ranura", decorado, new Vector3(0f, y - 4.5f, zc), new Vector3(18f, 0.4f, ancho), ranura);
+                M.Decorado(PrimitiveType.Cube, "Resistencia", decorado, new Vector3(0f, y - 4.2f, zc), new Vector3(17f, 0.15f, 0.3f), resistencia);
+                var quemadura = M.ZonaTrigger<ZonaMortal>($"Ranura {i + 1} (caida)", mapa, new Vector3(0f, y - 3.2f, zc), new Vector3(18f, 1.5f, ancho));
+                quemadura.motivoObjeto = "se ha caído dentro de la tostadora";
+                todas[i] = new[]
+                {
+                    Tostada(g, new Vector3(-4.45f, y, zc), ancho - 0.5f, (i * 0.23f) % 1f),
+                    Tostada(g, new Vector3(4.45f, y, zc), ancho - 0.5f, (i * 0.23f + 0.5f) % 1f),
+                };
+            }
+            return todas;
+        }
+
+        static TostadaSaltarina Tostada(Transform padre, Vector3 arriba, float largo, float desfase)
+        {
+            const float ancho = 8.5f, grueso = 0.8f;
+            var go = new GameObject($"Tostada {arriba.x:0} {arriba.z:0}");
+            go.transform.SetParent(padre, false);
+            go.transform.position = arriba;
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var caja = go.AddComponent<BoxCollider>();
+            caja.size = new Vector3(ancho, grueso, largo);
+            caja.center = new Vector3(0f, -grueso * 0.5f, 0f);
+            // Miga y corteza.
+            M.Decorado(PrimitiveType.Cube, "Miga", go.transform, new Vector3(0f, -grueso * 0.5f, 0f), new Vector3(ancho - 0.5f, grueso, largo - 0.5f), tostada, local: true);
+            foreach (float s in new[] { -1f, 1f })
+            {
+                M.Decorado(PrimitiveType.Cube, "Corteza", go.transform, new Vector3(s * (ancho * 0.5f - 0.25f), -grueso * 0.5f, 0f), new Vector3(0.5f, grueso + 0.04f, largo), corteza, local: true);
+                M.Decorado(PrimitiveType.Cube, "Corteza", go.transform, new Vector3(0f, -grueso * 0.5f, s * (largo * 0.5f - 0.25f)), new Vector3(ancho, grueso + 0.04f, 0.5f), corteza, local: true);
+            }
+            var t = go.AddComponent<TostadaSaltarina>();
+            t.tamano = new Vector2(ancho, largo);
+            t.desfase = desfase;
+            return t;
+        }
+
+        // =====================================================================
+        // La meta y el podio (z 326-358)
+        // =====================================================================
+
+        static (MetaCarrera meta, Transform[] podio) Meta()
+        {
+            float y = AltoRampa;
+            Losa("Bandeja de la meta", -9f, 9f, ZTostadora1, 358f, y, azul);
+            var g = M.Grupo(obstaculos, "Meta");
+            // Saleros a los lados antes de la meta (al vacío si te descuidas).
+            Salero(g, new Vector3(-8f, y, 331f), 0.2f);
+            Salero(g, new Vector3(8f, y, 331f), 0.7f);
+
+            // La meta: línea de cuadros bajo el marcador, y el podio detrás.
+            Kit("LineaMeta", decorado, new Vector3(0f, y, ZMeta), 180f, null, 1f);
+            Kit("PortalMeta", decorado, new Vector3(0f, y, ZMeta), 180f, rosa, 1f);
+            M.Cartel(decorado, "META", new Vector3(0f, y + 9.75f, ZMeta - 0.7f), 1.6f, Color.white);
+            foreach (float s in new[] { -1f, 1f })
+            {
+                var poste = new GameObject("Poste de la meta (colision)");
+                poste.transform.SetParent(suelos, false);
+                poste.transform.position = new Vector3(s * 9.3f, y + 4.2f, ZMeta);
+                poste.AddComponent<BoxCollider>().size = new Vector3(1f, 8.4f, 1f);
+            }
+            var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, y + 2f, ZMeta + 0.5f), new Vector3(18f, 4f, 1.5f));
+
+            var podioGo = new GameObject("Podio").transform;
+            podioGo.SetParent(suelos, false);
+            podioGo.SetPositionAndRotation(new Vector3(0f, y, 349f), Quaternion.Euler(0f, 180f, 0f));
+            Kit("Podio", podioGo, Vector3.zero, 0f, null, 1f, local: true);
+            foreach (var (x, alto) in new[] { (0f, 1.5f), (2.3f, 1f), (-2.3f, 0.7f) })
+            {
+                var escalon = podioGo.gameObject.AddComponent<BoxCollider>();
+                escalon.size = new Vector3(2.2f, alto, 2.2f);
+                escalon.center = new Vector3(x, alto * 0.5f, 0f);
+            }
+            var sitios = new List<Transform>();
+            foreach (var (nombre, local) in new[] { ("1º", new Vector3(0f, 1.6f, 0f)), ("2º", new Vector3(2.3f, 1.1f, 0f)), ("3º", new Vector3(-2.3f, 0.8f, 0f)), ("4º", new Vector3(-5.2f, 0.1f, 0.5f)) })
+            {
+                var sitio = new GameObject($"Sitio {nombre}").transform;
+                sitio.SetParent(podioGo, false);
+                sitio.localPosition = local;
+                sitio.localRotation = Quaternion.identity; // el podio mira hacia la carrera (-Z)
+                sitios.Add(sitio);
+                if (nombre != "4º") M.Cartel(decorado, nombre, podioGo.TransformPoint(local.x, local.y * 0.5f, 1.2f), 0.7f, EstiloShow.MoradoOscuro);
+            }
+            Guirnalda(new Vector3(-8.5f, y, 344f), new Vector3(8.5f, y, 344f));
+            return (meta, sitios.ToArray());
+        }
+
+        // =====================================================================
         // Plató y cocina
         // =====================================================================
 
@@ -591,37 +710,43 @@ namespace BichoShow.Herramientas
         {
             var cocina = M.Grupo(decorado, "Cocina");
             // La encimera de madera, la pared con azulejos, los armarios y la ventana.
-            E.Bloque("Encimera", suelos, new Vector3(0f, Encimera - 0.5f, 120f), new Vector3(90f, 1f, 320f), madera);
-            M.Decorado(PrimitiveType.Cube, "Pared", cocina, new Vector3(38f, Encimera + 18f, 120f), new Vector3(1f, 44f, 320f), pared);
-            for (float z = -10f; z < 260f; z += 14f)
+            E.Bloque("Encimera", suelos, new Vector3(0f, Encimera - 0.5f, 175f), new Vector3(90f, 1f, 420f), madera);
+            M.Decorado(PrimitiveType.Cube, "Pared", cocina, new Vector3(38f, Encimera + 22f, 175f), new Vector3(1f, 52f, 420f), pared);
+            for (float z = -10f; z < 380f; z += 14f)
             {
-                if (Mathf.Abs(z - 124f) < 12f) continue; // ahí va la ventana
-                M.Decorado(PrimitiveType.Cube, "Armario", cocina, new Vector3(34.5f, Encimera + 22f, z), new Vector3(6f, 10f, 13.4f), armario);
-                M.Decorado(PrimitiveType.Sphere, "Pomo", cocina, new Vector3(31.4f, Encimera + 18.5f, z + 5f), new Vector3(0.6f, 0.6f, 0.6f), pomo);
+                if (Mathf.Abs(z - 124f) < 12f || Mathf.Abs(z - 264f) < 12f) continue; // ahí van las ventanas
+                M.Decorado(PrimitiveType.Cube, "Armario", cocina, new Vector3(34.5f, Encimera + 30f, z), new Vector3(6f, 10f, 13.4f), armario);
+                M.Decorado(PrimitiveType.Sphere, "Pomo", cocina, new Vector3(31.4f, Encimera + 26.5f, z + 5f), new Vector3(0.6f, 0.6f, 0.6f), pomo);
             }
-            M.Decorado(PrimitiveType.Cube, "Ventana", cocina, new Vector3(37.4f, Encimera + 20f, 124f), new Vector3(0.3f, 14f, 20f), ventana);
-            M.Decorado(PrimitiveType.Cube, "Marco", cocina, new Vector3(37.2f, Encimera + 20f, 124f), new Vector3(0.4f, 0.8f, 21f), blanco);
-            M.Decorado(PrimitiveType.Cube, "Marco", cocina, new Vector3(37.2f, Encimera + 20f, 124f), new Vector3(0.4f, 15f, 0.8f), blanco);
+            foreach (float zv in new[] { 124f, 264f })
+            {
+                M.Decorado(PrimitiveType.Cube, "Ventana", cocina, new Vector3(37.4f, Encimera + 26f, zv), new Vector3(0.3f, 14f, 20f), ventana);
+                M.Decorado(PrimitiveType.Cube, "Marco", cocina, new Vector3(37.2f, Encimera + 26f, zv), new Vector3(0.4f, 0.8f, 21f), blanco);
+                M.Decorado(PrimitiveType.Cube, "Marco", cocina, new Vector3(37.2f, Encimera + 26f, zv), new Vector3(0.4f, 15f, 0.8f), blanco);
+            }
             Kit("Tostadora", cocina, new Vector3(27f, Encimera, 128f), -90f, null, 2.2f);
             Kit("Tarro", cocina, new Vector3(26f, Encimera, 52f), -90f, amarillo, 1.8f);
             Kit("Tarro", cocina, new Vector3(28f, Encimera, 200f), -90f, cian, 2.2f);
+            Kit("Tarro", cocina, new Vector3(26f, Encimera, 330f), -90f, rosa, 2f);
 
             // Gradas de cubiertos con público, a los lados.
-            Grada(new Vector3(-20f, 4f, 30f));
-            Grada(new Vector3(20f, 4f, 85f));
-            Grada(new Vector3(-20f, 6f, 140f));
-            Grada(new Vector3(-18f, 10f, 222f));
-            Grada(new Vector3(18f, 10f, 222f));
+            Grada(new Vector3(-20f, 4f, 40f));
+            Grada(new Vector3(20f, 4f, 120f));
+            Grada(new Vector3(-20f, 8f, 190f));
+            Grada(new Vector3(20f, 14f, 255f));
+            Grada(new Vector3(-18f, 18f, 340f));
+            Grada(new Vector3(18f, 18f, 340f));
 
             // Grúas de cámara en el borde de la encimera, siguiendo al pelotón.
-            GruaCamara(new Vector3(-17f, Encimera, 70f));
-            GruaCamara(new Vector3(-17f, Encimera, 172f));
+            GruaCamara(new Vector3(-17f, Encimera, 90f));
+            GruaCamara(new Vector3(-17f, Encimera, 230f));
 
             // Guirnaldas de banderitas y carteles del show.
-            Guirnalda(new Vector3(-10.5f, 0f, 21f), new Vector3(-10.5f, 0f, 61f), 0.8f);
-            Guirnalda(new Vector3(10.5f, 0f, 21f), new Vector3(10.5f, 0f, 61f), 0.8f);
-            Guirnalda(new Vector3(-8.5f, AltoRampa, 167f), new Vector3(8.5f, AltoRampa, 167f));
-            foreach (var (pos, texto) in new[] { (new Vector3(-13f, 0f, 60f), "ZONA 2"), (new Vector3(-13.5f, 0f, 112f), "ZONA 3"), (new Vector3(-10.5f, AltoRampa, 172f), "ZONA 4") })
+            Guirnalda(new Vector3(-10.5f, 0f, 21f), new Vector3(-10.5f, 0f, 73f), 0.8f);
+            Guirnalda(new Vector3(10.5f, 0f, 21f), new Vector3(10.5f, 0f, 73f), 0.8f);
+            Guirnalda(new Vector3(-8.5f, AltoRampa, 226f), new Vector3(8.5f, AltoRampa, 226f));
+            foreach (var (pos, texto) in new[] { (new Vector3(-13f, 0f, 86f), "ZONA 2"), (new Vector3(-13.5f, 0f, 152f), "ZONA 3"),
+                                                  (new Vector3(-10.5f, AltoRampa, 232f), "ZONA 4"), (new Vector3(-10.5f, AltoRampa, 285f), "ZONA 5") })
                 Pancarta(pos, texto);
         }
 
@@ -761,7 +886,8 @@ namespace BichoShow.Herramientas
         // Ruta de los bots
         // =====================================================================
 
-        static PuntoRuta RutaBots(RodilloAmasar[] rodillos, EsponjaFregadero[] esponjas, PlataformaGiratoria[] tapones, ColchonElastico[] colchones)
+        static PuntoRuta RutaBots(RodilloAmasar[] rodillos, EsponjaFregadero[] esponjas, PlataformaGiratoria[] tapones,
+                                  ColchonElastico[] colchones, TostadaSaltarina[][] tostadas)
         {
             // Zona 1: bajar y saltar los rodillos por el mango (es lo más bajo), esperando a que no vengan de frente.
             var salida = Ruta("Salida", new Vector3(0f, 1.5f, 6f), 2f);
@@ -777,19 +903,26 @@ namespace BichoShow.Herramientas
                 Unir(previo, antes); Unir(antes, salto); Unir(salto, tras);
                 previo = tras;
             }
-            var finMantel = Ruta("Fin del mantel", new Vector3(0f, 0f, 61f), 2f);
+            var finMantel = Ruta("Fin del mantel", new Vector3(0f, 0f, 89f), 2f);
             Unir(previo, finMantel);
 
             // Zona 2: por las esponjas (rápido) o por los tapones de la derecha (seguro).
-            var borde = Ruta("Borde del fregadero", new Vector3(0f, 0f, 67.5f), 1.5f);
+            var borde = Ruta("Borde del fregadero", new Vector3(0f, 0f, 93.5f), 1.5f);
             Unir(finMantel, borde);
-            var e1 = Ruta("Saltar a la esponja 1", new Vector3(0f, 0f, 68.6f), 0.5f, saltar: true, esperar: esponjas[0]);
-            var e1b = Ruta("Esponja 1", new Vector3(0f, -0.3f, 85.6f), 0.8f, saltar: true, esperar: esponjas[1]);
-            var e2b = Ruta("Esponja 2", new Vector3(0f, -0.3f, 104.2f), 0.8f, saltar: true);
-            var salidaFregadero = Ruta("Salida del fregadero", new Vector3(0f, 0f, 110f), 1.5f);
-            Unir(e1, e1b); Unir(e1b, e2b); Unir(e2b, salidaFregadero);
-            var t0 = Ruta("Saltar a los tapones", new Vector3(6.8f, 0f, 68.6f), 0.3f, saltar: true);
-            PuntoRuta anterior = t0;
+            var salidaFregadero = Ruta("Salida del fregadero", new Vector3(0f, 0f, 150f), 1.5f);
+            var e0 = Ruta("Saltar a la esponja 1", new Vector3(0f, 0f, 94.6f), 0.5f, saltar: true, esperar: esponjas[0]);
+            PuntoRuta anterior = e0;
+            for (int i = 0; i < esponjas.Length; i++)
+            {
+                float fin = esponjas[i].transform.position.z + LargoEsponja * 0.5f - 0.6f;
+                var p = Ruta($"Final de la esponja {i + 1}", new Vector3(0f, -0.3f, fin), 0.8f, saltar: true,
+                             esperar: i + 1 < esponjas.Length ? esponjas[i + 1] : null);
+                Unir(anterior, p);
+                anterior = p;
+            }
+            Unir(anterior, salidaFregadero);
+            var t0 = Ruta("Saltar a los tapones", new Vector3(6.8f, 0f, 94.6f), 0.3f, saltar: true);
+            anterior = t0;
             foreach (var t in tapones)
             {
                 if (t.transform.position.x < 0f) continue;
@@ -798,13 +931,13 @@ namespace BichoShow.Herramientas
                 anterior = p;
             }
             Unir(anterior, salidaFregadero);
-            Unir(borde, e1, t0);
+            Unir(borde, e0, t0);
 
             // Zona 3: subir la mantequilla corriendo, sin saltar, esquivando los muros.
-            var pie = Ruta("Pie de la rampa", new Vector3(0f, 0f, 117f), 1f);
+            var pie = Ruta("Pie de la rampa", new Vector3(0f, 0f, ZRampa0 - 1f), 1f);
             Unir(salidaFregadero, pie);
             anterior = pie;
-            foreach (var (x, d) in new[] { (0f, 5f), (0f, 14f), (1f, 24f), (1f, 33f), (0f, 42f), (0f, 47.5f) })
+            foreach (var (x, d) in new[] { (0f, 5f), (0f, 17f), (0f, 24f), (1f, 31f), (1.5f, 38f), (0f, 45f), (0f, 52f), (1f, 62f), (0f, 68f) })
             {
                 float z = ZRampa0 + d * (ZRampa1 - ZRampa0) / LargoRampa;
                 var p = Ruta($"Rampa {d:0}", new Vector3(x, (z - ZRampa0) / (ZRampa1 - ZRampa0) * AltoRampa, z), 1f);
@@ -812,15 +945,33 @@ namespace BichoShow.Herramientas
                 anterior = p;
             }
 
-            // Zona 4: saltar al colchón y dejarse lanzar; luego a la meta.
-            var arriba = Ruta("Arriba de la rampa", new Vector3(3.5f, AltoRampa, 172f), 1f);
-            var borde4 = Ruta("Borde de la bandeja", new Vector3(3.5f, AltoRampa, 177.2f), 0.4f, saltar: true);
-            // Los puntos van pegados a los colchones (que se mueven).
-            var colchon1 = PuntoEn(colchones[1].transform, "Colchon 1", new Vector3(0f, 0.8f, 0f));
-            var colchon2 = PuntoEn(colchones[3].transform, "Colchon 2", new Vector3(0f, 0.8f, 0f));
-            var bandeja = Ruta("Bandeja de la meta", new Vector3(0f, AltoRampa, 208f), 1.5f);
-            var meta = Ruta("Meta", new Vector3(0f, AltoRampa, ZMeta + 3f), 2f);
-            Unir(anterior, arriba); Unir(arriba, borde4); Unir(borde4, colchon1); Unir(colchon1, colchon2); Unir(colchon2, bandeja); Unir(bandeja, meta);
+            // Zona 4: saltar al colchón y dejarse lanzar de fila en fila (los de la derecha).
+            float y = AltoRampa;
+            var arriba = Ruta("Arriba de la rampa", new Vector3(3.5f, y, 231f), 1f);
+            var borde4 = Ruta("Borde de la bandeja", new Vector3(3.5f, y, 236.2f), 0.4f, saltar: true);
+            Unir(anterior, arriba); Unir(arriba, borde4);
+            anterior = borde4;
+            for (int i = 1; i < colchones.Length; i += 2)
+            {
+                var p = PuntoEn(colchones[i].transform, $"Colchon {i / 2 + 1}", new Vector3(0f, 0.8f, 0f));
+                Unir(anterior, p);
+                anterior = p;
+            }
+
+            // Zona 5: esperar a que salte la tostada de la derecha, cruzar por encima y seguir.
+            var tras4 = Ruta("Antes de la tostadora", new Vector3(4.45f, y, 285f), 1f);
+            Unir(anterior, tras4);
+            anterior = tras4;
+            for (int i = 0; i < Ranuras.Length; i++)
+            {
+                var antes = Ruta($"Antes de la ranura {i + 1}", new Vector3(4.45f, y, Ranuras[i].x - 0.8f), 0.3f, saltar: true, esperar: tostadas[i][1]);
+                var encima = Ruta($"Tostada {i + 1}", new Vector3(4.45f, y, (Ranuras[i].x + Ranuras[i].y) * 0.5f), 0.3f, saltar: true);
+                var despues = Ruta($"Despues de la ranura {i + 1}", new Vector3(4.45f, y, Ranuras[i].y + 1f), 0.6f);
+                Unir(anterior, antes); Unir(antes, encima); Unir(encima, despues);
+                anterior = despues;
+            }
+            var meta = Ruta("Meta", new Vector3(0f, y, ZMeta + 3f), 2f);
+            Unir(anterior, meta);
             return salida;
         }
 

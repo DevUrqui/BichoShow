@@ -1,6 +1,6 @@
 # Despensa Deslizante
 
-Carrera de obstáculos por la encimera de una cocina, todos contra todos. Hay cuatro zonas separadas por tres arcos de control. Si te caes a la encimera, al agua del fregadero o al cubo de la cinta, vuelves al último arco que cruzaste: pierdes unos segundos, pero no quedas eliminado.
+Carrera de obstáculos por la encimera de una cocina, todos contra todos. Hay cinco zonas separadas por cuatro arcos de control. Si te caes a la encimera, al agua del fregadero, al cubo de la cinta o dentro de la tostadora, vuelves al último arco que cruzaste: pierdes unos segundos, pero no quedas eliminado.
 
 ## Crearla
 
@@ -16,7 +16,7 @@ El diseño original era una primera ronda para 40-60 jugadores, de la que se cla
 
 | Dato | Diseño original | En el juego |
 |---|---|---|
-| Pista | 360 × 35 m | Unos 215 m, de 14 a 24 m de ancho |
+| Pista | 360 × 35 m | Unos 360 m, de 14 a 24 m de ancho, con una zona más (la tostadora) |
 | Clasificación | El 60 % pasa | Puntos por orden de llegada: 200, 170, 140 y 110; quien no llega, según lo lejos que fue |
 | Cierre | Alarma de horno cuando quedan 5 plazas | Cuando llega el primero suena el temporizador del horno (tic-tac cada vez más rápido) y quedan 25 s |
 | Últimos segundos | El público golpea las gradas | Igual: en los últimos 20 s el público se vuelve loco y los saleros tiemblan el doble |
@@ -29,17 +29,19 @@ Como en todas las carreras, cada jugador lleva su cámara detrás de su bicho (v
 
 | Zona | Z | Qué hay |
 |---|---|---|
-| 1. El mantel de los rodillos | 0–62 | Salida acolchada bajo el arco BICHO SHOW y una bajadita. Tres **rodillos de amasar** ruedan hacia la salida y vuelven, cada uno en su tramo. Seis **saleros** en los bordes. |
-| 2. El fregadero espumoso | 62–112 | Agua jabonosa rosa. Por el centro, dos **esponjas**; por los lados, **tapones** pequeños que giran rápido. Dos **grifos gigantes**, uno en cada pared, barren el fregadero a destiempo. |
-| 3. La rampa de mantequilla | 112–170 | Rampa resbaladiza de 50 m que sube 12 m. Bajan **tomates** por el centro y **arándanos** por los bordes, muy seguidos. Hay tres **muros de refugio** y una **lámpara de calor**. |
-| 4. Las bandejas de postre | 166–236 | Cuatro **colchones elásticos** pequeños en dos filas, que **van y vienen de lado**, con huecos entre ellos y una **cinta** debajo. Dos saleros junto a la meta. Después, la meta bajo el marcador y el **podio**. |
+| 1. El mantel de los rodillos | 0–95 | Salida acolchada bajo el arco BICHO SHOW y una bajadita. Cuatro **rodillos de amasar** ruedan hacia la salida y vuelven, cada uno en su tramo; el último, por encima de un tramo de **masa pegajosa**. Ocho **saleros** en los bordes. |
+| 2. El fregadero espumoso | 95–157 | Agua jabonosa rosa. Por el centro, tres **esponjas**; por los lados, **tapones** pequeños que giran rápido. Tres **grifos gigantes**, en las dos paredes, barren el fregadero a destiempo. |
+| 3. La rampa de mantequilla | 157–237 | Rampa resbaladiza de 70 m que sube 16 m. Bajan **tomates** por el centro y **arándanos** por los bordes, muy seguidos. Hay cinco **muros de refugio** en la rampa y una **lámpara de calor**. |
+| 4. Las bandejas de postre | 237–288 | Seis **colchones elásticos** pequeños en tres filas, que **van y vienen de lado**, con huecos entre ellos y una **cinta** debajo. |
+| 5. La tostadora gigante | 288–358 | Se corre por encima de una tostadora con tres **ranuras** de 7 m, demasiado anchas para saltarlas. Se cruzan sobre las **tostadas** cuando saltan. Después, dos saleros, la meta bajo el marcador y el **podio**. |
 
 Cómo funcionan las pruebas:
 
-- **Rodillos de amasar:** ruedan hacia ti a 6 m/s, se paran medio segundo y vuelven a 4,5 m/s. Si te pillan, te aplastan y te echan atrás.
+- **Rodillos de amasar:** hay cuatro. Ruedan hacia ti a 6 m/s, se paran medio segundo y vuelven a 4,5 m/s. Si te pillan, te aplastan y te echan atrás.
   - El cuerpo es gordo (1,8 m): se puede saltar, pero hay que clavar el momento.
   - Los mangos de los lados son finos y bajos: se saltan fácil.
   - Por las esquinas se puede bordear el rodillo, pero ahí están los saleros.
+- **Masa pegajosa:** 9 m de masa de pan de lado a lado del mantel. Dentro solo puedes ir a 2,2 m/s, y el cuarto rodillo rueda justo por encima: casi siempre hay que saltarlo estando pegado.
 - **Saleros:** rebotan a quien los toca. Cada 3 s tiemblan y echan un círculo de sal de 4,5 m de radio en el que casi no hay agarre.
 - **Esponjas (ruta rápida):**
   - Se hunden 0,3 m por cada bicho que llevan encima.
@@ -47,8 +49,8 @@ Cómo funcionan las pruebas:
   - Por el centro se va rápido, pero no te puedes parar.
 - **Tapones (ruta lateral):** pequeños (radio 1,1 m), giran rápido y suben y bajan, pero no se hunden. Hay que ir saltando de uno a otro.
 - **Grifos gigantes:**
-  - Hay dos, uno en cada pared y a destiempo. Cada 4,5 s gotean para avisar y abren el chorro.
-  - El de la derecha barre desde sus tapones hasta pasado el centro; el de la izquierda, desde los suyos hasta el otro lado del centro.
+  - Hay tres, en las dos paredes y a destiempo, uno por cada esponja. Cada 4,5 s gotean para avisar y abren el chorro.
+  - Los de la derecha barren desde sus tapones hasta pasado el centro; el de la izquierda, desde los suyos hasta el otro lado del centro.
   - A quien pillan lo empujan de lado, normalmente al agua. Ninguna ruta queda a salvo.
 - **Mantequilla:**
   - Se agarra la mitad.
@@ -64,13 +66,20 @@ Cómo funcionan las pruebas:
   - Al pisarlos te lanzan hacia delante unos 14 m, justo hasta la siguiente fila.
   - El lado lo decides tú: se conserva lo que ibas de lado.
   - Si te quedas corto, caes a la **cinta** de abajo, que te lleva hacia atrás y te tira al cubo; de ahí vuelves al último arco.
+- **Tostadora gigante:**
+  - Cada ranura tiene dos tostadas, una a cada lado, a contratiempo.
+  - Cada tostada se esconde 2,4 s dentro de la ranura, suena un "tic" y salta de golpe hasta ras de la tostadora; se queda arriba 2 s y vuelve a bajar.
+  - Al saltar, lanza hacia arriba a quien tenga encima.
+  - Si sigues encima cuando baja, caes dentro de la ranura y vuelves al arco de la zona 5.
 - **Podio:** quien llega sube al podio (1º, 2º, 3º, y el 4º al lado) y se queda celebrando mientras los demás sufren. La cámara deja de encuadrarlo.
 
 ### Cosas propias para que no sea un Fall Guys
 
-El diseño se inspira en mapas de Fall Guys y la rampa con fruta que rueda se parece mucho a uno de ellos. Para que tenga personalidad propia, hay cuatro cosas que no estaban en el diseño:
+El diseño se inspira en mapas de Fall Guys y la rampa con fruta que rueda se parece mucho a uno de ellos. Para que tenga personalidad propia, hay cosas que no estaban en el diseño:
 
 - La **lámpara de calor** que derrite franjas de mantequilla.
+- La **masa pegajosa** bajo el último rodillo.
+- La **tostadora gigante**, con las tostadas como puentes que saltan.
 - Las **esponjas que se empapan** si te quedas quieto encima, no solo por el peso.
 - La **fruta que revienta** contra los muros de refugio, lo que convierte los muros en escondites de verdad.
 - Los **colchones** con control lateral.
@@ -101,8 +110,9 @@ Juega solo, con los bots activados, y comprueba en orden:
    - Saltando, se patina.
    - La fruta se esquiva, y detrás de los muros se está a salvo.
    - La franja derretida se ve.
-6. **Colchones.** Desde la primera fila se llega a la segunda y desde la segunda, a la meta. Si caes, la cinta te devuelve.
-7. **Tiempos.** Una carrera debería durar entre 90 y 120 s. Al acabar, mira `Estadisticas/`: apunta las caídas y dónde se pierde más tiempo.
+6. **Colchones.** De fila en fila se llega, y desde la última, a la bandeja de la tostadora. Si caes, la cinta te devuelve.
+7. **Tostadora.** Se oye el "tic", se ve saltar la tostada y da tiempo a cruzar antes de que baje. Si te quedas, caes dentro.
+8. **Tiempos.** Una carrera debería durar entre 90 y 120 s. Al acabar, mira `Estadisticas/`: apunta las caídas y dónde se pierde más tiempo.
 
 Si algo no va, estos son los valores a tocar. Están en el Inspector de cada objeto, dentro de `Mapa/Obstaculos`.
 
@@ -121,6 +131,8 @@ Si algo no va, estos son los valores a tocar. Están en el Inspector de cada obj
 | Colchón | `subida`, `avance`, `ladoMaximo` | Lo alto y lo lejos que lanza, y cuánto se puede ir de lado |
 | Colchón | `vaiven`, `periodoVaiven` | Cuánto va y viene de lado y a qué ritmo |
 | Cinta de abajo | `velocidad` | Lo rápido que te devuelve |
+| Masa pegajosa | `velocidadMaxima` | Lo rápido que se puede ir dentro de la masa |
+| Tostada | `tiempoAbajo`, `tiempoArriba`, `profundidad`, `impulso`, `desfase` | Cuánto rato escondida y arriba, lo que baja, lo que lanza al saltar y a destiempo de cuál |
 | RondaDespensa | `tiempoTrasPrimero` | Lo que dura el temporizador del horno |
 | RondaDespensa | `finalConPrisa` | Los segundos finales en que el público golpea las gradas |
 | RondaDespensa | `duracionMinima` | Tiempo mínimo de la carrera |
