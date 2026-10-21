@@ -11,6 +11,7 @@ En Unity: **BichoShow → Crear escena: La Cumbre del Girasol**.
 - Se crea `Escenas/Cumbre.unity` y se añade al build.
 - Es una final: cada show acaba ahora con **una** de las dos finales ("Juntos o nada" o esta), elegida al azar. No hace falta rehacer el menú.
 - Para jugarla suelta, abre la escena, dale a Play, únete y pulsa START.
+- Si el generador ha cambiado y la escena no se ha vuelto a crear, al darle a Play Unity avisa y ofrece **Rehacer y jugar**. La escena guarda la versión del generador con la que se hizo, en un objeto vacío "Version del generador N".
 
 ## Adaptado a nuestro juego
 
@@ -59,6 +60,7 @@ Gira alrededor del tallo y siempre mira hacia dentro, pero con calma para que no
 - Al girar, los bichos se quedan en el centro del plano: se suaviza el punto al que mira, no la posición.
 - Mira 0,6 s por delante de cada bicho, para que los trampolines y los atajos no lo saquen por arriba. Si alguien se sale muy lejos de golpe, gira más deprisa para alcanzarlo.
 - El decorado que se pone entre la cámara y un bicho (gradas, banderolas, pétalos de la cabeza…) se vuelve invisible mientras estorba, aunque sigue dando sombra. Lo hace `CamaraSinEstorbos`, en la cámara.
+- Si aun así algo tapa a un bicho (el abejorro, la pista de arriba…), se ve su **silueta blanca** a través. Esto vale en todos los mapas: lo pone `SiluetaBicho` en cada bicho. No sale cuando el bicho se tapa a sí mismo, solo cuando lo tapa otra cosa.
 
 Si sigue mareando, en el Inspector de `Camara` sube `margenOrbita` (gira menos veces) o baja `velocidadMaximaOrbita` (gira más despacio). Si aún se sale alguien por arriba, sube `anticipacion`.
 

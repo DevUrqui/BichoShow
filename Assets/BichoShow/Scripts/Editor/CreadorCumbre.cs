@@ -23,7 +23,9 @@ namespace BichoShow.Herramientas
     /// </summary>
     public static class CreadorCumbre
     {
-        const string RutaEscena = E.CarpetaEscenas + "/Cumbre.unity";
+        public const string RutaEscena = E.CarpetaEscenas + "/Cumbre.unity";
+        /// <summary>Súbela al cambiar el generador: así, al darle a Play, Unity avisa si la escena es vieja (EscenasAnticuadas).</summary>
+        public const int Version = 3;
         const string CarpetaMallas = E.Raiz + "/Modelos/Girasol";
 
         // --- La espiral ---
@@ -203,6 +205,7 @@ namespace BichoShow.Herramientas
             camara.ColocarAlInstante();
 
             mapa = new GameObject("Mapa").transform;
+            new GameObject(EscenasAnticuadas.Marca + Version);
             pista = M.Grupo(mapa, "Pista");
             obstaculos = M.Grupo(mapa, "Obstaculos");
             decorado = M.Grupo(mapa, "Decorado");

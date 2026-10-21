@@ -1,0 +1,64 @@
+using System.IO;
+using System.Text.RegularExpressions;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+
+namespace BichoShow.Herramientas
+{
+    /// <summary>
+    /// Al darle a Play, comprueba si alguna escena hecha por un generador es de una versión
+    /// anterior de ese generador (el código ha cambiado, pero la escena no se ha vuelto a crear).
+    /// Si es así, ofrece rehacerla antes de jugar. Cada generador guarda en su escena un objeto
+    /// vacío llamado "Version del generador N".
+    /// </summary>
+    [InitializeOnLoad]
+    static class EscenasAnticuadas
+    {
+        public const string Marca = "Version del generador ";
+
+        /// <summary>Escenas con versión: ruta, versión actual del generador y cómo rehacerla.</summary>
+        static readonly (string ruta, int version, System.Action crear)[] Generadas =
+        {
+            (CreadorCumbre.RutaEscena, CreadorCumbre.Version, CreadorCumbre.Crear),
+        };
+
+        static EscenasAnticuadas() => EditorApplication.playModeStateChanged += AlCambiarModo;
+
+        static void AlCambiarModo(PlayModeStateChange cambio)
+        {
+            if (cambio != PlayModeStateChange.ExitingEditMode) return;
+
+            var viejas = new System.Collections.Generic.List<(string ruta, int version, System.Action crear)>();
+            foreach (var g in Generadas)
+                if (File.Exists(g.ruta) && VersionEnArchivo(g.ruta) < g.version) viejas.Add(g);
+            if (viejas.Count == 0) return;
+
+            string nombres = string.Join(", ", viejas.ConvertAll(v => Path.GetFileNameWithoutExtension(v.ruta)));
+            int opcion = EditorUtility.DisplayDialogComplex("Bicho Show",
+                $"Estas escenas se crearon con una versión anterior de su generador y no tienen los últimos cambios:\n\n{nombres}\n\n¿Rehacerlas antes de jugar?",
+                "Rehacer y jugar", "Cancelar", "Jugar así");
+            if (opcion == 2) return;
+
+            EditorApplication.isPlaying = false;
+            if (opcion == 1) return;
+
+            string activa = SceneManager.GetActiveScene().path;
+            EditorApplication.delayCall += () =>
+            {
+                foreach (var v in viejas) v.crear();
+                if (!string.IsNullOrEmpty(activa) && File.Exists(activa)) EditorSceneManager.OpenScene(activa);
+                // Solo se juega si de verdad se han rehecho (el generador puede cancelarse).
+                foreach (var v in viejas) if (VersionEnArchivo(v.ruta) < v.version) return;
+                EditorApplication.isPlaying = true;
+            };
+        }
+
+        /// <summary>La versión anotada en la escena (0 si no tiene, como las de antes de este aviso).</summary>
+        static int VersionEnArchivo(string ruta)
+        {
+            var m = Regex.Match(File.ReadAllText(ruta), "m_Name: " + Regex.Escape(Marca) + @"(\d+)");
+            return m.Success ? int.Parse(m.Groups[1].Value) : 0;
+        }
+    }
+}

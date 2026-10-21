@@ -257,6 +257,8 @@ namespace BichoShow
 
             // Sonidos y efectos del bicho (aplastarse al caer, polvo, estrellitas...).
             if (!TryGetComponent(out JugoBicho _)) gameObject.AddComponent<JugoBicho>();
+            // Silueta blanca cuando algo se le pone delante (para no perderlo de vista).
+            if (!TryGetComponent(out SiluetaBicho _)) gameObject.AddComponent<SiluetaBicho>();
         }
 
         void OnEnable() => Todos.Add(this);
