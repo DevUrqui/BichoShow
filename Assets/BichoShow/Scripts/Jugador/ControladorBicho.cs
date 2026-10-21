@@ -688,6 +688,10 @@ namespace BichoShow
             // no al aterrizar en el suelo tras un salto.
             if (choque.rigidbody == null) return;
             if (EsDeMiCarga(choque.rigidbody)) return;
+            // Caer de pie encima de una plataforma que se mueve (esponja, tapón, colchón, pétalo…)
+            // es aterrizar, no un golpe: el choque es por debajo, a la altura de los pies.
+            if (choque.rigidbody.isKinematic && choque.contactCount > 0 &&
+                choque.GetContact(0).point.y < rb.worldCenterOfMass.y - 0.3f) return;
 
             float cambioVelocidad = choque.impulse.magnitude / rb.mass;
             if (cambioVelocidad >= golpeParaTropezar)
