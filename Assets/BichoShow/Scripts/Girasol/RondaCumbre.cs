@@ -5,9 +5,10 @@ namespace BichoShow
 {
     /// <summary>
     /// Gran final "La Cumbre del Girasol" (todos contra todos): subida en espiral alrededor del
-    /// tallo de un girasol gigante, sin puntos de control. Gana quien coge la Corona Dorada en lo
-    /// alto. La savia inunda el invernadero desde abajo: quien queda por debajo, se pega y queda
-    /// eliminado. Los demás puntúan por lo alto que hayan llegado.
+    /// tallo de un girasol gigante, sin puntos de control. Arriba, la cabeza del girasol gira y,
+    /// en su centro, el arco de META gira con ella: hay que cruzarlo por su boca. Puntos por orden
+    /// de llegada. La savia inunda el invernadero desde abajo: quien queda por debajo, se pega y
+    /// queda eliminado (puntúa por lo alto que llegó). Cuando llega el primero, la savia se desborda.
     ///
     /// Eventos de show: al minuto, la fiebre del polen (el doble de bolas, luces doradas y sirena);
     /// y si alguien va muy destacado, el abejorro con cámara se le pone delante.
@@ -16,60 +17,69 @@ namespace BichoShow
     {
         [Header("La Cumbre")]
         public Savia savia;
-        public CoronaCumbre corona;
         public BolasPolen bolas;
         public AbejorroDron dron;
+        [Tooltip("El arco de META (para la reaparición y el confeti).")]
+        public MetaGiratoria meta;
         [Tooltip("Luz principal (parpadea dorada en la fiebre del polen).")]
         public Light sol;
-        [Tooltip("Cañones de confeti de las gradas (se disparan al coronar).")]
+        [Tooltip("Cañones de confeti de las gradas (se disparan cuando llega el primero).")]
         public ParticleSystem[] confeti;
         [Tooltip("Altura de la cima (para el porcentaje de subida).")]
-        public float alturaCima = 49f;
+        public float alturaCima = 56f;
         [Tooltip("La final dura al menos esto, aunque el show pida rondas más cortas (s).")]
-        public float duracionMinima = 150f;
+        public float duracionMinima = 200f;
+        [Tooltip("Cuando llega el primero, a los demás les quedan como mucho estos segundos.")]
+        public float tiempoTrasPrimero = 30f;
+        [Tooltip("Cuando llega el primero, la savia sube estas veces más deprisa.")]
+        public float saviaDesbordada = 2.5f;
+        [Tooltip("Tras cruzar la meta, el bicho celebra este rato y deja la pista (así la cámara sigue a los que suben).")]
+        public float celebracionMeta = 2.5f;
         public float momentoFiebre = 60f;
         public float duracionFiebre = 20f;
         [Tooltip("Ventaja de altura (m) sobre el segundo para que el dron se plante delante del primero.")]
-        public float ventajaParaDron = 7f;
+        public float ventajaParaDron = 8f;
 
         public static RondaCumbre Instancia { get; private set; }
 
         readonly float[] altura = new float[4];
         readonly bool[] pegado = new bool[4];
+        readonly int[] llegada = new int[4];      // 0 = no ha llegado; 1 = primero…
         readonly List<ControladorBicho> corredores = new List<ControladorBicho>();
-        int ganador = -1;
+        readonly List<(ControladorBicho bicho, float cuando)> porRetirar = new List<(ControladorBicho, float)>();
+        int llegados;
         bool fiebreHecha, avisoDron, avisoSavia;
         Color colorSol;
         float intensidadSol;
         float siguienteLider;
 
         public override string Titulo => "LA CUMBRE DEL GIRASOL";
-        protected override string Descripcion => "¡La gran final! Sube por la espiral del girasol antes de que te alcance la savia y coge la Corona Dorada.";
-        protected override string ConsejoInicio => "¡Arriba! La savia sube: no te quedes atrás. Coge la corona con el botón de agarrar";
+        protected override string Descripcion => "¡La gran final! Sube por la espiral del girasol antes de que te alcance la savia y cruza el arco de META, que gira en lo alto.";
+        protected override string ConsejoInicio => "¡Arriba! La savia sube: no te quedes atrás. Arriba, entra en el arco por delante";
         protected override string AccionX => "placaje (¡empuja a los rivales!)";
         public override bool Individual => true;
         public override string NombreEquipo(int equipo) => equipo == 0 ? "Rojo" : "Azul";
         public override Color ColorEquipo(int equipo) => equipo == 0 ? new Color(1f, 0.38f, 0.35f) : new Color(0.3f, 0.6f, 1f);
         public override int PuntosEquipo(int equipo) => PuntosJugador(equipo) + PuntosJugador(equipo + 2);
 
-        /// <summary>Coronar: 300. Si no, lo alto que se ha llegado (siempre menos).</summary>
+        /// <summary>Llegar: 300 el primero, 250 el segundo… Sin llegar: lo alto que se ha subido (siempre menos).</summary>
         public override int PuntosJugador(int indice)
         {
             if (indice < 0 || indice >= 4) return 0;
-            if (indice == ganador) return 300;
-            return Mathf.FloorToInt(Mathf.Clamp01(altura[indice] / Mathf.Max(1f, alturaCima)) * 250f);
+            if (llegada[indice] > 0) return 300 - 50 * (llegada[indice] - 1);
+            return Mathf.FloorToInt(Mathf.Clamp01(altura[indice] / Mathf.Max(1f, alturaCima)) * 140f);
         }
 
         protected override string EtiquetaJugador(int indice)
         {
             if (indice < 0 || indice >= 4) return null;
-            if (indice == ganador) return "¡CORONADO!";
-            if (pegado[indice]) return "pegado en la savia";
+            if (llegada[indice] > 0) return $"¡{llegada[indice]}º EN LA CUMBRE!";
+            if (pegado[indice]) return $"pegado en la savia ({Mathf.FloorToInt(altura[indice])} m)";
             return $"{Mathf.FloorToInt(altura[indice])} m de altura";
         }
 
         public override bool HaLlegado(ControladorBicho b) =>
-            b != null && b.IndiceJugador >= 0 && b.IndiceJugador < 4 && (b.IndiceJugador == ganador || pegado[b.IndiceJugador]);
+            b != null && b.IndiceJugador >= 0 && b.IndiceJugador < 4 && (llegada[b.IndiceJugador] > 0 || pegado[b.IndiceJugador]);
 
         protected override float Avance(Vector3 punto) => punto.y;
 
@@ -104,25 +114,27 @@ namespace BichoShow
 
         protected override void AlPrepararRonda()
         {
-            ganador = -1;
+            llegados = 0;
+            porRetirar.Clear();
             fiebreHecha = avisoDron = avisoSavia = false;
-            for (int i = 0; i < 4; i++) { altura[i] = 0f; pegado[i] = false; }
-            if (corona != null)
-            {
-                corona.AlCoger -= Coronar;
-                corona.AlCoger += Coronar;
-                corona.Reiniciar();
-            }
+            for (int i = 0; i < 4; i++) { altura[i] = 0f; pegado[i] = false; llegada[i] = 0; }
             if (savia != null) savia.Parar();
             if (bolas != null) bolas.Parar();
             if (dron != null) dron.Grabar(null);
-            // Sin puntos de control: quien se cae al suelo del invernadero vuelve a la salida.
-            if (gestor != null)
-                foreach (var b in ControladorBicho.Todos)
-                {
-                    var punto = gestor.PuntoAparicion(b.IndiceJugador);
-                    if (punto != null) b.FijarPuntoReaparicion(punto.position, punto.rotation);
-                }
+            VolverASalida();
+        }
+
+        protected override void AlDespuesDeBots() => VolverASalida();
+
+        /// <summary>Sin puntos de control: quien se cae al suelo del invernadero vuelve a la salida.</summary>
+        void VolverASalida()
+        {
+            if (gestor == null) return;
+            foreach (var b in ControladorBicho.Todos)
+            {
+                var punto = gestor.PuntoAparicion(b.IndiceJugador);
+                if (punto != null) b.FijarPuntoReaparicion(punto.position, punto.rotation);
+            }
         }
 
         protected override void AlEmpezarRonda()
@@ -140,8 +152,8 @@ namespace BichoShow
             foreach (var b in ControladorBicho.Todos)
             {
                 int i = b.IndiceJugador;
-                if (i < 0 || i >= 4 || b.Retirado) continue;
-                altura[i] = Mathf.Max(altura[i], b.transform.position.y);
+                if (i < 0 || i >= 4 || b.Retirado || llegada[i] > 0) continue;
+                altura[i] = Mathf.Max(altura[i], Mathf.Min(b.transform.position.y, alturaCima));
                 // ¿Le ha alcanzado la savia?
                 if (savia != null && savia.Subiendo && b.transform.position.y < savia.Altura - 0.2f) Pegar(b);
             }
@@ -157,11 +169,19 @@ namespace BichoShow
             if (sol != null) ParpadeoDorado();
             if (Time.time >= siguienteLider) { siguienteLider = Time.time + 0.5f; VigilarLider(); }
 
+            // Los que ya han llegado, tras celebrarlo, dejan la pista.
+            for (int k = porRetirar.Count - 1; k >= 0; k--)
+            {
+                if (Time.time < porRetirar[k].cuando) continue;
+                if (porRetirar[k].bicho != null) porRetirar[k].bicho.Retirar(true);
+                porRetirar.RemoveAt(k);
+            }
+
             // ¿Queda alguien subiendo?
             corredores.RemoveAll(b => b == null);
             bool alguien = false;
-            foreach (var b in corredores) if (!b.Retirado && !HaLlegado(b)) { alguien = true; break; }
-            if (!alguien && corredores.Count > 0) TerminarRonda();
+            foreach (var b in corredores) if (!HaLlegado(b) && !b.Retirado) { alguien = true; break; }
+            if (!alguien && corredores.Count > 0 && porRetirar.Count == 0) TerminarRonda();
         }
 
         protected override void AlTerminarRonda()
@@ -169,11 +189,12 @@ namespace BichoShow
             if (savia != null) savia.Parar();
             if (bolas != null) bolas.Parar();
             if (sol != null) { sol.color = colorSol; sol.intensity = intensidadSol; }
-            // Vuelven los pegados en la savia (para ver el final todos juntos).
+            porRetirar.Clear();
+            // Vuelven todos a la cima (los que llegaron y los pegados), para ver el final juntos.
             foreach (var b in corredores)
-                if (b != null && b.Retirado && b.IndiceJugador >= 0 && b.IndiceJugador < 4 && pegado[b.IndiceJugador])
+                if (b != null && b.Retirado && HaLlegado(b))
                 {
-                    if (corona != null) b.FijarPuntoReaparicion(corona.transform.position + Vector3.down * 2f, Quaternion.identity);
+                    if (meta != null) b.FijarPuntoReaparicion(meta.transform.position + meta.transform.forward * 3f, meta.transform.rotation);
                     b.Retirar(false);
                 }
         }
@@ -192,26 +213,33 @@ namespace BichoShow
             b.Retirar(true);
         }
 
-        void Coronar(ControladorBicho b)
+        /// <summary>Lo llama el arco de META al cruzarlo por su boca.</summary>
+        public void Llegar(ControladorBicho b)
         {
-            if (EstadoActual != Estado.Jugando || ganador >= 0) return;
-            ganador = b.IndiceJugador;
-            altura[ganador] = alturaCima;
-            Color color = gestor != null ? gestor.ColorDe(ganador) : Color.white;
-            Mensaje($"¡{NombreJugador(b)} SE CORONA EN LA CUMBRE!", color, 4f);
-            Sonidos.Reproducir(Sonido.Victoria);
-            Sonidos.Reproducir(Sonido.Aplausos);
-            Efectos.CamaraLenta(0.3f, 0.8f);
-            Efectos.Sacudir(0.3f);
-            if (corona != null)
+            int i = b.IndiceJugador;
+            if (i < 0 || i >= 4 || EstadoActual != Estado.Jugando || llegada[i] > 0 || pegado[i] || b.Retirado) return;
+            llegada[i] = ++llegados;
+            altura[i] = alturaCima;
+            Color color = gestor != null ? gestor.ColorDe(i) : Color.white;
+            Sonidos.Reproducir(llegados == 1 ? Sonido.Victoria : Sonido.Logro);
+            Sonidos.Reproducir(Sonido.Aplausos, null, llegados == 1 ? 1f : 0.7f);
+            Efectos.Impacto(b.Cuerpo.worldCenterOfMass + Vector3.up, color, 1f);
+            if (b.TryGetComponent(out AnimadorBicho animador)) animador.Celebrar(celebracionMeta + 1f);
+            Estadisticas.Evento("meta", b, $"{llegados}º");
+            porRetirar.Add((b, Time.time + celebracionMeta));
+
+            if (llegados == 1)
             {
-                Efectos.Impacto(corona.transform.position, EstiloShow.Oro, 1f);
-                corona.gameObject.SetActive(false);
+                Mensaje($"¡{NombreJugador(b)} LLEGA A LA CUMBRE!", color, 3.5f);
+                Efectos.CamaraLenta(0.3f, 0.8f);
+                Efectos.Sacudir(0.3f);
+                if (confeti != null) foreach (var c in confeti) if (c != null) c.Play();
+                if (savia != null) savia.Acelerar(saviaDesbordada);
+                if (TiempoRestante > tiempoTrasPrimero) TiempoRestante = tiempoTrasPrimero;
+                Mensaje($"¡La savia se desborda! Quedan {Mathf.CeilToInt(TiempoRestante)} segundos", new Color(1f, 0.7f, 0.25f), 3f);
+                Sonidos.Reproducir(Sonido.Alarma, null, 0.6f);
             }
-            if (confeti != null) foreach (var c in confeti) if (c != null) c.Play();
-            if (b.TryGetComponent(out AnimadorBicho a)) a.Celebrar(5f);
-            Estadisticas.Evento("corona", b);
-            TerminarRonda();
+            else Mensaje($"¡{NombreJugador(b)} llega {llegados}º!", color, 2.5f);
         }
 
         // ---------------------------------------------------------------------
@@ -249,7 +277,7 @@ namespace BichoShow
             float mejor = float.MinValue, segunda = float.MinValue;
             foreach (var b in ControladorBicho.Todos)
             {
-                if (b.Retirado) continue;
+                if (b.Retirado || HaLlegado(b)) continue;
                 float y = b.transform.position.y;
                 if (y > mejor) { segunda = mejor; mejor = y; primero = b; }
                 else if (y > segunda) segunda = y;
@@ -259,7 +287,7 @@ namespace BichoShow
             if (destacado && !avisoDron)
             {
                 avisoDron = true;
-                Mensaje($"¡{NombreJugador(primero)} va destacado! ¡Está a punto de coronar!", gestor != null ? gestor.ColorDe(primero.IndiceJugador) : Color.white, 3f);
+                Mensaje($"¡{NombreJugador(primero)} va destacado! ¡Se escapa hacia la cumbre!", gestor != null ? gestor.ColorDe(primero.IndiceJugador) : Color.white, 3f);
                 Sonidos.Reproducir(Sonido.Ooh, null, 0.8f);
             }
             if (!destacado) avisoDron = false;

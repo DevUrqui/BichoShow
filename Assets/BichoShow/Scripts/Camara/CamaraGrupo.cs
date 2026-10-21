@@ -46,6 +46,12 @@ namespace BichoShow
         public Vector3 ejeOrbita;
         [Tooltip("Altura de la cámara respecto a lo que se aleja hacia fuera (más = más desde arriba).")]
         public float alturaOrbita = 0.75f;
+        [Tooltip("Mientras el grupo no se aleje más de esto (grados) del centro del plano, la cámara no gira: así no marea.")]
+        public float margenOrbita = 16f;
+        [Tooltip("Lo más rápido que gira la cámara alrededor del eje (grados por segundo).")]
+        public float velocidadMaximaOrbita = 24f;
+        [Tooltip("Grados que la cámara se adelanta al grupo en el sentido de la carrera (negativo = hacia ángulos menores).")]
+        public float adelantoOrbita;
         float anguloOrbita, velocidadAnguloOrbita;
         bool hayAnguloOrbita;
         [Tooltip("Dónde mirar cuando todavía no hay nadie jugando.")]
@@ -121,6 +127,8 @@ namespace BichoShow
         /// <summary>
         /// Coloca la "dirección" de la cámara por fuera de los jugadores, en el ángulo medio en el
         /// que están alrededor del eje (con vectores, para que no salte al dar la vuelta).
+        /// Para que no maree: no gira mientras el grupo siga cerca del centro del plano, gira
+        /// despacio y con un tope de velocidad, y no hace caso a quien está casi en el eje.
         /// </summary>
         void Orbitar(bool alInstante)
         {
@@ -128,14 +136,21 @@ namespace BichoShow
             foreach (var p in puntos)
             {
                 var fuera = new Vector3(p.x - ejeOrbita.x, 0f, p.z - ejeOrbita.z);
-                if (fuera.sqrMagnitude > 0.01f) suma += fuera.normalized;
+                float r = fuera.magnitude;
+                if (r > 0.1f) suma += fuera / r * Mathf.Clamp01((r - 2f) / 6f);
             }
             if (puntos.Count == 0) suma = new Vector3(centroSinJugadores.x - ejeOrbita.x, 0f, centroSinJugadores.z - ejeOrbita.z);
             if (suma.sqrMagnitude > 0.04f)
             {
-                float objetivo = Mathf.Atan2(suma.x, suma.z) * Mathf.Rad2Deg;
+                float objetivo = Mathf.Atan2(suma.x, suma.z) * Mathf.Rad2Deg + adelantoOrbita;
                 if (alInstante || !hayAnguloOrbita) { anguloOrbita = objetivo; velocidadAnguloOrbita = 0f; hayAnguloOrbita = true; }
-                else anguloOrbita = Mathf.SmoothDampAngle(anguloOrbita, objetivo, ref velocidadAnguloOrbita, suavizado * 2f);
+                else
+                {
+                    float delta = Mathf.DeltaAngle(anguloOrbita, objetivo);
+                    float sobra = Mathf.Sign(delta) * Mathf.Max(0f, Mathf.Abs(delta) - margenOrbita);
+                    anguloOrbita = Mathf.SmoothDampAngle(anguloOrbita, anguloOrbita + sobra, ref velocidadAnguloOrbita,
+                                                         suavizado * 3f, velocidadMaximaOrbita);
+                }
             }
             float rad = anguloOrbita * Mathf.Deg2Rad;
             direccion = new Vector3(Mathf.Sin(rad), alturaOrbita, Mathf.Cos(rad));

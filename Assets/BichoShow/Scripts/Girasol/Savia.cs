@@ -16,8 +16,9 @@ namespace BichoShow
         [Tooltip("Altura máxima (la cima).")]
         public float alturaMaxima = 46f;
 
-        float alturaInicial;
+        float alturaInicial, altura;
         float inicio = -1f;
+        float multiplicador = 1f;
 
         /// <summary>Altura de la superficie de la savia.</summary>
         public float Altura => transform.position.y;
@@ -28,17 +29,22 @@ namespace BichoShow
         public void Empezar()
         {
             inicio = Time.time;
-            Colocar(alturaInicial);
+            multiplicador = 1f;
+            altura = alturaInicial;
+            Colocar(altura);
         }
 
         public void Parar() => inicio = -1f;
 
+        /// <summary>Sube más deprisa (por ejemplo, cuando ya ha llegado alguien a la meta).</summary>
+        public void Acelerar(float veces) => multiplicador = veces;
+
         void Update()
         {
             if (inicio < 0f) return;
-            float t = Time.time - inicio - retraso;
-            if (t <= 0f) return;
-            Colocar(Mathf.Min(alturaMaxima, alturaInicial + t * velocidad));
+            if (!Subiendo) return;
+            altura = Mathf.Min(alturaMaxima, altura + velocidad * multiplicador * Time.deltaTime);
+            Colocar(altura);
         }
 
         void Colocar(float y)

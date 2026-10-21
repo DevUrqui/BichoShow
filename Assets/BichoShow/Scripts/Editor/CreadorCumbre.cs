@@ -11,12 +11,13 @@ namespace BichoShow.Herramientas
 {
     /// <summary>
     /// Menú "BichoShow > Crear escena: La Cumbre del Girasol". Gran final: una pista en espiral
-    /// (300 m, 3 vueltas, pendiente del 15 %) alrededor del tallo de un girasol gigante, dentro de
-    /// un invernadero con público. Sin puntos de control; la savia sube desde el suelo.
-    ///  · Sección 1 (m 0-80, 13 m de ancho): mariquitas que rebotan (quietas y patrullando) y hojas trampolín.
-    ///  · Sección 2 (m 80-180, 9 m): bolas de polen rodando por el centro, valla con huecos y puentes de hoja.
-    ///  · Sección 3 (m 180-270, 7 m): suelo de néctar resbaladizo, mariquitas rápidas y ventiladores.
-    ///  · Sección 4 (m 270-300, 6 m): anillo de pétalos que suben y bajan, y la corona sobre el disco.
+    /// (440 m, casi 4 vueltas, pendiente del 13 %) alrededor del tallo de un girasol gigante, dentro
+    /// de un invernadero con público. Sin puntos de control; la savia sube desde el suelo.
+    ///  · Sección 1 (m 0-110, 13 m de ancho): mariquitas que rebotan (quietas y patrullando) y hojas trampolín.
+    ///  · Sección 2 (m 110-230, 9 m): bolas de polen rodando por el centro, valla con huecos y puentes de hoja.
+    ///  · Sección 3 (m 230-340, 7 m): suelo de néctar resbaladizo, mariquitas rápidas y ventiladores.
+    ///  · Sección 4 (m 340-428, 6 m): la pista se rompe; los huecos se cruzan sobre pétalos que suben y bajan.
+    ///  · La cima: la cabeza del girasol gira y, en su centro, el arco de META gira con ella.
     /// La pista es una malla hecha aquí (carriles de colores: verde a los lados, amarillo y naranja
     /// en el centro, por donde bajan las bolas); se guarda en Modelos/Girasol.
     /// </summary>
@@ -26,22 +27,36 @@ namespace BichoShow.Herramientas
         const string CarpetaMallas = E.Raiz + "/Modelos/Girasol";
 
         // --- La espiral ---
-        const float Largo = 300f;
-        const float RadioInterior = 10f;
-        const float Pendiente = 0.15f;
+        const float Largo = 440f;
+        /// <summary>Desde aquí la pista ya no sube: es la recta final, a ras de la cabeza.</summary>
+        const float SubidaHasta = 428f;
+        const float RadioInterior = 14f;
+        const float Pendiente = 0.13f;
         const float AlturaSalida = 0.5f;
         const float Grosor = 0.6f;
-        const float RadioTallo = 4.5f;
-        const float AlturaDisco = 50f;
+        const float RadioTallo = 6.5f;
+        const float RadioCabeza = 14.3f;
+        static readonly float AlturaCima = AlturaSalida + Pendiente * SubidaHasta;
         static readonly float[] Carriles = { 0f, 0.28f, 0.72f, 1f };
         /// <summary>Tramos sin valla por fuera (m de pista).</summary>
-        static readonly Vector2[] SinValla = { new Vector2(100f, 114f), new Vector2(124f, 132f), new Vector2(160f, 168f), new Vector2(202f, 214f), new Vector2(238f, 250f) };
+        static readonly Vector2[] SinValla =
+        {
+            new Vector2(88f, 98f),
+            new Vector2(128f, 140f), new Vector2(150f, 158f), new Vector2(172f, 182f), new Vector2(196f, 204f), new Vector2(214f, 222f),
+            new Vector2(252f, 260f), new Vector2(288f, 294f), new Vector2(322f, 328f),
+        };
+        /// <summary>Huecos de la sección 4 (desde, hasta, pétalos que lo cruzan).</summary>
+        static readonly Vector3[] Huecos =
+        {
+            new Vector3(348f, 353f, 1f), new Vector3(359f, 364f, 1f), new Vector3(370f, 378f, 2f),
+            new Vector3(385f, 390f, 1f), new Vector3(396f, 404f, 2f), new Vector3(410f, 415f, 1f),
+        };
 
         static float[] angulos;
         static Transform mapa, pista, obstaculos, decorado, rutaBots;
         static readonly List<PuntoRuta> ruta = new List<PuntoRuta>();
         static Material verdeA, verdeB, amarillo, naranja, rocioA, rocioB, nectarA, nectarB, borde, bajo, vallaLado, vallaTope;
-        static Material tallo, hojaTrampolin, hojaPuente, petalo, cesped, baldosa, savia, mariquitaTela, banderaA, banderaB, banderaC, plataforma;
+        static Material tallo, hojaTrampolin, hojaPuente, petalo, cesped, baldosa, savia, banderaA, banderaB, banderaC, plataforma, oro;
         static Material particula;
 
         [MenuItem("BichoShow/Crear escena: La Cumbre del Girasol")]
@@ -57,18 +72,19 @@ namespace BichoShow.Herramientas
         // La espiral: medidas por metro de pista (s)
         // =====================================================================
 
-        /// <summary>Embudo: 13 m en la base, 9 en el medio, 7 arriba y 6 al final.</summary>
+        /// <summary>Embudo: 13 m en la base, 9 en el bombardeo, 7 en el tallo ventoso y 6 arriba.</summary>
         static float Ancho(float s)
         {
-            if (s < 80f) return 13f;
-            if (s < 100f) return Mathf.Lerp(13f, 9f, (s - 80f) / 20f);
-            if (s < 180f) return 9f;
-            if (s < 190f) return Mathf.Lerp(9f, 7f, (s - 180f) / 10f);
-            if (s < 270f) return 7f;
-            return Mathf.Lerp(7f, 6f, Mathf.Clamp01((s - 270f) / 30f));
+            if (s < 110f) return 13f;
+            if (s < 125f) return Mathf.Lerp(13f, 9f, (s - 110f) / 15f);
+            if (s < 230f) return 9f;
+            if (s < 240f) return Mathf.Lerp(9f, 7f, (s - 230f) / 10f);
+            if (s < 340f) return 7f;
+            if (s < 350f) return Mathf.Lerp(7f, 6f, (s - 340f) / 10f);
+            return 6f;
         }
 
-        static float Altura(float s) => AlturaSalida + Pendiente * s;
+        static float Altura(float s) => AlturaSalida + Pendiente * Mathf.Min(s, SubidaHasta);
 
         /// <summary>Ángulo (radianes) de cada metro: se avanza "a la derecha" vista desde fuera (el ángulo baja).</summary>
         static void PrepararAngulos()
@@ -103,6 +119,8 @@ namespace BichoShow.Herramientas
             return new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a));
         }
 
+        static Vector3 Direccion(float radianes) => new Vector3(Mathf.Sin(radianes), 0f, Mathf.Cos(radianes));
+
         /// <summary>Hacia dónde se avanza (en horizontal).</summary>
         static Vector3 Adelante(float s)
         {
@@ -113,8 +131,15 @@ namespace BichoShow.Herramientas
 
         static Quaternion Giro(float s) => Quaternion.LookRotation(Adelante(s), Vector3.up);
 
+        static bool EnHueco(float s)
+        {
+            foreach (var h in Huecos) if (s >= h.x && s < h.y) return true;
+            return false;
+        }
+
         static bool HayValla(float s)
         {
+            if (EnHueco(s)) return false;
             foreach (var t in SinValla) if (s >= t.x && s < t.y) return false;
             return true;
         }
@@ -144,11 +169,11 @@ namespace BichoShow.Herramientas
             cesped = E.CrearMaterial("CumbreCesped", new Color(0.38f, 0.62f, 0.28f), 0.15f);
             baldosa = TelasCostura.Tela("CumbreBaldosa", new Color(0.93f, 0.72f, 0.58f), TelasCostura.TablaCorte, 3f, 0.25f);
             savia = E.CrearMaterial("CumbreSavia", new Color(0.95f, 0.58f, 0.12f), 0.95f);
-            mariquitaTela = E.CrearMaterial("CumbreMariquita", new Color(0.92f, 0.16f, 0.14f), 0.6f);
             banderaA = E.CrearMaterial("CumbreBanderaA", new Color(0.36f, 0.62f, 1f), 0.3f);
             banderaB = E.CrearMaterial("CumbreBanderaB", new Color(1f, 0.42f, 0.66f), 0.3f);
             banderaC = E.CrearMaterial("CumbreBanderaC", new Color(1f, 0.6f, 0.15f), 0.3f);
             plataforma = E.CrearMaterial("CumbrePlataforma", new Color(0.42f, 0.24f, 0.6f), 0.3f);
+            oro = E.CrearMaterial("CumbreMeta", new Color(1f, 0.78f, 0.15f), 0.7f);
             particula = AssetDatabase.LoadAssetAtPath<Material>($"{E.CarpetaMateriales}/Particula.mat");
             if (particula == null)
             {
@@ -165,10 +190,14 @@ namespace BichoShow.Herramientas
             E.CrearCarpeta(E.Raiz + "/Modelos", "Girasol");
 
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            var camara = A.Camara(16f, 40f);
+            // Cámara en órbita, tranquila: no gira hasta que el grupo se aleja del centro del plano.
+            var camara = A.Camara(20f, 46f);
             camara.orbitar = true;
             camara.ejeOrbita = Vector3.zero;
-            camara.alturaOrbita = 0.7f;
+            camara.alturaOrbita = 0.8f;
+            camara.margenOrbita = 16f;
+            camara.velocidadMaximaOrbita = 22f;
+            camara.adelantoOrbita = -10f; // un poco por delante: la carrera va hacia ángulos menores
             camara.centroSinJugadores = Punto(6f, 0.5f);
             camara.ColocarAlInstante();
 
@@ -184,13 +213,14 @@ namespace BichoShow.Herramientas
             Seccion1();
             var bolas = Seccion2();
             Seccion3();
-            var (corona, petalos) = Seccion4();
+            var petalos = Seccion4();
+            var (meta, delante, detras) = Cima();
             var saviaGo = CrearSavia();
             var confeti = Invernadero();
             var dron = Abejorro();
 
             // Sin puntos de control: quien cae al suelo del invernadero vuelve a la salida.
-            var suelo = M.ZonaTrigger<ZonaMortal>("SueloCaida", mapa, new Vector3(0f, -1.7f, 0f), new Vector3(130f, 4f, 130f));
+            var suelo = M.ZonaTrigger<ZonaMortal>("SueloCaida", mapa, new Vector3(0f, -1.7f, 0f), new Vector3(170f, 4f, 170f));
             suelo.motivoObjeto = "se ha caído al suelo del invernadero";
 
             // Parrilla de salida escalonada.
@@ -198,18 +228,19 @@ namespace BichoShow.Herramientas
             var gestor = A.Jugadores(prefabBicho, apariciones, Punto(16f, 0.5f));
             foreach (var p in gestor.puntosAparicion) p.rotation = Giro(6f);
 
-            var inicio = RutaBots(petalos);
+            var inicio = RutaBots(petalos, delante, detras);
 
             var rondaGo = new GameObject("RondaCumbre");
             var ronda = rondaGo.AddComponent<RondaCumbre>();
             ronda.gestor = gestor;
             ronda.saboteadorMaquina = false;
             ronda.savia = saviaGo;
-            ronda.corona = corona;
             ronda.bolas = bolas;
             ronda.dron = dron;
+            ronda.meta = meta;
             ronda.confeti = confeti;
-            ronda.alturaCima = AlturaDisco;
+            ronda.alturaCima = AlturaCima;
+            ronda.duracionMinima = 210f;
             ronda.ruta = ruta.ToArray();
             ronda.inicioRuta = inicio;
 
@@ -279,8 +310,9 @@ namespace BichoShow.Herramientas
             for (int i = 0; i < pasos; i++)
             {
                 float s0 = i, s1 = i + 1;
+                if (EnHueco(s0 + 0.5f)) continue;
                 int baldosaN = (i / 4) % 2;
-                bool resbala = s0 >= 180f && s0 < 270f;
+                bool resbala = s0 >= 230f && s0 < 340f;
                 for (int k = 0; k < 3; k++)
                 {
                     float f0 = Carriles[k], f1 = Carriles[k + 1];
@@ -297,11 +329,13 @@ namespace BichoShow.Herramientas
                 m.Cara(8, o0, o1, o1 + abajo, o0 + abajo, Fuera(s0), new Vector2(s0, 0f), new Vector2(s1, 0f), new Vector2(s1, -Grosor), new Vector2(s0, -Grosor));
                 m.Cara(9, i0 + abajo, o0 + abajo, o1 + abajo, i1 + abajo, Vector3.down, Vector2.zero, Vector2.right, Vector2.one, Vector2.up);
             }
-            // Tapas de los extremos.
-            foreach (float s in new[] { 0f, Largo })
+            // Tapas de los extremos y de los huecos.
+            var tapas = new List<(float s, bool alFinal)> { (0f, false), (Largo, true) };
+            foreach (var h in Huecos) { tapas.Add((h.x, true)); tapas.Add((h.y, false)); }
+            foreach (var (s, alFinal) in tapas)
             {
                 Vector3 a = Punto(s, 0f), b = Punto(s, 1f);
-                m.Cara(8, a, b, b + abajo, a + abajo, s > 0f ? Adelante(s) : -Adelante(s), Vector2.zero, Vector2.right, Vector2.one, Vector2.up);
+                m.Cara(8, a, b, b + abajo, a + abajo, alFinal ? Adelante(s) : -Adelante(s), Vector2.zero, Vector2.right, Vector2.one, Vector2.up);
             }
             var malla = m.Guardar("EspiralGirasol");
             var go = new GameObject("Espiral");
@@ -318,10 +352,10 @@ namespace BichoShow.Herramientas
             const float alto = 0.9f, grueso = 0.5f;
             int pasos = Mathf.CeilToInt(Largo);
             bool antes = false;
-            for (int i = 0; i < pasos; i++)
+            for (int i = 0; i <= pasos; i++)
             {
                 float s0 = i, s1 = i + 1;
-                bool hay = HayValla(s0);
+                bool hay = i < pasos && HayValla(s0);
                 float fd0 = 1f - grueso / Ancho(s0), fd1 = 1f - grueso / Ancho(s1);
                 Vector3 d0 = Punto(s0, fd0), d1 = Punto(s1, fd1), o0 = Punto(s0, 1f), o1 = Punto(s1, 1f);
                 Vector3 arriba = Vector3.up * alto;
@@ -351,38 +385,48 @@ namespace BichoShow.Herramientas
         static void CrearTallo()
         {
             var t = M.Grupo(decorado, "Tallo");
-            M.Decorado(PrimitiveType.Cylinder, "Tallo", t, new Vector3(0f, AlturaDisco * 0.5f - 1.5f, 0f), new Vector3(RadioTallo * 2f, AlturaDisco * 0.5f - 0.5f, RadioTallo * 2f), tallo);
-            for (float s = 10f; s < Largo; s += 16f)
+            float alto = AlturaCima - 1f;
+            M.Decorado(PrimitiveType.Cylinder, "Tallo", t, new Vector3(0f, alto * 0.5f - 0.5f, 0f), new Vector3(RadioTallo * 2f, alto * 0.5f, RadioTallo * 2f), tallo);
+            float escala = 1.45f * (RadioInterior - RadioTallo) / 5.5f;
+            for (float s = 10f; s < SubidaHasta; s += 16f)
             {
-                float a = Angulo(s) * Mathf.Rad2Deg;
-                var fuera = Fuera(s);
-                Kit("HojaTallo", t, fuera * (RadioTallo - 0.3f) + Vector3.up * (Altura(s) - 2.4f), a, null, 1.45f);
+                if (EnHueco(s)) continue;
+                Kit("HojaTallo", t, Fuera(s) * (RadioTallo - 0.3f) + Vector3.up * (Altura(s) - 2.4f), Angulo(s) * Mathf.Rad2Deg, null, escala);
             }
         }
 
         // =====================================================================
-        // Sección 1: mariquitas y hojas trampolín (m 0-80)
+        // Sección 1: mariquitas y hojas trampolín (m 0-110)
         // =====================================================================
 
         static void Seccion1()
         {
             var g = M.Grupo(obstaculos, "Seccion 1");
-            Mariquita(g, 20f, 0.5f, 0.5f, 0.5f, 4f, 0f);
-            Mariquita(g, 38f, 0.25f, 0.25f, 0.25f, 4f, 0f);
-            Mariquita(g, 56f, 0.75f, 0.75f, 0.75f, 4f, 0f);
-            Mariquita(g, 28f, 0.5f, 0.15f, 0.85f, 4f, 0f);
-            Mariquita(g, 47f, 0.5f, 0.15f, 0.85f, 3.5f, 0.3f);
-            Mariquita(g, 66f, 0.5f, 0.15f, 0.85f, 3f, 0.6f);
+            MariquitaPista(g, 20f, 0.5f, 0.5f, 0.5f, 4f, 0f);
+            MariquitaPista(g, 38f, 0.25f, 0.25f, 0.25f, 4f, 0f);
+            MariquitaPista(g, 56f, 0.75f, 0.75f, 0.75f, 4f, 0f);
+            MariquitaPista(g, 84f, 0.5f, 0.5f, 0.5f, 4f, 0f);
+            MariquitaPista(g, 28f, 0.5f, 0.15f, 0.85f, 4f, 0f);
+            MariquitaPista(g, 47f, 0.5f, 0.15f, 0.85f, 3.5f, 0.3f);
+            MariquitaPista(g, 66f, 0.5f, 0.15f, 0.85f, 3f, 0.6f);
+            MariquitaPista(g, 76f, 0.5f, 0.15f, 0.85f, 2.6f, 0.1f);
+            MariquitaPista(g, 93f, 0.5f, 0.15f, 0.85f, 2.6f, 0.5f); // donde falta la valla
+            MariquitaPista(g, 103f, 0.5f, 0.2f, 0.8f, 3f, 0.8f);
             Trampolin(g, 14f, 0.08f, 33f);
             Trampolin(g, 44f, 0.92f, 63f);
+            Trampolin(g, 70f, 0.08f, 89f);
         }
 
-        /// <summary>Mariquita acolchada en el metro s. Si fA ≠ fB, patrulla de lado a lado entre esas dos fracciones del ancho.</summary>
-        static MariquitaBumper Mariquita(Transform padre, float s, float f, float fA, float fB, float periodo, float desfase)
+        /// <summary>Mariquita en el metro s de la pista. Si fA ≠ fB, patrulla de lado a lado entre esas dos fracciones del ancho.</summary>
+        static MariquitaBumper MariquitaPista(Transform padre, float s, float f, float fA, float fB, float periodo, float desfase) =>
+            Mariquita(padre, $"Mariquita m{s:0}", Punto(s, f), -Adelante(s), Punto(s, fA), Punto(s, fB), periodo, desfase);
+
+        /// <summary>Mariquita acolchada que rebota a quien la toca; patrulla entre a y b (si son distintos).</summary>
+        static MariquitaBumper Mariquita(Transform padre, string nombre, Vector3 posicion, Vector3 mirar, Vector3 a, Vector3 b, float periodo, float desfase)
         {
-            var go = new GameObject($"Mariquita m{s:0}");
+            var go = new GameObject(nombre);
             go.transform.SetParent(padre, false);
-            go.transform.SetPositionAndRotation(Punto(s, f), Quaternion.LookRotation(-Adelante(s), Vector3.up)); // mira a quien sube
+            go.transform.SetPositionAndRotation(posicion, Quaternion.LookRotation(mirar, Vector3.up)); // mira a quien sube
             go.AddComponent<Rigidbody>().isKinematic = true;
             var capsula = go.AddComponent<CapsuleCollider>();
             capsula.direction = 2;
@@ -394,8 +438,8 @@ namespace BichoShow.Herramientas
             bumper.visual = visual.transform;
             bumper.periodo = periodo;
             bumper.desfase = desfase;
-            bumper.puntoA = Punto(s, fA);
-            bumper.puntoB = Punto(s, fB);
+            bumper.puntoA = a;
+            bumper.puntoB = b;
             return bumper;
         }
 
@@ -417,23 +461,23 @@ namespace BichoShow.Herramientas
             hoja.destino = destino;
             hoja.visual = visual.transform;
             hoja.render = visual.GetComponentInChildren<Renderer>();
-            // Una flecha en el destino, para que se entienda adónde lleva.
+            // Una hoja pequeña pintada donde se aterriza, para que se entienda adónde lleva.
             Kit("HojaRedonda", decorado, Punto(sDestino, f) + Vector3.up * 0.01f, 0f, verdeB, 0.6f);
             return hoja;
         }
 
         // =====================================================================
-        // Sección 2: bombardeo de polen y puentes de hoja (m 80-180)
+        // Sección 2: bombardeo de polen y puentes de hoja (m 110-230)
         // =====================================================================
 
         static BolasPolen Seccion2()
         {
             var g = M.Grupo(obstaculos, "Seccion 2");
-            // Las bolas: salen del cañón en el metro 176 y bajan rodando hasta el 74.
+            // Las bolas: salen del cañón en el metro 226 y bajan rodando hasta el 104.
             var camino = new List<Vector3>();
             var fuera = new List<Vector3>();
             var ancho = new List<float>();
-            for (float s = 176f; s >= 74f; s -= 2f)
+            for (float s = 226f; s >= 104f; s -= 2f)
             {
                 camino.Add(Punto(s, 0.5f));
                 fuera.Add(Fuera(s));
@@ -443,7 +487,7 @@ namespace BichoShow.Herramientas
             bolasGo.transform.SetParent(g, false);
             var bolas = bolasGo.AddComponent<BolasPolen>();
             var lista = new List<Rigidbody>();
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < 8; i++)
             {
                 var b = new GameObject($"Bola de polen {i + 1}");
                 b.transform.SetParent(bolasGo.transform, false);
@@ -459,12 +503,14 @@ namespace BichoShow.Herramientas
             bolas.camino = camino.ToArray();
             bolas.fuera = fuera.ToArray();
             bolas.ancho = ancho.ToArray();
+            bolas.cadencia = 3f;
             // El cañón de polen, arriba.
-            KitObjetos.Poner("CanonConfeti", decorado, Punto(179f, 0.5f), Angulo(179f) * Mathf.Rad2Deg + 90f, null, 2f, false, KitObjetos.KitPlato);
+            KitObjetos.Poner("CanonConfeti", decorado, Punto(229f, 0.5f), Angulo(229f) * Mathf.Rad2Deg + 90f, null, 2f, false, KitObjetos.KitPlato);
 
             // Puentes de hoja: atajos por dentro de la espiral (de una curva a la siguiente).
-            PuenteHoja(g, 116f, 142f);
-            PuenteHoja(g, 150f, 176f);
+            PuenteHoja(g, 134f, 160f);
+            PuenteHoja(g, 166f, 192f);
+            PuenteHoja(g, 198f, 224f);
             return bolas;
         }
 
@@ -488,7 +534,7 @@ namespace BichoShow.Herramientas
         }
 
         // =====================================================================
-        // Sección 3: el tallo ventoso (m 180-270)
+        // Sección 3: el tallo ventoso (m 230-340)
         // =====================================================================
 
         static void Seccion3()
@@ -496,16 +542,18 @@ namespace BichoShow.Herramientas
             var g = M.Grupo(obstaculos, "Seccion 3");
             var zona = new GameObject("Nectar resbaladizo").AddComponent<ZonaResbaladiza>();
             zona.transform.SetParent(g, false);
-            zona.alturaDesde = Altura(180f) - 0.5f;
-            zona.alturaHasta = Altura(270f) + 1.5f;
+            zona.alturaDesde = Altura(230f) - 0.5f;
+            zona.alturaHasta = Altura(340f) + 1.5f;
             zona.radioDesde = RadioInterior - 0.5f;
             zona.radioHasta = RadioInterior + 9.5f;
 
-            float[] sitios = { 195f, 215f, 235f, 255f };
-            for (int i = 0; i < sitios.Length; i++) Mariquita(g, sitios[i], 0.5f, 0.12f, 0.88f, 2f, i * 0.3f);
+            float[] sitios = { 244f, 262f, 276f, 302f, 316f, 334f };
+            for (int i = 0; i < sitios.Length; i++) MariquitaPista(g, sitios[i], 0.5f, 0.12f, 0.88f, 2f, i * 0.3f);
 
-            foreach (float s in new[] { 208f, 244f })
+            float[] ventiladores = { 255f, 290f, 325f };
+            for (int i = 0; i < ventiladores.Length; i++)
             {
+                float s = ventiladores[i];
                 float giro = Angulo(s) * Mathf.Rad2Deg;
                 var ventilador = Kit("Ventilador", g, Punto(s, 0.03f), giro, banderaA, 1.2f);
                 var aspas = Kit("AspasVentilador", ventilador.transform, new Vector3(0f, 2.8f, 0.2f), 0f, banderaA, 1f, local: true);
@@ -514,73 +562,122 @@ namespace BichoShow.Herramientas
                 viento.transform.SetPositionAndRotation(Punto(s, 0f), Quaternion.LookRotation(Fuera(s), Vector3.up));
                 viento.tamanoZona = new Vector3(10f, 4f, Ancho(s) + 2f);
                 viento.aspas = aspas.transform;
-                viento.desfase = s > 220f ? 0.5f : 0f;
-                // Cañón de confeti al lado (decorado del plató).
+                viento.desfase = i / (float)ventiladores.Length;
                 KitObjetos.Poner("CanonConfeti", decorado, Punto(s + 4f, 0.05f), giro, null, 1.2f, false, KitObjetos.KitPlato);
             }
         }
 
         // =====================================================================
-        // Sección 4: la corona de pétalos (m 270-300 y la cabeza)
+        // Sección 4: teclas de pétalo (m 340-428)
         // =====================================================================
 
-        static (CoronaCumbre corona, PetaloPiano[] petalos) Seccion4()
+        /// <summary>Un pétalo piano en cada hueco de la pista (dos en los largos), atravesado de lado a lado.</summary>
+        static PetaloPiano[][] Seccion4()
         {
             var g = M.Grupo(obstaculos, "Seccion 4");
+            var todos = new PetaloPiano[Huecos.Length][];
+            int k = 0;
+            for (int h = 0; h < Huecos.Length; h++)
+            {
+                var hueco = Huecos[h];
+                int n = Mathf.RoundToInt(hueco.z);
+                todos[h] = new PetaloPiano[n];
+                for (int j = 0; j < n; j++)
+                {
+                    float s = Mathf.Lerp(hueco.x, hueco.y, (j + 1f) / (n + 1f));
+                    var go = new GameObject($"Petalo m{s:0}");
+                    go.transform.SetParent(g, false);
+                    go.transform.SetPositionAndRotation(Punto(s, 0.5f) + Vector3.down * 0.15f, Quaternion.LookRotation(Fuera(s), Vector3.up));
+                    go.AddComponent<Rigidbody>().isKinematic = true;
+                    var caja = go.AddComponent<BoxCollider>();
+                    caja.size = new Vector3(2.2f, 0.3f, 4.4f);
+                    Kit("Petalo", go.transform, Vector3.zero, 0f, petalo, 1f, local: true);
+                    var p = go.AddComponent<PetaloPiano>();
+                    p.amplitud = 0.8f;
+                    p.periodo = 3f;
+                    // En los huecos dobles, los dos pétalos van a contratiempo.
+                    p.desfase = j == 0 ? (k * 0.17f) % 1f : (k * 0.17f + 0.5f) % 1f;
+                    todos[h][j] = p;
+                }
+                k++;
+            }
+            return todos;
+        }
+
+        // =====================================================================
+        // La cima: la cabeza giratoria y el arco de META
+        // =====================================================================
+
+        static (MetaGiratoria meta, PuntoRuta delante, PuntoRuta detras) Cima()
+        {
+            var g = M.Grupo(obstaculos, "Cima");
             float aFin = Angulo(Largo);
-            const float radioPetalos = 10f;
-            var petalos = new PetaloPiano[6];
-            for (int k = 0; k < petalos.Length; k++)
+
+            // La cabeza del girasol: un disco que gira despacio (el girasol busca el sol).
+            var cabeza = new GameObject("Cabeza del girasol");
+            cabeza.transform.SetParent(g, false);
+            cabeza.transform.position = new Vector3(0f, AlturaCima, 0f);
+            cabeza.AddComponent<Rigidbody>().isKinematic = true;
+            SoloColision(A.Disco(cabeza.transform, "Disco", Vector3.zero, AlturaCima, RadioCabeza, 0.4f, tallo));
+            var visual = Kit("CabezaGirasol", cabeza.transform, Vector3.zero, 0f, null, 1f, local: true);
+            visual.transform.localScale = Vector3.Scale(visual.transform.localScale, new Vector3(RadioCabeza / 6f, 1f, RadioCabeza / 6f));
+            var giratoria = cabeza.AddComponent<PlataformaGiratoria>();
+            giratoria.velocidad = 12f;
+            giratoria.radio = RadioCabeza;
+            giratoria.alturaArriba = 0f;
+
+            // El arco de META en el centro, girando con la cabeza: solo vale cruzarlo por su boca.
+            var arco = new GameObject("Arco de META");
+            arco.transform.SetParent(cabeza.transform, false);
+            arco.transform.rotation = Quaternion.LookRotation(-Fuera(Largo), Vector3.up);
+            KitObjetos.Poner("ArcoMeta", arco.transform, Vector3.zero, 0f, oro, 1f, true, KitObjetos.KitPlato);
+            var boca = arco.AddComponent<BoxCollider>();
+            boca.isTrigger = true;
+            boca.center = new Vector3(0f, 2.2f, 0f);
+            boca.size = new Vector3(8.2f, 4.4f, 2.6f);
+            foreach (float lado in new[] { -1f, 1f })
             {
-                float a = aFin - (16f + 22f * k) * Mathf.Deg2Rad;
-                var fuera = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a));
-                var go = new GameObject($"Petalo {k + 1}");
-                go.transform.SetParent(g, false);
-                go.transform.SetPositionAndRotation(fuera * radioPetalos + Vector3.up * (46.1f + 0.6f * k), Quaternion.LookRotation(fuera, Vector3.up));
-                go.AddComponent<Rigidbody>().isKinematic = true;
-                var caja = go.AddComponent<BoxCollider>();
-                caja.size = new Vector3(2.2f, 0.3f, 4.4f);
-                Kit("Petalo", go.transform, Vector3.zero, 0f, petalo, 1f, local: true);
-                var p = go.AddComponent<PetaloPiano>();
-                p.amplitud = 0.8f;
-                p.periodo = 3.2f;
-                p.desfase = k * 0.17f;
-                petalos[k] = p;
+                var pata = arco.AddComponent<CapsuleCollider>();
+                pata.direction = 1;
+                pata.center = new Vector3(lado * 4.7f, 2f, 0f);
+                pata.height = 4.5f;
+                pata.radius = 0.6f;
+            }
+            var meta = arco.AddComponent<MetaGiratoria>();
+            meta.mediaBoca = 4f;
+            var delante = PuntoEn(arco.transform, "Delante del arco", new Vector3(0f, 0f, -3.5f));
+            var detras = PuntoEn(arco.transform, "Detras del arco", new Vector3(0f, 0f, 3.5f));
+            M.Cartel(arco.transform, "META", arco.transform.position + Vector3.up * 6.3f, 2.4f, Color.white);
+
+            // Dos mariquitas guardianas patrullan la cabeza (no giran con ella: hay que esquivarlas).
+            foreach (float grados in new[] { 110f, 230f })
+            {
+                Vector3 d = Direccion(aFin - grados * Mathf.Deg2Rad);
+                Vector3 y = Vector3.up * AlturaCima;
+                Mariquita(g, $"Mariquita guardiana {grados:0}", d * 8f + y, -d, d * 5.5f + y, d * 12f + y, 3f, grados / 360f);
             }
 
-            // La cabeza del girasol: disco pisable con su corona de pétalos (estos, de adorno, levantados).
-            var cabeza = M.Grupo(decorado, "Cabeza del girasol");
-            Kit("CabezaGirasol", cabeza, new Vector3(0f, AlturaDisco, 0f));
-            SoloColision(A.Disco(cabeza, "Disco", Vector3.zero, AlturaDisco, 6f, 1f, tallo));
-            float desde = 16f + 22f * petalos.Length + 6f;
-            for (float grados = desde; grados < 360f - 10f; grados += 20f)
+            // Corona de pétalos alrededor (quietos, de adorno), dejando libre la llegada de la pista.
+            var corona = M.Grupo(decorado, "Petalos de la cabeza");
+            for (float grados = 15f; grados <= 255f; grados += 16f)
             {
-                float a = aFin - grados * Mathf.Deg2Rad;
-                var fuera = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a));
-                var adorno = Kit("Petalo", cabeza, fuera * 9.5f + Vector3.up * (AlturaDisco + 1.2f), 0f, petalo, 1.1f);
-                adorno.transform.rotation = Quaternion.LookRotation(fuera, Vector3.up) * Quaternion.Euler(-40f, 0f, 0f) * adorno.transform.rotation;
+                Vector3 d = Direccion(aFin - grados * Mathf.Deg2Rad);
+                var adorno = Kit("Petalo", corona, d * (RadioCabeza + 1.8f) + Vector3.up * (AlturaCima - 0.3f), 0f, petalo, 1.2f);
+                adorno.transform.rotation = Quaternion.LookRotation(d, Vector3.up) * Quaternion.Euler(-20f, 0f, 0f) * adorno.transform.rotation;
             }
 
-            // La corona, sobre el géiser de polen.
-            var coronaGo = new GameObject("Corona Dorada");
-            coronaGo.transform.SetParent(g, false);
-            coronaGo.transform.position = new Vector3(0f, AlturaDisco + 2.8f, 0f); // al alcance de un salto (unos 2 m)
-            KitObjetos.Poner("Corona", coronaGo.transform, new Vector3(0f, -0.9f, 0f), 0f, null, 3f, true, KitObjetos.KitPlato);
-            var corona = coronaGo.AddComponent<CoronaCumbre>();
-            corona.amplitud = 0.8f;
-            corona.alcance = 1.6f;
-
-            var geiser = M.Particulas("Geiser de polen", g, new Vector3(0f, AlturaDisco + 0.1f, 0f), new Color(1f, 0.85f, 0.3f), new Color(1f, 0.95f, 0.6f), 30, 2f, 4f, particula);
+            // Géiser de polen en el centro (de adorno) y una losa dorada bajo el arco.
+            var geiser = M.Particulas("Geiser de polen", arco.transform, arco.transform.position + Vector3.up * 0.1f, new Color(1f, 0.85f, 0.3f), new Color(1f, 0.95f, 0.6f), 30, 2f, 4f, particula);
             var main = geiser.main;
             main.loop = true;
             main.playOnAwake = true;
             main.gravityModifier = -0.05f;
             var emision = geiser.emission;
-            emision.rateOverTime = 30f;
+            emision.rateOverTime = 20f;
             var forma = geiser.shape;
             forma.angle = 8f;
             forma.radius = 0.8f;
-            return (corona, petalos);
+            return (meta, delante, detras);
         }
 
         // =====================================================================
@@ -592,11 +689,11 @@ namespace BichoShow.Herramientas
             var go = new GameObject("Savia");
             go.transform.SetParent(mapa, false);
             go.transform.position = new Vector3(0f, -1f, 0f);
-            M.Decorado(PrimitiveType.Cylinder, "Superficie", go.transform, new Vector3(0f, -0.5f, 0f), new Vector3(112f, 0.5f, 112f), savia, local: true);
+            M.Decorado(PrimitiveType.Cylinder, "Superficie", go.transform, new Vector3(0f, -0.5f, 0f), new Vector3(150f, 0.5f, 150f), savia, local: true);
             var s = go.AddComponent<Savia>();
-            s.velocidad = 0.38f;
-            s.retraso = 8f;
-            s.alturaMaxima = AlturaDisco - 3f;
+            s.velocidad = 0.36f;
+            s.retraso = 10f;
+            s.alturaMaxima = AlturaCima - 2.5f;
             return s;
         }
 
@@ -604,12 +701,12 @@ namespace BichoShow.Herramientas
         {
             var inv = M.Grupo(decorado, "Invernadero");
             // Suelo: baldosas y un círculo de césped alrededor del tallo.
-            M.Decorado(PrimitiveType.Cylinder, "Suelo", inv, new Vector3(0f, -0.25f, 0f), new Vector3(116f, 0.25f, 116f), baldosa);
-            M.Decorado(PrimitiveType.Cylinder, "Cesped", inv, new Vector3(0f, -0.2f, 0f), new Vector3(20f, 0.25f, 20f), cesped);
+            M.Decorado(PrimitiveType.Cylinder, "Suelo", inv, new Vector3(0f, -0.25f, 0f), new Vector3(152f, 0.25f, 152f), baldosa);
+            M.Decorado(PrimitiveType.Cylinder, "Cesped", inv, new Vector3(0f, -0.2f, 0f), new Vector3(28f, 0.25f, 28f), cesped);
             // Costillas de hierro de la cúpula y tres anillos.
-            const float radio = 56f;
+            const float radio = 74f;
             for (int k = 0; k < 12; k++) Kit("ArcoInvernadero", inv, Vector3.zero, k * 15f, null, radio);
-            foreach (float h in new[] { 18f, 34f, 46f })
+            foreach (float h in new[] { 22f, 42f, 60f })
             {
                 float r = Mathf.Sqrt(radio * radio - h * h);
                 foreach (float giro in new[] { 0f, 180f })
@@ -625,8 +722,8 @@ namespace BichoShow.Herramientas
             for (int k = 0; k < 6; k++)
             {
                 float a = (k * 60f + 20f) * Mathf.Deg2Rad;
-                float h = 2f + k * 7.5f;
-                var sitio = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * 47f + Vector3.up * h;
+                float h = 2f + k * 9f;
+                var sitio = Direccion(a) * 54f + Vector3.up * h;
                 Grada(inv, sitio, colores, k);
                 if (k % 2 == 0)
                 {
@@ -639,24 +736,21 @@ namespace BichoShow.Herramientas
             // Focos del plató y pantallas.
             for (int k = 0; k < 6; k++)
             {
-                float a = (k * 60f + 50f) * Mathf.Deg2Rad;
-                var pie = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * 52f;
-                KitObjetos.Poner("TorreFocos", inv, pie, KitObjetos.GiroMirando(pie, Vector3.up * 30f), null, 3f, false, KitObjetos.KitPlato);
+                var pie = Direccion((k * 60f + 50f) * Mathf.Deg2Rad) * 62f;
+                KitObjetos.Poner("TorreFocos", inv, pie, KitObjetos.GiroMirando(pie, Vector3.up * 35f), null, 3.5f, false, KitObjetos.KitPlato);
             }
             foreach (float grados in new[] { 140f, 260f })
             {
-                float a = grados * Mathf.Deg2Rad;
-                var sitio = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * 50f + Vector3.up * 22f;
-                KitObjetos.Poner("Pantalla", inv, sitio, KitObjetos.GiroMirando(sitio, Vector3.zero), null, 1f, false, KitObjetos.KitPlato);
-                M.Cartel(inv, "BICHO SHOW", sitio + Vector3.up * 4.6f - sitio.normalized * 0.6f, 2.2f, Color.white);
+                var sitio = Direccion(grados * Mathf.Deg2Rad) * 60f + Vector3.up * 28f;
+                KitObjetos.Poner("Pantalla", inv, sitio, KitObjetos.GiroMirando(sitio, Vector3.zero), null, 1.2f, false, KitObjetos.KitPlato);
+                M.Cartel(inv, "BICHO SHOW", sitio + Vector3.up * 5.5f - sitio.normalized * 0.6f, 2.6f, Color.white);
             }
             // Banderolas colgando de la cúpula.
             Material[] telas = { banderaA, banderaB, banderaC };
             for (int k = 0; k < 9; k++)
             {
-                float a = (k * 40f + 10f) * Mathf.Deg2Rad;
-                var sitio = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * 40f + Vector3.up * (24f + (k % 3) * 5f);
-                Kit("Banderola", inv, sitio, KitObjetos.GiroMirando(sitio, Vector3.zero), telas[k % telas.Length], 1.6f);
+                var sitio = Direccion((k * 40f + 10f) * Mathf.Deg2Rad) * 48f + Vector3.up * (30f + (k % 3) * 6f);
+                Kit("Banderola", inv, sitio, KitObjetos.GiroMirando(sitio, Vector3.zero), telas[k % telas.Length], 1.8f);
             }
             return publico.ToArray();
         }
@@ -698,7 +792,7 @@ namespace BichoShow.Herramientas
         {
             var go = new GameObject("Abejorro con camara");
             go.transform.SetParent(obstaculos, false);
-            go.transform.position = new Vector3(0f, 30f, 20f);
+            go.transform.position = new Vector3(0f, AlturaCima + 8f, 20f);
             Kit("Abejorro", go.transform, Vector3.zero, 180f, null, 1.2f, local: true);
             var izq = new GameObject("Ala izquierda").transform;
             izq.SetParent(go.transform, false);
@@ -709,7 +803,7 @@ namespace BichoShow.Herramientas
             der.localPosition = new Vector3(0.4f, 0.85f, 0.2f);
             Kit("AbejorroAla", der, Vector3.zero, 0f, null, 1.2f, local: true);
             var dron = go.AddComponent<AbejorroDron>();
-            dron.reposo = new Vector3(0f, 28f, 0f);
+            dron.reposo = new Vector3(0f, AlturaCima + 8f, 0f); // revolotea sobre la cabeza
             dron.ejeTallo = Vector3.zero;
             dron.alaIzquierda = izq;
             dron.alaDerecha = der;
@@ -720,44 +814,53 @@ namespace BichoShow.Herramientas
         // Ruta de los bots
         // =====================================================================
 
-        static PuntoRuta RutaBots(PetaloPiano[] petalos)
+        static PuntoRuta RutaBots(PetaloPiano[][] petalos, PuntoRuta delante, PuntoRuta detras)
         {
             // La espiral, cada 7 m: por el centro, salvo en el polen (por el carril de dentro).
+            // En los huecos: esperar al pétalo, saltar a él y saltar al otro lado.
             var normal = new List<(float s, PuntoRuta p)>();
-            for (float s = 6f; s <= Largo - 2f; s += 7f)
+            var secuencia = new List<PuntoRuta>();
+            int h = 0;
+            float s = 6f;
+            while (s <= Largo - 2f)
             {
-                bool polen = s >= 80f && s < 180f;
+                if (h < Huecos.Length && s > Huecos[h].x - 2.5f)
+                {
+                    var hueco = Huecos[h];
+                    var pets = petalos[h];
+                    secuencia.Add(Ruta($"Antes del hueco m{hueco.x:0}", Punto(hueco.x - 0.9f, 0.5f), 0.3f, Giro(hueco.x), saltar: true, esperar: pets[0]));
+                    for (int j = 0; j < pets.Length; j++)
+                        secuencia.Add(Ruta($"Petalo del hueco m{hueco.x:0}", pets[j].transform.position + Vector3.up * 0.15f, 0.2f, Giro(hueco.x),
+                                           saltar: true, esperar: j + 1 < pets.Length ? pets[j + 1] : null));
+                    var despues = Ruta($"Despues del hueco m{hueco.y:0}", Punto(hueco.y + 1.2f, 0.5f), 0.6f, Giro(hueco.y));
+                    secuencia.Add(despues);
+                    normal.Add((hueco.y + 1.2f, despues));
+                    s = hueco.y + 5f;
+                    h++;
+                    continue;
+                }
+                bool polen = s >= 110f && s < 230f;
                 float f = polen ? 0.16f : 0.5f;
-                float anchura = s < 80f ? 3f : polen ? 0.7f : s < 270f ? 1.2f : 0.9f;
-                normal.Add((s, Ruta($"m{s:0}", Punto(s, f), anchura)));
+                float anchura = s < 110f ? 3f : polen ? 0.7f : s < 340f ? 1.2f : 0.8f;
+                var p = Ruta($"m{s:0}", Punto(s, f), anchura, Giro(s));
+                secuencia.Add(p);
+                normal.Add((s, p));
+                s += 7f;
             }
-            for (int i = 0; i + 1 < normal.Count; i++) Unir(normal[i].p, normal[i + 1].p);
+            for (int i = 0; i + 1 < secuencia.Count; i++) Unir(secuencia[i], secuencia[i + 1]);
 
             // Puentes de hoja: atajo para los hábiles.
-            Atajo(normal, 113f, 116f, 142f, 146f);
-            Atajo(normal, 147f, 150f, 176f, 180f);
+            Atajo(normal, 131f, 134f, 160f, 164f);
+            Atajo(normal, 163f, 166f, 192f, 196f);
+            Atajo(normal, 195f, 198f, 224f, 228f);
 
-            // Del final de la pista, de pétalo en pétalo, al disco y a por la corona.
-            var fin = Ruta("Salto al primer petalo", Punto(Largo - 0.6f, 0.35f), 0.3f, saltar: true, esperar: petalos[0]);
-            Unir(normal[normal.Count - 1].p, fin);
-            PuntoRuta anterior = fin;
-            for (int k = 0; k < petalos.Length; k++)
-            {
-                bool ultimo = k == petalos.Length - 1;
-                var p = Ruta($"Petalo {k + 1}", petalos[k].transform.position + Vector3.up * 0.15f, 0.2f, saltar: true,
-                             esperar: ultimo ? null : petalos[k + 1]);
-                Unir(anterior, p);
-                anterior = p;
-            }
-            Vector3 haciaPetalo = petalos[petalos.Length - 1].transform.position;
-            haciaPetalo.y = 0f;
-            var disco = Ruta("Disco", haciaPetalo.normalized * 3f + Vector3.up * AlturaDisco, 0.4f);
-            Unir(anterior, disco);
-            var corona = Ruta("Corona", new Vector3(0f, AlturaDisco, 0f), 0.2f, saltar: true);
-            corona.agarrar = true;
-            Unir(disco, corona);
-            Unir(corona, corona); // salta con la mano estirada hasta cogerla
-            return normal[0].p;
+            // A la cabeza, y a cruzar el arco por su boca (los dos puntos giran con él).
+            var entrada = Ruta("Entrada a la cabeza", Fuera(Largo) * (RadioCabeza - 2.5f) + Vector3.up * AlturaCima, 1.5f, Giro(Largo));
+            Unir(secuencia[secuencia.Count - 1], entrada);
+            Unir(entrada, delante);
+            Unir(delante, detras);
+            Unir(detras, delante);
+            return secuencia[0];
         }
 
         /// <summary>Atajo por un puente de hoja: [0] el puente (difícil), [1] la espiral.</summary>
@@ -769,25 +872,37 @@ namespace BichoShow.Herramientas
                 if (cruce == null && s >= sCruce) cruce = p;
                 if (vuelta == null && s >= sVuelta) vuelta = p;
             }
-            if (cruce == null || vuelta == null || cruce.siguientes == null) return;
-            var entrada = Ruta($"Entrada puente m{sEntrada:0}", Punto(sEntrada, 0.12f), 0.3f);
-            var medio = Ruta($"Puente m{sEntrada:0}", (Punto(sEntrada, 0.1f) + Punto(sSalida, 0.1f)) * 0.5f, 0.3f);
-            var salida = Ruta($"Salida puente m{sSalida:0}", Punto(sSalida + 1.5f, 0.15f), 0.4f);
+            if (cruce == null || vuelta == null || cruce.siguientes == null || cruce.siguientes.Length == 0) return;
+            var entrada = Ruta($"Entrada puente m{sEntrada:0}", Punto(sEntrada, 0.12f), 0.3f, Giro(sEntrada));
+            var medio = Ruta($"Puente m{sEntrada:0}", (Punto(sEntrada, 0.1f) + Punto(sSalida, 0.1f)) * 0.5f, 0.3f, null);
+            var salida = Ruta($"Salida puente m{sSalida:0}", Punto(sSalida + 1.5f, 0.15f), 0.4f, Giro(sSalida));
             Unir(entrada, medio);
             Unir(medio, salida);
             Unir(salida, vuelta);
             Unir(cruce, entrada, cruce.siguientes[0]);
         }
 
-        static PuntoRuta Ruta(string nombre, Vector3 posicion, float anchura, bool saltar = false, MonoBehaviour esperar = null)
+        static PuntoRuta Ruta(string nombre, Vector3 posicion, float anchura, Quaternion? giro, bool saltar = false, MonoBehaviour esperar = null)
         {
             var go = new GameObject($"Ruta {ruta.Count + 1}: {nombre}");
             go.transform.SetParent(rutaBots, false);
-            go.transform.position = posicion;
+            go.transform.SetPositionAndRotation(posicion, giro ?? Quaternion.identity); // "right" = a lo ancho de la pista
             var p = go.AddComponent<PuntoRuta>();
             p.anchura = anchura;
             p.saltar = saltar;
             p.esperarA = esperar;
+            ruta.Add(p);
+            return p;
+        }
+
+        /// <summary>Punto de ruta pegado a algo que se mueve (gira con él).</summary>
+        static PuntoRuta PuntoEn(Transform padre, string nombre, Vector3 local)
+        {
+            var go = new GameObject($"Ruta {ruta.Count + 1}: {nombre}");
+            go.transform.SetParent(padre, false);
+            go.transform.localPosition = local;
+            var p = go.AddComponent<PuntoRuta>();
+            p.anchura = 0.3f;
             ruta.Add(p);
             return p;
         }
