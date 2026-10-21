@@ -6,6 +6,8 @@ namespace BichoShow
 {
     /// <summary>
     /// Menú del juego: Empezar el show · Jugar online · Vestuario · Opciones · Salir.
+    /// Online: partida rápida (te junta con quien esté buscando, sin código), crear una sala o
+    /// unirse con código.
     /// Cualquier jugador unido lo maneja con el stick (arriba/abajo para elegir, izquierda/
     /// derecha para cambiar un valor) y A / START para aceptar. Las opciones se guardan.
     /// Mientras el menú está abierto, los bichos no se mueven (el stick es para el menú), salvo
@@ -18,6 +20,8 @@ namespace BichoShow
         static readonly string[] NombresHabilidad = { "Torpes", "Normales", "Hábiles" };
         static readonly float[] ValoresHabilidad = { 0.25f, 0.55f, 0.85f };
         static readonly int[] Duraciones = { 60, 90, 120 };
+        /// <summary>Partida rápida: lo que se espera a que llegue gente antes de empezar (y si se llena).</summary>
+        const float EsperaRapida = 40f, EsperaLlena = 5f;
 
         Pantalla pantalla = Pantalla.Principal;
         int seleccion;
@@ -27,6 +31,7 @@ namespace BichoShow
 
         int jugadoresAntes;
         float ignorarHasta;
+        float salidaRapida = -1f; // partida rápida (anfitrión): cuándo empieza el show
         readonly Dictionary<PlayerInput, Vector2> stickAnterior = new Dictionary<PlayerInput, Vector2>();
 
         void Start()
@@ -53,7 +58,7 @@ namespace BichoShow
         int NumeroOpciones => pantalla switch
         {
             Pantalla.Principal => 5,
-            Pantalla.Online => 3,
+            Pantalla.Online => 4,
             Pantalla.SalaMenu => RedShow.EsAnfitrion ? 3 : 2,
             _ => 6,
         };
@@ -67,6 +72,22 @@ namespace BichoShow
             else if (!RedShow.EnLinea && enSala) { pantalla = Pantalla.Online; seleccion = 0; enSala = false; }
             ControladorBicho.EntradaBloqueada = pantalla != Pantalla.Sala;
             MandoRemoto.Pausado = RedShow.EsInvitado && pantalla != Pantalla.Sala; // el stick es para el menú
+            CuentaRapida();
+
+            // Buscando partida: START, X o Esc cancelan.
+            if (RedShow.Buscando)
+            {
+                bool cancelar = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+                foreach (var entrada in PlayerInput.all)
+                {
+                    if (entrada.actions == null) continue;
+                    var empezar = entrada.actions.FindAction("Empezar");
+                    var lanzarse = entrada.actions.FindAction("Lanzarse");
+                    cancelar |= (empezar != null && empezar.WasPressedThisFrame()) || (lanzarse != null && lanzarse.WasPressedThisFrame());
+                }
+                if (cancelar) { RedShow.CancelarBusqueda(); Sonidos.Reproducir(Sonido.MenuMover); }
+                return;
+            }
 
             // Quien acaba de unirse ha pulsado un botón: que esa pulsación no elija nada.
             if (PlayerInput.all.Count != jugadoresAntes)
@@ -149,9 +170,10 @@ namespace BichoShow
             {
                 switch (seleccion)
                 {
-                    case 0: RedShow.CrearSala(); break;
-                    case 1: EntrarCodigo(); break;
-                    case 2: pantalla = Pantalla.Principal; seleccion = 1; break;
+                    case 0: RedShow.BuscarPartida(); break;
+                    case 1: RedShow.CrearSala(); break;
+                    case 2: EntrarCodigo(); break;
+                    case 3: pantalla = Pantalla.Principal; seleccion = 1; break;
                 }
             }
             else if (pantalla == Pantalla.SalaMenu)
@@ -337,7 +359,7 @@ namespace BichoShow
         void SalirCodigo()
         {
             pantalla = Pantalla.Online;
-            seleccion = 1;
+            seleccion = 2;
             if (GestorJugadores.Instancia != null && !RedShow.EsAnfitrion) GestorJugadores.Instancia.PermitirUnirse(true);
             Sonidos.Reproducir(Sonido.MenuMover);
         }
@@ -439,6 +461,34 @@ namespace BichoShow
             Sonidos.Reproducir(Sonido.Aparecer, null, 0.8f, 1.2f);
         }
 
+        /// <summary>
+        /// Partida rápida, en el anfitrión: cuenta atrás hasta el show (se avisa a todos). Si se
+        /// llena, se acorta. Al acabar, empieza solo, con bots en los huecos.
+        /// </summary>
+        void CuentaRapida()
+        {
+            bool enSala = pantalla == Pantalla.Sala || pantalla == Pantalla.SalaMenu;
+            if (!RedShow.PartidaRapida || !RedShow.EsAnfitrion || !enSala) { salidaRapida = -1f; return; }
+            float ahora = Time.unscaledTime;
+            if (salidaRapida < 0f)
+            {
+                // Recién creada o de vuelta de un show: se vuelve a abrir a gente nueva y a contar.
+                salidaRapida = ahora + EsperaRapida;
+                RedShow.CerrarAGenteNueva(false);
+                RedShow.AnunciarSalida(EsperaRapida);
+            }
+            else if (FichasSala().Count >= RedShow.MaxJugadores && salidaRapida - ahora > EsperaLlena)
+            {
+                salidaRapida = ahora + EsperaLlena;
+                RedShow.AnunciarSalida(EsperaLlena);
+            }
+            if (ahora >= salidaRapida)
+            {
+                salidaRapida = float.MaxValue; // ya está, hasta que se vuelva al menú
+                EmpezarShow();
+            }
+        }
+
         /// <summary>En la sala los bichos corren; START abre el menú de la sala.</summary>
         void ActualizarSala()
         {
@@ -491,16 +541,16 @@ namespace BichoShow
             {
                 float ancho = px(600f), alto = px(74f), paso = alto + px(16f);
                 EstiloShow.Texto(new Rect(x, y - px(84f), ancho * 1.5f, px(70f)), "JUGAR ONLINE", tam(60f), Color.white, TextAnchor.MiddleLeft);
-                string[] opciones = { "Crear una sala", "Unirse con código", "Volver" };
+                string[] opciones = { "Partida rápida", "Crear una sala", "Unirse con código", "Volver" };
                 for (int i = 0; i < opciones.Length; i++)
                 {
                     EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion && !RedShow.Ocupado, tam(42f));
                     y += paso;
                 }
                 EstiloShow.Texto(new Rect(x, y + px(4f), ancho * 1.3f, px(90f)),
-                    "Crea una sala y pasa el código a tus amigos: cada uno juega desde su casa, con su mando o su teclado.",
+                    "Partida rápida: te junta con quien esté buscando, sin código. O crea una sala y pasa el código a tus amigos.",
                     tam(26f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
-                DibujarEstadoRed(new Rect(x, y + px(110f), ancho * 1.3f, px(70f)), "Abriendo el plató");
+                DibujarEstadoRed(new Rect(x, y + px(110f), ancho * 1.3f, px(70f)), RedShow.Buscando ? "Buscando partida (START para cancelar)" : "Abriendo el plató");
                 EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
                     ("Stick", EstiloShow.GlifoTecla, "elegir"), ("A", EstiloShow.GlifoA, "aceptar"));
                 return;
@@ -533,22 +583,39 @@ namespace BichoShow
             // --- La sala (Sala y SalaMenu) ---
             var tarjeta = new Rect(x, y - px(30f), px(620f), px(250f));
             EstiloShow.Panel(tarjeta, EstiloShow.MoradoOscuro.WithAlpha(0.92f), px(34f));
-            EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(14f), tarjeta.width, px(44f)), "CÓDIGO DE LA SALA", tam(30f), Color.white);
-            string codigoSala = RedShow.Codigo ?? "";
-            EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(56f), tarjeta.width, px(110f)), string.Join(" ", codigoSala.ToCharArray()), tam(92f), EstiloShow.Oro);
-            string subtitulo = RedShow.EsAnfitrion
-                ? "¡Ya está copiado! Pégalo en el chat de tus amigos"
-                : "Estás en la sala de un amigo";
-            EstiloShow.Texto(new Rect(tarjeta.x + px(20f), tarjeta.y + px(172f), tarjeta.width - px(40f), px(60f)), subtitulo, tam(25f),
-                             Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+            if (RedShow.PartidaRapida)
+            {
+                // Partida rápida: sin código; la cuenta atrás hasta el show.
+                EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(14f), tarjeta.width, px(44f)), "PARTIDA RÁPIDA", tam(30f), Color.white);
+                float? queda = RedShow.SegundosParaSalida;
+                string cuenta = queda.HasValue ? Mathf.CeilToInt(queda.Value).ToString() : "...";
+                float latido = queda.HasValue && queda.Value < 6f ? 1f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 6f)) * 0.08f : 1f;
+                EstiloShow.Texto(EstiloShow.Escalar(new Rect(tarjeta.x, tarjeta.y + px(56f), tarjeta.width, px(110f)), latido), cuenta, tam(92f), EstiloShow.Oro);
+                EstiloShow.Texto(new Rect(tarjeta.x + px(20f), tarjeta.y + px(172f), tarjeta.width - px(40f), px(60f)),
+                                 "Buscando rivales... El show empieza solo (con bots en los huecos).", tam(25f),
+                                 Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+            }
+            else
+            {
+                EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(14f), tarjeta.width, px(44f)), "CÓDIGO DE LA SALA", tam(30f), Color.white);
+                string codigoSala = RedShow.Codigo ?? "";
+                EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(56f), tarjeta.width, px(110f)), string.Join(" ", codigoSala.ToCharArray()), tam(92f), EstiloShow.Oro);
+                string subtitulo = RedShow.EsAnfitrion
+                    ? "¡Ya está copiado! Pégalo en el chat de tus amigos"
+                    : "Estás en la sala de un amigo";
+                EstiloShow.Texto(new Rect(tarjeta.x + px(20f), tarjeta.y + px(172f), tarjeta.width - px(40f), px(60f)), subtitulo, tam(25f),
+                                 Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+            }
 
             var fichas = FichasSala();
             float infoY = tarjeta.yMax + px(24f);
             EstiloShow.Texto(new Rect(x, infoY, px(900f), px(44f)), $"{fichas.Count} de {RedShow.MaxJugadores} jugadores", tam(36f), Color.white, TextAnchor.MiddleLeft);
             EstiloShow.Texto(new Rect(x, infoY + px(46f), px(900f), px(80f)),
-                RedShow.EsAnfitrion
-                    ? "¡Corred por el plató mientras llegan todos! Cuando estéis, START y ¡Empezar el show!"
-                    : "¡Corre por el plató! El anfitrión empezará el show cuando estéis todos.",
+                RedShow.PartidaRapida
+                    ? "¡Corred por el plató mientras llega gente! Si se llena, empieza enseguida."
+                    : RedShow.EsAnfitrion
+                        ? "¡Corred por el plató mientras llegan todos! Cuando estéis, START y ¡Empezar el show!"
+                        : "¡Corre por el plató! El anfitrión empezará el show cuando estéis todos.",
                 tam(25f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
 
             // Fichas de los jugadores
@@ -571,10 +638,12 @@ namespace BichoShow
                 int n = RedShow.EsAnfitrion ? 3 : 2;
                 var fondo = new Rect(w * 0.5f - px(380f), h * 0.4f, px(760f), px(120f + 90f * n));
                 EstiloShow.Panel(fondo, EstiloShow.Morado.WithAlpha(0.97f), px(40f));
-                EstiloShow.Texto(new Rect(fondo.x, fondo.y + px(16f), fondo.width, px(60f)), "SALA", tam(52f), Color.white);
-                string[] opciones = RedShow.EsAnfitrion
-                    ? new[] { "¡Empezar el show!", "Seguir en la sala", "Cerrar la sala" }
-                    : new[] { "Seguir en la sala", "Salir de la sala" };
+                EstiloShow.Texto(new Rect(fondo.x, fondo.y + px(16f), fondo.width, px(60f)), RedShow.PartidaRapida ? "PARTIDA RÁPIDA" : "SALA", tam(52f), Color.white);
+                string[] opciones = RedShow.PartidaRapida
+                    ? (RedShow.EsAnfitrion ? new[] { "¡Empezar ya!", "Seguir esperando", "Salir (se cierra para todos)" } : new[] { "Seguir esperando", "Salir" })
+                    : RedShow.EsAnfitrion
+                        ? new[] { "¡Empezar el show!", "Seguir en la sala", "Cerrar la sala" }
+                        : new[] { "Seguir en la sala", "Salir de la sala" };
                 float by = fondo.y + px(96f);
                 for (int i = 0; i < opciones.Length; i++)
                 {
@@ -587,7 +656,8 @@ namespace BichoShow
             else
             {
                 EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
-                    ("Stick", EstiloShow.GlifoTecla, "correr"), ("A", EstiloShow.GlifoA, "saltar"), ("START", EstiloShow.GlifoTecla, RedShow.EsAnfitrion ? "empezar el show" : "menú de la sala"));
+                    ("Stick", EstiloShow.GlifoTecla, "correr"), ("A", EstiloShow.GlifoA, "saltar"),
+                    ("START", EstiloShow.GlifoTecla, RedShow.EsAnfitrion && !RedShow.PartidaRapida ? "empezar el show" : "menú"));
             }
         }
 
@@ -618,6 +688,15 @@ namespace BichoShow
             }
             Guardar();
             ControladorBicho.EntradaBloqueada = false;
+            if (RedShow.PartidaRapida)
+            {
+                // Partida rápida: nadie entra a mitad del show, y siempre con bots en los huecos.
+                salidaRapida = float.MaxValue;
+                RedShow.CerrarAGenteNueva(true);
+                RedShow.AnunciarSalida(-1f);
+                show.EmpezarShow(true, ValoresHabilidad[nivelHabilidad], Duraciones[nivelDuracion]);
+                return;
+            }
             show.EmpezarShow(bots, ValoresHabilidad[nivelHabilidad], Duraciones[nivelDuracion]);
         }
 

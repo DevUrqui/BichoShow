@@ -72,6 +72,8 @@ namespace BichoShow
             ModoActual = Modo.Local;
             Codigo = null;
             Ocupado = false;
+            PartidaRapida = Buscando = false;
+            cancelarBusqueda = null;
             Aviso = "";
             desfase = 0;
             hayDesfase = false;
@@ -153,6 +155,118 @@ namespace BichoShow
             finally
             {
                 Ocupado = false;
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Partida rápida: sesiones públicas que se juntan solas, sin código
+        // ---------------------------------------------------------------------
+
+        /// <summary>Lo que distingue las partidas rápidas de esta versión del juego (no se mezclan versiones).</summary>
+        static string ClaveRapida => "rapida-" + Application.version;
+        const string PropiedadSalida = "salida";
+
+        /// <summary>La sesión actual es de partida rápida (pública, empieza sola).</summary>
+        public static bool PartidaRapida { get; private set; }
+        /// <summary>Buscando partida (se puede cancelar).</summary>
+        public static bool Buscando { get; private set; }
+
+        static System.Threading.CancellationTokenSource cancelarBusqueda;
+
+        /// <summary>
+        /// Busca una partida rápida con hueco de esta versión; si no hay ninguna en unos segundos,
+        /// crea una (pública) y este ordenador hace de anfitrión.
+        /// </summary>
+        public static async void BuscarPartida()
+        {
+            if (Ocupado || EnLinea) return;
+            Ocupado = Buscando = true;
+            Aviso = "";
+            cancelarBusqueda = new System.Threading.CancellationTokenSource();
+            try
+            {
+                var r = Asegurar();
+                await IniciarServicios();
+                var buscar = new QuickJoinOptions
+                {
+                    Filters = { new FilterOption(FilterField.StringIndex1, ClaveRapida, FilterOperation.Equal) },
+                    Timeout = TimeSpan.FromSeconds(4),
+                    CreateSession = true,
+                };
+                var opciones = new SessionOptions
+                {
+                    MaxPlayers = MaxJugadores,
+                    IsPrivate = false,
+                    SessionProperties = { [ "modo" ] = new SessionProperty(ClaveRapida, VisibilityPropertyOptions.Public, PropertyIndex.String1) },
+                }.WithRelayNetwork();
+                var s = await MultiplayerService.Instance.MatchmakeSessionAsync(buscar, opciones, cancelarBusqueda.Token);
+                PartidaRapida = true;
+                r.Empezar(s, s.IsHost ? Modo.Anfitrion : Modo.Invitado);
+            }
+            catch (OperationCanceledException)
+            {
+                Aviso = "";
+            }
+            catch (Exception e)
+            {
+                Aviso = Explicar(e);
+                Debug.LogWarning($"Bicho Show: no se ha podido buscar partida. {e}");
+            }
+            finally
+            {
+                Ocupado = Buscando = false;
+                cancelarBusqueda = null;
+            }
+        }
+
+        /// <summary>Deja de buscar partida.</summary>
+        public static void CancelarBusqueda() => cancelarBusqueda?.Cancel();
+
+        /// <summary>
+        /// En partida rápida, el anfitrión anuncia a todos cuándo empieza el show (dentro de estos
+        /// segundos). Con un número negativo, quita el anuncio.
+        /// </summary>
+        public static async void AnunciarSalida(float segundos)
+        {
+            var s = instancia != null ? instancia.sesion : null;
+            if (s == null || !EsAnfitrion) return;
+            try
+            {
+                string valor = segundos < 0f ? "" : DateTime.UtcNow.AddSeconds(segundos).Ticks.ToString();
+                s.AsHost().SetProperty(PropiedadSalida, new SessionProperty(valor, VisibilityPropertyOptions.Member));
+                await s.AsHost().SavePropertiesAsync();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Bicho Show: no se ha podido anunciar la salida. {e}");
+            }
+        }
+
+        /// <summary>Segundos que faltan para que empiece el show de la partida rápida (null si no hay cuenta atrás).</summary>
+        public static float? SegundosParaSalida
+        {
+            get
+            {
+                var s = instancia != null ? instancia.sesion : null;
+                if (s == null || s.Properties == null || !s.Properties.TryGetValue(PropiedadSalida, out var p) || p == null) return null;
+                if (!long.TryParse(p.Value, out long ticks)) return null;
+                return Mathf.Max(0f, (float)(new DateTime(ticks, DateTimeKind.Utc) - DateTime.UtcNow).TotalSeconds);
+            }
+        }
+
+        /// <summary>El anfitrión cierra la sesión a gente nueva (mientras dura el show) o la vuelve a abrir.</summary>
+        public static async void CerrarAGenteNueva(bool cerrar)
+        {
+            var s = instancia != null ? instancia.sesion : null;
+            if (s == null || !EsAnfitrion || s.IsLocked == cerrar) return;
+            try
+            {
+                s.AsHost().IsLocked = cerrar;
+                await s.AsHost().SavePropertiesAsync();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Bicho Show: no se ha podido {(cerrar ? "cerrar" : "abrir")} la sesión. {e}");
             }
         }
 
@@ -259,7 +373,8 @@ namespace BichoShow
             {
                 // Los de este ordenador ya están dentro; los de fuera tendrán los números siguientes.
                 if (gestor != null) gestor.PermitirUnirse(false);
-                try { GUIUtility.systemCopyBuffer = Codigo; } catch { /* sin portapapeles */ }
+                if (!PartidaRapida)
+                    try { GUIUtility.systemCopyBuffer = Codigo; } catch { /* sin portapapeles */ }
             }
             else
             {
@@ -267,7 +382,7 @@ namespace BichoShow
                 UltimoCodigo = Codigo;
                 EnviarHola();
             }
-            Debug.Log($"Bicho Show: sala {Codigo} ({(modo == Modo.Anfitrion ? "anfitrión" : "invitado")}).");
+            Debug.Log($"Bicho Show: {(PartidaRapida ? "partida rápida" : "sala")} {Codigo} ({(modo == Modo.Anfitrion ? "anfitrión" : "invitado")}).");
         }
 
         void AlPerderSesion()
@@ -317,6 +432,7 @@ namespace BichoShow
 
             ModoActual = Modo.Local;
             Codigo = null;
+            PartidaRapida = false;
             Aviso = aviso;
             var gestor = GestorJugadores.Instancia;
             if (gestor != null)

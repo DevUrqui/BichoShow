@@ -10,12 +10,28 @@ Cada uno juega desde su casa con su mando o su teclado. Uno crea una sala y los 
 - **START → Salir de la sala** (o **Cerrar la sala**, si eres el anfitrión). Si el anfitrión cierra, los demás vuelven al menú con un aviso.
 - Caben 4 jugadores en total. Desde un mismo ordenador pueden jugar varios, pero tienen que unirse (pulsar un botón) **antes** de crear la sala o de entrar en ella.
 - **El show entero, online**: cuando estéis todos, el anfitrión pulsa START → **¡Empezar el show!**. Se juegan las mismas pruebas que en local, con bots en los huecos, saboteadores, marcadores y la tabla de estrellas. Entre rondas, cualquiera puede darle a A para seguir.
-- Los invitados ven exactamente lo que ve el anfitrión: la misma cámara, los mismos carteles y los mismos sonidos.
+- Los invitados ven los mismos carteles y oyen los mismos sonidos que el anfitrión. La cámara es la misma en las pruebas de arena; en las carreras, cada uno ve la suya, detrás de su bicho.
 - Si alguien entra en la sala con el show ya empezado, mira hasta que se vuelve al menú y juega en el siguiente.
 - **Si a alguien se le corta internet**:
   - Si su mando deja de llegar más de 1,5 s, un bot de la prueba le lleva el bicho y sale un cartel. En cuanto vuelve la conexión, vuelve a mandar él.
   - Si se cae del todo, su bicho sigue en el show con el bot y sus estrellas se guardan. Al volver al menú tendrá el código ya escrito: **Unirse con código → A** y recupera su bicho donde esté. Tiene que ser con la misma copia del juego abierta; si la cierra, entra como nuevo y mira hasta el menú.
   - Si se cae el anfitrión, los demás vuelven al menú con un aviso.
+
+## Partida rápida (sin código)
+
+**Jugar online → Partida rápida** te junta con quien esté buscando partida, como en Fall Guys:
+
+1. El juego busca durante unos segundos una partida rápida pública con hueco y de la misma versión del juego. Si la encuentra, entras como invitado.
+2. Si no hay ninguna, crea una y tú haces de anfitrión: los siguientes que busquen entrarán en la tuya.
+3. Mientras se espera, todos corren por el plató y se ve una cuenta atrás de 40 s. Si se llena (4 ordenadores), baja a 5 s.
+4. Al llegar a cero, el show empieza solo, con bots en los huecos. El anfitrión puede adelantarlo con **START → ¡Empezar ya!**.
+5. Durante el show nadie más puede entrar. Al volver al menú se abre otra vez y vuelve a contar para el siguiente show.
+
+Mientras busca, **START**, **X** o **Esc** cancelan la búsqueda. Si el anfitrión sale, la partida se cierra para todos (no se pasa a otro).
+
+**Para probarla tú solo:** abre dos o más copias del juego (o del editor con Multiplayer Play Mode) y dale a **Partida rápida** en todas. La primera crea la partida y las demás entran en ella. Con amigos, que la busquen a la vez que tú.
+
+Las partidas con código y las rápidas no se mezclan: las salas con código son privadas y la partida rápida solo encuentra partidas rápidas.
 
 ## Antes de la primera vez: Unity Cloud
 
