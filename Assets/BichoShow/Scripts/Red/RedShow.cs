@@ -506,6 +506,7 @@ namespace BichoShow
                 w.WriteValueSafe(m.Empezar);
                 w.WriteValueSafe((byte)m.Gorro);
                 w.WriteValueSafe((byte)m.Complemento);
+                w.WriteValueSafe((byte)m.Cuerpo);
             }
             red.CustomMessagingManager.SendNamedMessage(MensajeMando, NetworkManager.ServerClientId, w, NetworkDelivery.UnreliableSequenced);
         }
@@ -533,6 +534,7 @@ namespace BichoShow
                 r.ReadValueSafe(out byte empezar);
                 r.ReadValueSafe(out byte gorro);
                 r.ReadValueSafe(out byte complemento);
+                r.ReadValueSafe(out byte cuerpo);
 
                 var clave = (cliente, local);
                 entradas.TryGetValue(clave, out var entrada);
@@ -541,13 +543,13 @@ namespace BichoShow
                     // Jugador nuevo de fuera: bicho nuevo, si cabe (con el show empezado, mira hasta volver al menú).
                     if (gestor == null || gestor.Jugadores.Count - gestor.Bots.Count >= MaxJugadores) continue;
                     if (ShowBicho.Instancia != null && ShowBicho.Instancia.Estado != ShowBicho.EstadoShow.Inactivo) continue;
-                    entrada = gestor.CrearRemoto(cliente, local, gorro, complemento);
+                    entrada = gestor.CrearRemoto(cliente, local, gorro, complemento, cuerpo);
                     if (entrada == null) continue;
                     entradas[clave] = entrada;
                 }
                 entrada.Recibir(new Vector2(dx, dz), (botones & 1) != 0, saltos, lanzamientos, empezar);
-                if (entrada.TryGetComponent(out Vestuario v) && (v.Gorro != gorro || v.Complemento != complemento))
-                    v.Poner(gorro, complemento);
+                if (entrada.TryGetComponent(out Vestuario v) && (v.Gorro != gorro || v.Complemento != complemento || v.Cuerpo != cuerpo))
+                    v.Poner(gorro, complemento, cuerpo);
             }
         }
 
@@ -619,6 +621,7 @@ namespace BichoShow
                 w.WriteValueSafe(c.b);
                 w.WriteValueSafe((byte)(v != null ? v.Gorro : 0));
                 w.WriteValueSafe((byte)(v != null ? v.Complemento : 0));
+                w.WriteValueSafe((byte)(v != null ? v.Cuerpo : 0));
             }
             red.CustomMessagingManager.SendNamedMessage(MensajeEstado, destinos, w, NetworkDelivery.UnreliableSequenced);
         }
@@ -680,6 +683,7 @@ namespace BichoShow
                 r.ReadValueSafe(out byte cb);
                 r.ReadValueSafe(out byte gorro);
                 r.ReadValueSafe(out byte complemento);
+                r.ReadValueSafe(out byte cuerpo);
                 vistos.Add(id);
 
                 bool esBot = (flags & MarionetaBicho.FlagBot) != 0;
@@ -703,7 +707,7 @@ namespace BichoShow
                 }
                 m.Dueno = dueno;
                 m.Local = local;
-                m.Aspecto(new Color32(cr, cg, cb, 255), gorro, complemento);
+                m.Aspecto(new Color32(cr, cg, cb, 255), gorro, complemento, cuerpo);
                 m.Recibir(new MarionetaBicho.Foto
                 {
                     tiempo = tiempo, posicion = posicion, rotacion = rotacion,

@@ -3,17 +3,44 @@ using UnityEngine;
 namespace BichoShow
 {
     /// <summary>
-    /// Gorros y complementos de Bichete. Cuelgan de los anclajes de su esqueleto (AnclaGorro,
-    /// AnclaCara, AnclaPecho), así siguen al cuerpo al andar, saltar o caerse.
-    /// Las prendas son prefabs en Resources/Vestuario (los crea el menú del personaje).
-    /// Lo que elige cada jugador se guarda; los bots se visten al azar.
+    /// Gorros, cosas de la cara y cosas del cuerpo de Bichete. Cuelgan de los anclajes de su
+    /// esqueleto (AnclaGorro, AnclaCara, AnclaPecho), así siguen al cuerpo al andar, saltar o caerse.
+    /// Las prendas son prefabs en Resources/Vestuario (los crea el menú del personaje, y se rehacen
+    /// solos cuando cambia el kit de vestuario). Lo que elige cada jugador se guarda; los bots se
+    /// visten al azar.
     /// </summary>
     public class Vestuario : MonoBehaviour
     {
-        public static readonly string[] Gorros = { "", "Corona", "Gorra", "Chistera", "GorroFiesta", "Vikingo", "GorroHelice", "Flor" };
-        public static readonly string[] NombresGorros = { "Sin gorro", "Corona", "Gorra", "Chistera", "Gorro de fiesta", "Casco vikingo", "Gorro con hélice", "Flor" };
-        public static readonly string[] Complementos = { "", "GafasSol", "GafasRedondas", "Bigote", "NarizPayaso", "Pajarita" };
-        public static readonly string[] NombresComplementos = { "Nada", "Gafas de sol", "Gafas redondas", "Bigote", "Nariz de payaso", "Pajarita" };
+        public static readonly string[] Gorros =
+        {
+            "", "Corona", "Gorra", "Chistera", "GorroFiesta", "Vikingo", "GorroHelice", "Flor",
+            "GorroChef", "Vaquero", "Bruja", "GorroLana", "OrejasConejo", "Seta", "HuevoFrito", "Aureola", "Pirata",
+        };
+        public static readonly string[] NombresGorros =
+        {
+            "Sin gorro", "Corona", "Gorra", "Chistera", "Gorro de fiesta", "Casco vikingo", "Gorro con hélice", "Flor",
+            "Gorro de chef", "Sombrero vaquero", "Sombrero de bruja", "Gorro de lana", "Orejas de conejo", "Seta", "Huevo frito", "Aureola", "Sombrero pirata",
+        };
+        /// <summary>Lo de la cara (delante de los ojos).</summary>
+        public static readonly string[] Complementos =
+        {
+            "", "GafasSol", "GafasRedondas", "Bigote", "NarizPayaso",
+            "GafasCorazon", "Monoculo", "ParcheOjo", "GafasBucear", "Barba", "Chupete",
+        };
+        public static readonly string[] NombresComplementos =
+        {
+            "Nada", "Gafas de sol", "Gafas redondas", "Bigote", "Nariz de payaso",
+            "Gafas de corazón", "Monóculo", "Parche pirata", "Gafas de bucear", "Barba de mago", "Chupete",
+        };
+        /// <summary>Lo del cuerpo (pecho y espalda).</summary>
+        public static readonly string[] Cuerpos =
+        {
+            "", "Pajarita", "Medalla", "CollarPerlas", "Babero", "Corbata", "Bufanda", "Capa", "Mochila",
+        };
+        public static readonly string[] NombresCuerpos =
+        {
+            "Nada", "Pajarita", "Medalla de oro", "Collar de perlas", "Babero", "Corbata", "Bufanda", "Capa", "Mochila",
+        };
 
         [Header("Anclajes (los pone la herramienta del personaje)")]
         public Transform anclaGorro;
@@ -24,9 +51,10 @@ namespace BichoShow
 
         public int Gorro { get; private set; }
         public int Complemento { get; private set; }
+        public int Cuerpo { get; private set; }
 
         Quaternion giroGorro = Quaternion.identity, giroCara = Quaternion.identity, giroPecho = Quaternion.identity;
-        GameObject puestoGorro, puestoComplemento;
+        GameObject puestoGorro, puestoComplemento, puestoCuerpo;
         Transform helice;
         bool listo;
 
@@ -46,22 +74,25 @@ namespace BichoShow
             if (anclaPecho != null) giroPecho = Quaternion.Inverse(anclaPecho.rotation) * recto;
         }
 
-        public void Poner(int gorro, int complemento)
+        /// <summary>Cambia el gorro y lo de la cara (lo del cuerpo se queda como está).</summary>
+        public void Poner(int gorro, int complemento) => Poner(gorro, complemento, Cuerpo);
+
+        public void Poner(int gorro, int complemento, int cuerpo)
         {
             Preparar();
             Gorro = Mathf.Clamp(gorro, 0, Gorros.Length - 1);
             Complemento = Mathf.Clamp(complemento, 0, Complementos.Length - 1);
+            Cuerpo = Mathf.Clamp(cuerpo, 0, Cuerpos.Length - 1);
 
             if (puestoGorro != null) Destroy(puestoGorro);
             if (puestoComplemento != null) Destroy(puestoComplemento);
+            if (puestoCuerpo != null) Destroy(puestoCuerpo);
             helice = null;
 
             puestoGorro = Colgar(Gorros[Gorro], anclaGorro, giroGorro);
             if (puestoGorro != null) helice = puestoGorro.transform.Find("HeliceAspas");
-
-            string complementoNombre = Complementos[Complemento];
-            bool vaEnElPecho = complementoNombre == "Pajarita";
-            puestoComplemento = Colgar(complementoNombre, vaEnElPecho ? anclaPecho : anclaCara, vaEnElPecho ? giroPecho : giroCara);
+            puestoComplemento = Colgar(Complementos[Complemento], anclaCara, giroCara);
+            puestoCuerpo = Colgar(Cuerpos[Cuerpo], anclaPecho, giroPecho);
         }
 
         GameObject Colgar(string prenda, Transform ancla, Quaternion giro)
@@ -93,11 +124,13 @@ namespace BichoShow
 
         static string ClaveGorro(int jugador) => $"BichoShow.Vestuario.Gorro{jugador}";
         static string ClaveComplemento(int jugador) => $"BichoShow.Vestuario.Complemento{jugador}";
+        static string ClaveCuerpo(int jugador) => $"BichoShow.Vestuario.Cuerpo{jugador}";
 
-        public static void Guardar(int jugador, int gorro, int complemento)
+        public static void Guardar(int jugador, int gorro, int complemento, int cuerpo)
         {
             PlayerPrefs.SetInt(ClaveGorro(jugador), gorro);
             PlayerPrefs.SetInt(ClaveComplemento(jugador), complemento);
+            PlayerPrefs.SetInt(ClaveCuerpo(jugador), cuerpo);
             PlayerPrefs.Save();
         }
 
@@ -106,7 +139,7 @@ namespace BichoShow
         {
             if (bicho == null || !bicho.TryGetComponent(out Vestuario v)) return;
             int i = bicho.IndiceJugador;
-            v.Poner(PlayerPrefs.GetInt(ClaveGorro(i), 0), PlayerPrefs.GetInt(ClaveComplemento(i), 0));
+            v.Poner(PlayerPrefs.GetInt(ClaveGorro(i), 0), PlayerPrefs.GetInt(ClaveComplemento(i), 0), PlayerPrefs.GetInt(ClaveCuerpo(i), 0));
         }
 
         /// <summary>Viste a un bot al azar (casi siempre con algo puesto).</summary>
@@ -114,7 +147,8 @@ namespace BichoShow
         {
             if (bicho == null || !bicho.TryGetComponent(out Vestuario v)) return;
             v.Poner(Random.value < 0.85f ? Random.Range(1, Gorros.Length) : 0,
-                    Random.value < 0.6f ? Random.Range(1, Complementos.Length) : 0);
+                    Random.value < 0.55f ? Random.Range(1, Complementos.Length) : 0,
+                    Random.value < 0.5f ? Random.Range(1, Cuerpos.Length) : 0);
         }
     }
 }

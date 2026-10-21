@@ -36,7 +36,7 @@ namespace BichoShow
         ControladorBicho bicho;
         AnimadorBicho animador;
         Vestuario vestuario;
-        int gorro = -1, complemento = -1;
+        int gorro = -1, complemento = -1, cuerpo = -1;
 
         public ControladorBicho Bicho => bicho;
 
@@ -55,18 +55,19 @@ namespace BichoShow
         }
 
         /// <summary>Color y ropa (llegan en cada foto; solo se aplican si cambian).</summary>
-        public void Aspecto(Color color, int gorroNuevo, int complementoNuevo)
+        public void Aspecto(Color color, int gorroNuevo, int complementoNuevo, int cuerpoNuevo)
         {
             if (color != ColorJugador)
             {
                 ColorJugador = color;
                 bicho.AsignarColor(color);
             }
-            if (vestuario != null && (gorroNuevo != gorro || complementoNuevo != complemento))
+            if (vestuario != null && (gorroNuevo != gorro || complementoNuevo != complemento || cuerpoNuevo != cuerpo))
             {
                 gorro = gorroNuevo;
                 complemento = complementoNuevo;
-                vestuario.Poner(gorro, complemento);
+                cuerpo = cuerpoNuevo;
+                vestuario.Poner(gorro, complemento, cuerpo);
             }
         }
 

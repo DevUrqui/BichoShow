@@ -37,6 +37,7 @@ namespace BichoShow
         public byte Local => (byte)(entrada != null ? entrada.playerIndex : 0);
         public int Gorro => vestuario != null ? vestuario.Gorro : 0;
         public int Complemento => vestuario != null ? vestuario.Complemento : 0;
+        public int Cuerpo => vestuario != null ? vestuario.Cuerpo : 0;
         public byte Saltos => saltos;
         public byte Lanzamientos => lanzamientos;
         public byte Empezar => empezar;

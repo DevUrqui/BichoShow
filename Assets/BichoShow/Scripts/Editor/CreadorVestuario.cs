@@ -9,10 +9,20 @@ namespace BichoShow.Herramientas
     /// Convierte cada pieza del kit de vestuario (Arte/Blender/crear_vestuario.py →
     /// Modelos/KitVestuario.fbx) en un prefab de Resources/Vestuario, con materiales de URP,
     /// para que el juego pueda ponerlas en tiempo real. El gorro con hélice lleva sus aspas
-    /// aparte ("HeliceAspas") para que giren.
+    /// aparte ("HeliceAspas") para que giren. Se rehace solo cada vez que se reimporta el kit.
     /// </summary>
     public static class CreadorVestuario
     {
+        /// <summary>Cuando se reimporta el kit (se ha vuelto a generar en Blender), se rehacen las prendas solas.</summary>
+        class AlCambiarElKit : AssetPostprocessor
+        {
+            static void OnPostprocessAllAssets(string[] importados, string[] borrados, string[] movidos, string[] desde)
+            {
+                foreach (var ruta in importados)
+                    if (ruta == Kit) { EditorApplication.delayCall += Preparar; return; }
+            }
+        }
+
         const string Kit = E.Raiz + "/Modelos/KitVestuario.fbx";
         const string Carpeta = E.Raiz + "/Resources/Vestuario";
 
@@ -30,6 +40,7 @@ namespace BichoShow.Herramientas
             int hechas = 0;
             foreach (var prenda in Vestuario.Gorros) if (Crear(prenda)) hechas++;
             foreach (var prenda in Vestuario.Complementos) if (Crear(prenda)) hechas++;
+            foreach (var prenda in Vestuario.Cuerpos) if (Crear(prenda)) hechas++;
             AssetDatabase.SaveAssets();
             Debug.Log($"Bicho Show: vestuario preparado ({hechas} prendas en {Carpeta}).");
         }
