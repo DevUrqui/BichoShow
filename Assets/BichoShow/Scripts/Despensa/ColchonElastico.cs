@@ -7,9 +7,10 @@ namespace BichoShow
     /// "Despensa Deslizante", zona 4: colchón de bandeja de postre que hace de cama elástica. Al
     /// pisarlo (o caer en él) lanza hacia delante en parábola; el lado lo decides tú (se conserva
     /// lo que ibas de lado). Entre colchón y colchón hay huecos: si te quedas corto, a la cinta
-    /// de abajo. El colchón se aplasta un momento al botar.
+    /// de abajo. El colchón se aplasta un momento al botar. Puede ir y venir de lado ("vaiven").
     /// </summary>
     [RequireComponent(typeof(Collider))]
+    [RequireComponent(typeof(Rigidbody))]
     public class ColchonElastico : MonoBehaviour
     {
         [Tooltip("Velocidad hacia arriba al botar (m/s).")]
@@ -19,16 +20,31 @@ namespace BichoShow
         [Tooltip("Lo más que se conserva de lado (m/s).")]
         public float ladoMaximo = 3f;
         public Transform visual;
+        [Tooltip("Lo que va y viene (m, a cada lado). Cero = quieto.")]
+        public Vector3 vaiven;
+        public float periodoVaiven = 3f;
+        [Range(0f, 1f)] public float desfaseVaiven;
 
         readonly Dictionary<ControladorBicho, float> ultimo = new Dictionary<ControladorBicho, float>();
-        Vector3 escalaVisual = Vector3.one;
+        Vector3 escalaVisual = Vector3.one, inicio;
         float aplastado = -10f;
+        Rigidbody rb;
 
         void Reset() => GetComponent<Collider>().isTrigger = true;
 
         void Awake()
         {
             if (visual != null) escalaVisual = visual.localScale;
+            rb = GetComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            inicio = transform.position;
+        }
+
+        void FixedUpdate()
+        {
+            if (vaiven.sqrMagnitude > 0f)
+                rb.MovePosition(inicio + vaiven * Mathf.Sin((Time.time / periodoVaiven + desfaseVaiven) * Mathf.PI * 2f));
         }
 
         void Update()

@@ -49,7 +49,9 @@ namespace BichoShow
             {
                 if (Pausado || accionMover == null) return Vector2.zero;
                 Vector2 stick = Vector2.ClampMagnitude(accionMover.ReadValue<Vector2>(), 1f);
-                var cam = Camera.main;
+                // Con cámara propia (carreras), relativo a la suya; si no, a la principal.
+                var propia = CamaraJugador.DeLocal(Local);
+                var cam = propia != null ? propia.Camara : Camera.main;
                 if (cam == null) return stick;
                 Vector3 adelante = new Vector3(cam.transform.forward.x, 0f, cam.transform.forward.z).normalized;
                 Vector3 derecha = new Vector3(cam.transform.right.x, 0f, cam.transform.right.z).normalized;

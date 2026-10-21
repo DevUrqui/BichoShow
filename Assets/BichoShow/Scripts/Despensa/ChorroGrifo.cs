@@ -28,6 +28,8 @@ namespace BichoShow
         public float radioChorro = 1.1f;
         public float alturaChorro = 4f;
         public float empujon = 10f;
+        [Tooltip("Retraso del primer barrido (s), para que dos grifos no vayan a la par.")]
+        public float desfase;
 
         float inicioCiclo;
         bool haciaB = true, abierto;
@@ -35,7 +37,7 @@ namespace BichoShow
 
         void Start()
         {
-            inicioCiclo = Time.time;
+            inicioCiclo = Time.time + desfase;
             Girar(anguloA);
             if (columna != null) columna.SetActive(false);
         }
@@ -51,6 +53,7 @@ namespace BichoShow
         void Update()
         {
             float c = Time.time - inicioCiclo;
+            if (c < 0f) return;
             float espera = periodo - duracionBarrido;
             float desde = haciaB ? anguloA : anguloB, hasta = haciaB ? anguloB : anguloA;
             if (c < espera)

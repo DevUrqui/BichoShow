@@ -924,12 +924,25 @@ namespace BichoShow
             if (entrada.sqrMagnitude < 0.0001f) return Vector3.zero;
 
             Vector3 adelante = Vector3.forward, derecha = Vector3.right;
-            // La cámara cambia con cada escena: si la anterior ya no existe, buscar la nueva.
-            if (camara == null && Camera.main != null) camara = Camera.main.transform;
-            if (camara != null)
+            // Un jugador de este ordenador con cámara propia (carreras): relativo a la suya. Los
+            // demás (bots, jugadores de fuera), a la cámara principal del momento, que es con la que
+            // calculan su stick (cambia con cada escena y, en las carreras, es la del jugador 1).
+            Transform referencia = null;
+            if (!EsBot && !EsRemoto)
             {
-                adelante = Aplanar(camara.forward).normalized;
-                derecha = Aplanar(camara.right).normalized;
+                var propia = CamaraJugador.De(this);
+                if (propia != null) referencia = propia.transform;
+            }
+            if (referencia == null)
+            {
+                var principal = Camera.main;
+                if (principal != null) camara = principal.transform;
+                referencia = camara;
+            }
+            if (referencia != null)
+            {
+                adelante = Aplanar(referencia.forward).normalized;
+                derecha = Aplanar(referencia.right).normalized;
             }
             Vector3 dir = adelante * entrada.y + derecha * entrada.x;
             return Vector3.ClampMagnitude(dir, 1f);

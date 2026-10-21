@@ -43,6 +43,16 @@ namespace BichoShow
             CrearSecundaria();
         }
 
+        /// <summary>Apagado (p. ej. por las cámaras por jugador): fuera la mitad derecha.</summary>
+        void OnDisable()
+        {
+            dividido = false;
+            division = 1f;
+            if (secundaria != null) secundaria.enabled = false;
+            if (camSecundaria != null) camSecundaria.enabled = false;
+            if (principal != null) principal.objetivosForzados = null;
+        }
+
         void OnDestroy()
         {
             if (secundaria != null) Destroy(secundaria.gameObject);

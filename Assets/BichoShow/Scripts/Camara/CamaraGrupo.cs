@@ -63,6 +63,10 @@ namespace BichoShow
         [Tooltip("Dónde mirar cuando todavía no hay nadie jugando.")]
         public Vector3 centroSinJugadores = Vector3.zero;
 
+        [Header("Cámaras por jugador")]
+        [Tooltip("En las carreras (escenas con RondaRuta), cada jugador con su cámara detrás de su bicho.")]
+        public bool camaraPorJugadorEnCarreras = true;
+
         [Header("Pantalla dividida")]
         [Tooltip("Si los humanos se separan tanto que no caben, la pantalla se parte en dos.")]
         public bool pantallaDividida = true;
@@ -94,6 +98,11 @@ namespace BichoShow
         {
             cam = GetComponent<Camera>();
             posicionSinSacudida = transform.position;
+            // En las carreras, cada jugador con su cámara detrás de su bicho (como en Fall Guys).
+            // En Awake (no en Start) para que también se añada en los invitados del online, donde
+            // esta cámara se apaga nada más cargar la escena.
+            if (camaraPorJugadorEnCarreras && CompareTag("MainCamera") && FindAnyObjectByType<RondaRuta>() != null && GetComponent<CamarasPorJugador>() == null)
+                gameObject.AddComponent<CamarasPorJugador>();
         }
 
         void Start()
