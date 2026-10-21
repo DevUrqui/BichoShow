@@ -30,6 +30,9 @@ namespace BichoShow.Herramientas
         static readonly List<PuntoRuta> ruta = new List<PuntoRuta>();
         static Material turquesa, turquesaClaro, mostaza, mostazaClaro, coral, azul, madera, mesa, crema, dorado, rejilla, dedal, negro;
         static Material fondoCoral, fondoAzul, fondoMostaza, fondoTurquesa, fondoPared, fondoGris;
+        // Telas con dibujo (TelasCostura): para las losas, los parches, la madera y la pared.
+        static Material telaVichy, telaVichyClaro, telaLunares, tablaCorte, maderaVeta, mesaVeta, papelPintado;
+        static Material parcheLunares, parcheVichy, parcheRayas;
 
         [MenuItem("BichoShow/Crear escena: Costura a la fuga")]
         public static void Crear()
@@ -55,6 +58,17 @@ namespace BichoShow.Herramientas
             dedal = E.CrearMaterial("CosturaDedal", new Color(0.8f, 0.8f, 0.84f), 0.85f);
             mostazaClaro = E.CrearMaterial("CosturaMostazaClaro", new Color(0.97f, 0.8f, 0.42f), 0.25f);
             negro = E.CrearMaterial("CosturaNegro", new Color(0.12f, 0.1f, 0.1f), 0.2f);
+
+            telaVichy = TelasCostura.Tela("CosturaTelaVichy", new Color(0.16f, 0.68f, 0.67f), TelasCostura.Vichy, 2f);
+            telaVichyClaro = TelasCostura.Tela("CosturaTelaVichyClaro", new Color(0.42f, 0.84f, 0.79f), TelasCostura.Vichy, 2f);
+            telaLunares = TelasCostura.Tela("CosturaTelaLunares", new Color(1f, 0.78f, 0.27f), TelasCostura.Lunares, 1.6f);
+            tablaCorte = TelasCostura.Tela("CosturaTablaCorteTela", new Color(0.15f, 0.64f, 0.63f), TelasCostura.TablaCorte, 2f);
+            maderaVeta = TelasCostura.Tela("CosturaMaderaVeta", new Color(0.95f, 0.78f, 0.57f), TelasCostura.Madera, 3f, 0.3f);
+            mesaVeta = TelasCostura.Tela("CosturaMesaVeta", new Color(0.62f, 0.43f, 0.28f), TelasCostura.Madera, 9f, 0.35f);
+            papelPintado = TelasCostura.Tela("CosturaPapelPintado", new Color(0.9f, 0.8f, 0.68f), TelasCostura.PapelPintado, 6f, 0.1f);
+            parcheLunares = TelasCostura.Tela("CosturaParcheLunares", new Color(0.45f, 0.86f, 0.82f), TelasCostura.Lunares, 1.2f);
+            parcheVichy = TelasCostura.Tela("CosturaParcheVichy", new Color(1f, 0.86f, 0.48f), TelasCostura.Vichy, 1.2f);
+            parcheRayas = TelasCostura.Tela("CosturaParcheRayas", new Color(1f, 0.5f, 0.42f), TelasCostura.Rayas, 1.2f);
             // El fondo, apagado: que no compita con el recorrido.
             fondoCoral = E.CrearMaterial("CosturaFondoCoral", new Color(0.7f, 0.48f, 0.44f), 0.2f);
             fondoAzul = E.CrearMaterial("CosturaFondoAzul", new Color(0.42f, 0.48f, 0.58f), 0.2f);
@@ -84,22 +98,25 @@ namespace BichoShow.Herramientas
             // =================================================================
             // 1. SALIDA: la Tabla de Corte
             // =================================================================
-            Losa("TablaCorte", -9f, 9f, 0f, 14f, 0f, turquesa);
+            Losa("TablaCorte", -9f, 9f, 0f, 14f, 0f, tablaCorte);
             Cuadricula(-9f, 9f, 0f, 14f, 0f);
             Regla(-9f, 0f, 14f, 0f);
+            Barandillas(0f, (-8.85f, 0.15f, -8.85f, 13.85f), (8.85f, 0.15f, 8.85f, 13.85f), (-8.85f, 0.15f, 8.85f, 0.15f));
+            Guirnalda(new Vector3(-8.3f, 0f, 0.8f), new Vector3(-8.3f, 0f, 13.2f));
+            Guirnalda(new Vector3(8.3f, 0f, 0.8f), new Vector3(8.3f, 0f, 13.2f));
             Arco("SALIDA", 4f, 0f, 18f);
             Flecha(new Vector3(0f, 0f, 10.5f), 0f, crema);
             // Primer saltito (1,5 m) a un escalón (+0,6 m): para aprender a saltar.
-            Losa("Escalon", -6f, 6f, 15.5f, 23f, 0.6f, turquesaClaro);
+            Losa("Escalon", -6f, 6f, 15.5f, 23f, 0.6f, telaVichyClaro);
             Pespunte(-6f, 6f, 15.5f, 23f, 0.6f);
-            Parches(-6f, 6f, 15.5f, 23f, 0.6f, turquesa);
+            Parches(-6f, 6f, 15.5f, 23f, 0.6f, parcheLunares);
             Flecha(new Vector3(0f, 0.6f, 20.5f), 0f, azul);
             controles.Add(PuntoControl(1, 18f, -6f, 6f, 0.6f));
 
             // =================================================================
             // 2. LOS CARRETES VIAJEROS
             // =================================================================
-            Losa("SueloCarretes", -6f, 6f, 23f, 44f, 0.6f, mostaza);
+            Losa("SueloCarretes", -6f, 6f, 23f, 44f, 0.6f, telaLunares);
             float[] franjas = { 26f, 32.5f, 39f };                 // centro de cada franja (4 m de fondo)
             float[] periodos = { 5.5f, 4.5f, 3.4f };               // de más lento a más rápido
             float[] desfases = { 0f, 0.35f, 0.7f };
@@ -117,9 +134,10 @@ namespace BichoShow.Herramientas
             Pespunte(-6f, 6f, 34.5f, 37f, 0.6f);
 
             // Descanso y bifurcación
-            Losa("Descanso1", -10f, 13f, 44f, 51f, 0.6f, turquesa);
+            Losa("Descanso1", -10f, 13f, 44f, 51f, 0.6f, telaVichy);
             Pespunte(-10f, 13f, 44f, 51f, 0.6f);
-            Parches(-10f, 13f, 44f, 51f, 0.6f, turquesaClaro);
+            Parches(-10f, 13f, 44f, 51f, 0.6f, parcheLunares);
+            Guirnalda(new Vector3(-9.4f, 0.6f, 44.6f), new Vector3(-9.4f, 0.6f, 50.4f));
             controles.Add(PuntoControl(2, 46.5f, -10f, 13f, 0.6f));
             Flecha(new Vector3(-3f, 0.6f, 49.3f), 0f, crema);
             Flecha(new Vector3(7.5f, 0.6f, 48.8f), 25f, crema);
@@ -147,8 +165,8 @@ namespace BichoShow.Herramientas
             };
             for (int i = 0; i < lado.Length; i++)
             {
-                Losa($"Camino lateral {i + 1}", lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, mostaza);
-                Parches(lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, mostazaClaro);
+                Losa($"Camino lateral {i + 1}", lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, telaLunares);
+                Parches(lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, parcheVichy);
             }
             Barandillas(0.6f,
                 (6.5f, 51f, 6.5f, 58.5f), (9.5f, 51f, 9.5f, 58.5f),
@@ -161,9 +179,11 @@ namespace BichoShow.Herramientas
             Flecha(new Vector3(11f, 0.6f, 70f), -90f, azul);
 
             // Descanso 2: se juntan las dos rutas.
-            Losa("Descanso2", -10f, 16f, 73f, 79f, 0.6f, turquesa);
+            Losa("Descanso2", -10f, 16f, 73f, 79f, 0.6f, telaVichy);
             Pespunte(-10f, 16f, 73f, 79f, 0.6f);
-            Parches(-10f, 16f, 73f, 79f, 0.6f, turquesaClaro);
+            Parches(-10f, 16f, 73f, 79f, 0.6f, parcheLunares);
+            Guirnalda(new Vector3(-9.4f, 0.6f, 73.6f), new Vector3(-9.4f, 0.6f, 78.4f));
+            Guirnalda(new Vector3(15.4f, 0.6f, 73.6f), new Vector3(15.4f, 0.6f, 78.4f));
             controles.Add(PuntoControl(3, 75.5f, -10f, 16f, 0.6f));
             Flecha(new Vector3(-4.5f, 0.6f, 77.5f), 0f, crema);
             Flecha(new Vector3(4.5f, 0.6f, 77.5f), 0f, crema);
@@ -173,15 +193,17 @@ namespace BichoShow.Herramientas
             // =================================================================
             // Izquierda: ancha (4,4 m) y lenta, en dos mitades con un descansillo entre medias.
             var izq1 = Cremallera("Cremallera ancha 1", -4.5f, 4.4f, 79f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 0f, coral);
-            Losa("Descansillo", -6.7f, -2.3f, 89f, 91.5f, 0.6f, mostaza);
+            Losa("Descansillo", -6.7f, -2.3f, 89f, 91.5f, 0.6f, telaLunares);
             Pespunte(-6.7f, -2.3f, 89f, 91.5f, 0.6f);
             var izq2 = Cremallera("Cremallera ancha 2", -4.5f, 4.4f, 91.5f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 4.5f, coral);
             // Derecha: estrecha (2,4 m) y de una tirada, con el cursor más rápido.
             var der = Cremallera("Cremallera estrecha", 4.5f, 2.4f, 79f, 9, 2.5f, 0.6f, 4.6f, 1.4f, 0.8f, 0f, azul);
 
-            Losa("Destino", -9f, 9f, 101.5f, 108f, 0.6f, turquesa);
+            Losa("Destino", -9f, 9f, 101.5f, 108f, 0.6f, telaVichy);
             Pespunte(-9f, 9f, 101.5f, 108f, 0.6f);
-            Parches(-9f, 9f, 101.5f, 108f, 0.6f, turquesaClaro);
+            Parches(-9f, 9f, 101.5f, 108f, 0.6f, parcheLunares);
+            Guirnalda(new Vector3(-8.4f, 0.6f, 102.1f), new Vector3(-8.4f, 0.6f, 107.4f));
+            Guirnalda(new Vector3(8.4f, 0.6f, 102.1f), new Vector3(8.4f, 0.6f, 107.4f));
             controles.Add(PuntoControl(4, 104.5f, -9f, 9f, 0.6f));
             Flecha(new Vector3(0f, 0.6f, 106.5f), 0f, crema);
 
@@ -195,15 +217,18 @@ namespace BichoShow.Herramientas
             // Hueco de 2 m y +1 m al segundo: este se hunde si te quedas encima.
             var blando = Cojin("Alfiletero 2 (blando)", -6f, 6f, 120f, 127f, 2.6f, coral, true);
             // Al lado del blando, un escalón fijo y una rampa al tercero (por si está hundido).
-            Losa("Escalon lateral", 6f, 8.5f, 123f, 126f, 2.6f, madera);
+            Losa("Escalon lateral", 6f, 8.5f, 123f, 126f, 2.6f, maderaVeta);
             Rampa("Rampa lateral", 7.25f, 2.5f, 126f, 2.6f, 129.5f, 3.8f, crema);
             Cojin("Alfiletero 3", -6f, 8.5f, 129.5f, 136f, 3.8f, turquesaClaro, false);
             // La cinta métrica hace de puente hasta la meta.
             SoloColision(Losa("Cinta metrica", -3f, 3f, 136f, 138f, 3.8f, mostaza, 0.25f, false));
             Kit("PuenteCinta", decorado, new Vector3(0f, 3.8f, 137f));
-            Losa("Meta", -9f, 9f, 138f, 147f, 3.8f, turquesa);
+            Losa("Meta", -9f, 9f, 138f, 147f, 3.8f, tablaCorte);
             Cuadricula(-9f, 9f, 138f, 147f, 3.8f);
             Regla(-9f, 138f, 147f, 3.8f);
+            Barandillas(3.8f, (-8.85f, 138.2f, -8.85f, 146.85f), (8.85f, 138.2f, 8.85f, 146.85f), (-8.85f, 146.85f, 8.85f, 146.85f));
+            Guirnalda(new Vector3(-8.3f, 3.8f, 138.8f), new Vector3(-8.3f, 3.8f, 146.3f));
+            Guirnalda(new Vector3(8.3f, 3.8f, 138.8f), new Vector3(8.3f, 3.8f, 146.3f));
             Arco("META", 142f, 3.8f, 18f);
             var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, 3.8f + 1.5f, 144.5f), new Vector3(18f, 3f, 5f));
             Dedal(new Vector3(12f, 3.8f, 144f));
@@ -303,7 +328,7 @@ namespace BichoShow.Herramientas
         {
             float w = x1 - x0, d = z1 - z0, abajo = arriba - grosor;
             M.Decorado(PrimitiveType.Cube, "Marco", decorado, new Vector3((x0 + x1) * 0.5f, abajo - 0.15f, (z0 + z1) * 0.5f),
-                       new Vector3(w + 0.35f, 0.3f, d + 0.35f), madera);
+                       new Vector3(w + 0.35f, 0.3f, d + 0.35f), maderaVeta);
 
             // Ribete: un cordón por los cuatro bordes de arriba.
             const float r = 0.11f, dentro = 0.06f;
@@ -345,7 +370,7 @@ namespace BichoShow.Herramientas
                     float a0 = x0 + i * cx + 0.45f, a1 = x0 + (i + 1) * cx - 0.45f;
                     float b0 = z0 + j * cz + 0.45f, b1 = z0 + (j + 1) * cz - 0.45f;
                     if (a1 - a0 < 0.8f || b1 - b0 < 0.8f) continue;
-                    Pegatina("Parche", a0, a1, b0, b1, arriba, acento ? coral : parche, -0.004f);
+                    Pegatina("Parche", a0, a1, b0, b1, arriba, acento ? parcheRayas : parche, -0.004f);
                     const float g = 0.06f, m = 0.15f;
                     Pegatina("Pespunte parche", a0 + m, a1 - m, b0 + m, b0 + m + g, arriba, crema);
                     Pegatina("Pespunte parche", a0 + m, a1 - m, b1 - m - g, b1 - m, arriba, crema);
@@ -373,7 +398,7 @@ namespace BichoShow.Herramientas
             float m = Mathf.Min(0.8f, (x1 - x0) * 0.25f), n = Mathf.Min(0.8f, (z1 - z0) * 0.25f);
             foreach (var x in new[] { x0 + m, x1 - m })
                 foreach (var z in new[] { z0 + n, z1 - n })
-                    M.Decorado(PrimitiveType.Cylinder, "Pata", decorado, new Vector3(x, abajo - alto * 0.5f, z), new Vector3(0.6f, alto * 0.5f, 0.6f), madera);
+                    M.Decorado(PrimitiveType.Cylinder, "Pata", decorado, new Vector3(x, abajo - alto * 0.5f, z), new Vector3(0.6f, alto * 0.5f, 0.6f), maderaVeta);
         }
 
         /// <summary>Algo pintado en el suelo (sin colisión): guías, marcas.</summary>
@@ -535,7 +560,7 @@ namespace BichoShow.Herramientas
             // El alfiletero acolchado del kit (se mueve con el cojín).
             Kit(w > 13f ? "Alfiletero14x6" : "Alfiletero12x7", go.transform, Vector3.zero, 0f, tela, local: true);
             // Base de madera (fija) y patas.
-            M.Decorado(PrimitiveType.Cube, "Base", decorado, new Vector3((x0 + x1) * 0.5f, arriba - 1.6f, (z0 + z1) * 0.5f), new Vector3(w - 0.4f, 0.8f, d - 0.4f), madera);
+            M.Decorado(PrimitiveType.Cube, "Base", decorado, new Vector3((x0 + x1) * 0.5f, arriba - 1.6f, (z0 + z1) * 0.5f), new Vector3(w - 0.4f, 0.8f, d - 0.4f), maderaVeta);
             Patas(x0, x1, z0, z1, arriba - 2f);
             if (!blando) return null;
 
@@ -595,11 +620,11 @@ namespace BichoShow.Herramientas
                 pared.transform.SetParent(grupo, false);
                 pared.transform.SetPositionAndRotation((a + b) * 0.5f + Vector3.up * 0.5f, giro);
                 pared.AddComponent<BoxCollider>().size = new Vector3(0.25f, 1f, largo);
-                var hilo = M.Decorado(PrimitiveType.Cylinder, "Hilo", grupo, (a + b) * 0.5f + Vector3.up * 0.65f, new Vector3(0.07f, largo * 0.5f, 0.07f), coral);
+                var hilo = M.Decorado(PrimitiveType.Cylinder, "Hilo", grupo, (a + b) * 0.5f + Vector3.up * 0.62f, new Vector3(0.07f, largo * 0.5f, 0.07f), coral);
                 if (hilo != null) hilo.transform.rotation = giro * Quaternion.Euler(90f, 0f, 0f);
                 int postes = Mathf.Max(1, Mathf.RoundToInt(largo / 2f));
                 for (int i = 0; i <= postes; i++)
-                    M.Decorado(PrimitiveType.Cylinder, "Poste", grupo, Vector3.Lerp(a, b, i / (float)postes) + Vector3.up * 0.35f, new Vector3(0.14f, 0.35f, 0.14f), madera);
+                    Kit("PosteBoton", grupo, Vector3.Lerp(a, b, i / (float)postes), 0f, i % 2 == 0 ? coral : mostaza, 0.7f);
             }
         }
 
@@ -667,27 +692,105 @@ namespace BichoShow.Herramientas
         static void Fondo()
         {
             var f = M.Grupo(decorado, "Taller");
-            // La mesa de costura, abajo.
-            M.Decorado(PrimitiveType.Cube, "Mesa", f, new Vector3(0f, AlturaMesa - 0.5f, 75f), new Vector3(130f, 1f, 250f), mesa);
-            // Carretes gigantes de pie.
-            CarreteFondo(f, new Vector3(-26f, AlturaMesa, 25f), 4f, 8f, fondoCoral);
-            CarreteFondo(f, new Vector3(28f, AlturaMesa, 62f), 3.5f, 7f, fondoAzul);
-            CarreteFondo(f, new Vector3(-28f, AlturaMesa, 108f), 4.5f, 9f, fondoMostaza);
-            CarreteFondo(f, new Vector3(30f, AlturaMesa, 135f), 3f, 6f, fondoTurquesa);
-            CarreteFondo(f, new Vector3(-20f, AlturaMesa, 165f), 3.5f, 7.5f, fondoAzul);
-            // Botones tumbados.
-            BotonFondo(f, new Vector3(22f, AlturaMesa, 18f), 5f, fondoMostaza);
-            BotonFondo(f, new Vector3(-21f, AlturaMesa, 72f), 4f, fondoTurquesa);
-            BotonFondo(f, new Vector3(25f, AlturaMesa, 102f), 4.5f, fondoCoral);
-            // Tijeras abiertas.
-            Kit("Tijeras", f, new Vector3(-24f, AlturaMesa, 145f), 30f, fondoCoral, 3f);
+            // La mesa de costura, abajo, con su veta.
+            M.Decorado(PrimitiveType.Cube, "Mesa", f, new Vector3(0f, AlturaMesa - 0.5f, 75f), new Vector3(130f, 1f, 250f), mesaVeta);
+
+            // El público: bichos en gradas encima de carretes gigantes, a los lados del recorrido.
+            Grada(f, new Vector3(-20f, 0f, 8f), new Vector3(0f, 0f, 10f), fondoCoral);
+            Grada(f, new Vector3(26f, 0f, 46f), new Vector3(8f, 0f, 46f), fondoAzul);
+            Grada(f, new Vector3(-21f, 0f, 96f), new Vector3(-4f, 0f, 96f), fondoMostaza);
+            Grada(f, new Vector3(-21f, 3.8f, 141f), new Vector3(0f, 3.8f, 141f), fondoTurquesa);
+            // Focos del plató (esto sigue siendo un concurso de la tele).
+            foreach (var (pie, mirar) in new[]
+                     {
+                         (new Vector3(-15f, AlturaMesa, -6f), new Vector3(0f, 0f, 10f)), (new Vector3(15f, AlturaMesa, -6f), new Vector3(0f, 0f, 10f)),
+                         (new Vector3(-17f, AlturaMesa, 155f), new Vector3(0f, 0f, 140f)), (new Vector3(17f, AlturaMesa, 155f), new Vector3(0f, 0f, 140f)),
+                     })
+                KitObjetos.Poner("TorreFocos", f, pie, KitObjetos.GiroMirando(pie, mirar), null, 2.4f, false, KitObjetos.KitPlato);
+
+            // El taller: máquina de coser, acerico, rollos de tela, flexo, macetas, botones…
+            Kit("MaquinaCoser", f, new Vector3(40f, AlturaMesa, 118f), -90f, null, 3.4f);
+            Kit("Acerico", f, new Vector3(-34f, AlturaMesa, 52f), 20f, null, 4.5f);
+            Kit("RolloTela", f, new Vector3(31f, AlturaMesa, 16f), 15f, fondoTurquesa, 3f);
+            Kit("RolloTela", f, new Vector3(33f, AlturaMesa, 22f), 5f, fondoCoral, 3f);
+            Kit("RolloTela", f, new Vector3(32f, AlturaMesa + 4.6f, 19f), 10f, fondoMostaza, 3f);
+            Kit("Lampara", f, new Vector3(-37f, AlturaMesa, 84f), 0f, null, 5f);
+            Kit("Maceta", f, new Vector3(42f, AlturaMesa, 2f), 0f, null, 4f);
+            Kit("Maceta", f, new Vector3(-40f, AlturaMesa, 170f), 40f, null, 5f);
+            CarreteFondo(f, new Vector3(30f, AlturaMesa, 82f), 3.5f, 7f, fondoCoral);
+            CarreteFondo(f, new Vector3(-30f, AlturaMesa, 128f), 4.5f, 9f, fondoAzul);
+            CarreteFondo(f, new Vector3(28f, AlturaMesa, 160f), 3f, 6f, fondoMostaza);
+            BotonFondo(f, new Vector3(20f, AlturaMesa, 4f), 5f, fondoMostaza);
+            BotonFondo(f, new Vector3(-24f, AlturaMesa, 70f), 4f, fondoTurquesa);
+            BotonFondo(f, new Vector3(24f, AlturaMesa, 102f), 4.5f, fondoCoral);
+            Kit("Tijeras", f, new Vector3(-26f, AlturaMesa, 150f), 30f, fondoCoral, 3f);
             Kit("CintaRollo", f, new Vector3(-15f, AlturaMesa, -14f), -20f, null, 3f);
-            // Cinta métrica larga sobre la mesa.
             M.Decorado(PrimitiveType.Cube, "Cinta metrica", f, new Vector3(-15f, AlturaMesa + 0.05f, 70f), new Vector3(2.5f, 0.1f, 170f), fondoMostaza);
-            // Pared del taller al fondo y una estantería.
-            M.Decorado(PrimitiveType.Cube, "Pared", f, new Vector3(0f, AlturaMesa + 18f, 205f), new Vector3(160f, 40f, 2f), fondoPared);
+
+            // Pared del taller con papel pintado y una estantería con rollos de tela.
+            M.Decorado(PrimitiveType.Cube, "Pared", f, new Vector3(0f, AlturaMesa + 18f, 205f), new Vector3(160f, 40f, 2f), papelPintado);
+            Material[] rollos = { fondoCoral, fondoTurquesa, fondoMostaza, fondoAzul };
             for (int i = 0; i < 3; i++)
-                M.Decorado(PrimitiveType.Cube, "Balda", f, new Vector3(0f, AlturaMesa + 8f + i * 7f, 202f), new Vector3(70f, 0.6f, 4f), mesa);
+            {
+                float y = AlturaMesa + 8f + i * 7f;
+                M.Decorado(PrimitiveType.Cube, "Balda", f, new Vector3(0f, y, 202f), new Vector3(70f, 0.6f, 4f), mesaVeta);
+                for (int k = 0; k < 6; k++)
+                    Kit("RolloTela", f, new Vector3(-28f + k * 11f + (i % 2) * 4f, y + 0.3f, 202f), 0f, rollos[(k + i) % rollos.Length], 2.2f);
+            }
+        }
+
+        /// <summary>Grada del plató con público de bichos, encima de un carrete gigante que llega hasta ella.</summary>
+        static void Grada(Transform padre, Vector3 sitio, Vector3 mirar, Material hilo)
+        {
+            float alto = sitio.y - AlturaMesa;
+            Kit("CarreteDePie", padre, new Vector3(sitio.x, AlturaMesa, sitio.z), 0f, hilo, alto / 2f);
+
+            var grupo = M.Grupo(padre, "Gradas");
+            grupo.gameObject.AddComponent<PublicoAnimado>();
+            var grada = KitObjetos.Poner("Grada", grupo, sitio, KitObjetos.GiroMirando(sitio, mirar), null, 1f, false, KitObjetos.KitPlato);
+
+            Color[] colores =
+            {
+                new Color(1f, 0.45f, 0.45f), new Color(0.4f, 0.65f, 1f), new Color(1f, 0.8f, 0.3f),
+                new Color(0.5f, 0.9f, 0.5f), new Color(0.85f, 0.55f, 1f), new Color(1f, 0.6f, 0.85f),
+            };
+            var materiales = new Material[colores.Length];
+            for (int i = 0; i < colores.Length; i++) materiales[i] = E.CrearMaterial($"Publico{i}", colores[i], 0.3f);
+            var azar = new System.Random(Mathf.RoundToInt(sitio.x * 31f + sitio.z * 17f));
+            for (int fila = 0; fila < 4; fila++)
+                for (int s = 0; s < 5; s++)
+                {
+                    if (azar.NextDouble() < 0.15) continue;
+                    float px = -3.2f + 1.6f * s + (float)(azar.NextDouble() - 0.5) * 0.5f;
+                    KitObjetos.Poner(azar.NextDouble() < 0.3 ? "PublicoBrazos" : "Publico", grada.transform,
+                        new Vector3(px, 0.5f * (fila + 1) + 0.1f, 1.35f - 1.1f * fila), (float)(azar.NextDouble() - 0.5) * 30f,
+                        materiales[azar.Next(materiales.Length)], 1f + (float)(azar.NextDouble() - 0.5) * 0.2f, true, KitObjetos.KitPlato);
+                }
+        }
+
+        /// <summary>Guirnalda de banderitas entre dos palos (con su caída).</summary>
+        static void Guirnalda(Vector3 a, Vector3 b, float caida = 0.5f)
+        {
+            var g = M.Grupo(decorado, "Guirnalda");
+            Kit("Banderin", g, a, 0f, coral);
+            Kit("Banderin", g, b, 0f, coral);
+            Vector3 alto = Vector3.up * 1.82f;
+            a += alto;
+            b += alto;
+            Vector3 dir = b - a;
+            float giro = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg - 90f; // la tela en el plano del hilo
+            Material[] colores = { coral, mostaza, turquesa, azul };
+            int n = Mathf.Max(3, Mathf.RoundToInt(dir.magnitude / 0.8f));
+            Vector3 anterior = a;
+            for (int i = 1; i <= n; i++)
+            {
+                float k = i / (float)n;
+                Vector3 p = Vector3.Lerp(a, b, k) + Vector3.down * caida * 4f * k * (1f - k);
+                var hilo = M.Decorado(PrimitiveType.Cylinder, "Hilo", g, (anterior + p) * 0.5f, new Vector3(0.035f, Vector3.Distance(anterior, p) * 0.5f, 0.035f), crema);
+                if (hilo != null) hilo.transform.rotation = Quaternion.FromToRotation(Vector3.up, p - anterior);
+                if (i < n) Kit("Banderita", g, p, giro, colores[i % colores.Length], 0.9f);
+                anterior = p;
+            }
         }
 
         static void CarreteFondo(Transform padre, Vector3 pie, float radio, float alto, Material hilo)

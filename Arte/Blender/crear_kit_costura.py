@@ -37,9 +37,12 @@ COLORES = {
     "CremaCostura": (0.98, 0.94, 0.84), "AzulCostura": (0.14, 0.2, 0.42), "CoralCostura": (0.95, 0.45, 0.38),
     "MostazaCostura": (0.93, 0.68, 0.2), "AgujeroCostura": (0.2, 0.13, 0.1),
     "DedalCostura": (0.82, 0.82, 0.86), "HoyueloCostura": (0.55, 0.55, 0.6), "MarcaCinta": (0.12, 0.1, 0.1),
+    # Taller
+    "Luz": (1.00, 0.88, 0.55), "MaquinaCuerpo": (0.55, 0.82, 0.76), "MaquinaBase": (0.62, 0.42, 0.28),
+    "AcericoRojo": (0.92, 0.25, 0.22), "HojaVerde": (0.35, 0.68, 0.32), "Terracota": (0.82, 0.45, 0.3),
 }
 
-crear_materiales(COLORES, brillantes=("Oro", "Metal", "DedalCostura"))
+crear_materiales(COLORES, brillantes=("Oro", "Metal", "DedalCostura", "MaquinaCuerpo"), emisivos=("Luz",))
 
 objetos = []
 
@@ -276,6 +279,89 @@ p.caja((1.2, -1.6, 0.03), (0.9, 3.2, 0.06), "MostazaCostura")                   
 objetos.append(p.crear(bisel=0.02))
 
 # ---------------------------------------------------------------------------
+# El taller de alrededor (decorado grande, el generador lo escala): máquina de coser,
+# acerico de tomate, rollo de tela, lámpara y maceta. Y piezas pequeñas de guía:
+# banderita de guirnalda (origen arriba, en el hilo) y poste de barandilla con botón.
+# ---------------------------------------------------------------------------
+
+p = Pieza("MaquinaCoser")                                                                    # unos 8 de ancho y 6 de alto
+p.caja((0, 0, 0.35), (8.4, 3.6, 0.7), "MaquinaBase")                                         # base de madera
+p.caja((0, 0, 1.0), (7.6, 3.0, 0.6), "MaquinaCuerpo")                                         # cama
+p.caja((-1.2, -1.52, 1.01), (2.2, 0.04, 0.5), "Oro")                                          # placa
+p.caja((2.6, 0, 3.0), (1.8, 2.4, 3.6), "MaquinaCuerpo")                                       # columna
+p.caja((-0.2, 0, 4.4), (6.6, 2.2, 1.6), "MaquinaCuerpo")                                      # brazo
+p.caja((-3.2, 0, 3.6), (1.4, 2.0, 2.6), "MaquinaCuerpo")                                      # cabeza
+p.cilindro((-3.2, 0, 1.75), 0.12, 1.3, "Metal", segmentos=10)                                # barra de la aguja
+p.cilindro((-3.2, 0, 1.12), 0.04, 0.3, "Metal", segmentos=8)                                 # aguja
+p.caja((-3.2, -0.2, 1.25), (0.6, 0.5, 0.08), "Metal")                                        # prensatelas
+p.cilindro((4.0, 0, 4.1), 1.3, 0.4, "Metal", rotacion=(0, 90, 0), segmentos=28)              # volante
+p.toro((4.22, 0, 4.1), 1.15, 0.1, "Oro", rotacion=(0, 90, 0), segmentos=28, segmentos_tubo=6)
+p.cilindro((1.0, 0.3, 5.45), 0.08, 0.7, "Metal", segmentos=8)                                # portacarretes
+p.cilindro((1.0, 0.3, 5.75), 0.45, 0.5, "CoralCostura", segmentos=20)                        # carrete de hilo
+p.cilindro((1.0, 0.3, 5.48), 0.55, 0.06, "MaderaCostura", segmentos=20)
+p.cilindro((1.0, 0.3, 6.02), 0.55, 0.06, "MaderaCostura", segmentos=20)
+p.cilindro((-1.6, -1.12, 4.6), 0.3, 0.2, "CremaCostura", rotacion=(90, 0, 0), segmentos=16)  # rueda de tensión
+p.caja((-0.2, -1.11, 4.5), (5.2, 0.02, 0.5), "CremaCostura")                                 # franja decorativa
+p.tubo((1.0, 0.3, 6.0), (-1.6, -1.1, 4.8), 0.025, "CoralCostura", segmentos=6)               # el hilo
+p.tubo((-1.6, -1.1, 4.8), (-3.2, -1.0, 3.2), 0.025, "CoralCostura", segmentos=6)
+objetos.append(p.crear(bisel=0.12))
+
+p = Pieza("Acerico")                                                                         # tomate de alfileres, radio 1,5
+for k in range(8):                                                                           # gajos
+    a = math.radians(k * 45)
+    p.esfera((0.18 * math.cos(a), 0.18 * math.sin(a), 1.05), (1.25, 1.25, 1.05), "AcericoRojo", segmentos=24, anillos=12)
+for k in range(6):                                                                           # hojas
+    a = math.radians(k * 60)
+    p.esfera((0.45 * math.cos(a), 0.45 * math.sin(a), 2.08), (0.5, 0.18, 0.08), "HojaVerde", rotacion=(0, 0, k * 60), segmentos=12, anillos=6)
+p.cilindro((0, 0, 2.25), 0.08, 0.35, "HojaVerde", segmentos=8)
+colores_alfiler = ("CoralCostura", "MostazaCostura", "AzulCostura", "CremaCostura", "Oro")
+for k in range(9):                                                                           # alfileres
+    a = math.radians(20 + k * 40)
+    inclina = 0.5 + 0.25 * (k % 3)
+    base = (1.0 * math.cos(a), 1.0 * math.sin(a), 1.6 - 0.15 * (k % 2))
+    punta = (base[0] + inclina * math.cos(a), base[1] + inclina * math.sin(a), base[2] + 0.9)
+    p.tubo(base, punta, 0.035, "Metal", segmentos=6)
+    p.esfera(punta, (0.14, 0.14, 0.14), colores_alfiler[k % len(colores_alfiler)], segmentos=12, anillos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("RolloTela")                                                                       # tumbado a lo largo de X, 4 de largo
+p.cilindro((0, 0, 0.8), 0.8, 4.0, "Equipo", rotacion=(0, 90, 0), segmentos=28)
+for s in (-1, 1):
+    p.toro((s * 2.0, 0, 0.8), 0.45, 0.06, "Equipo", rotacion=(0, 90, 0), segmentos=24, segmentos_tubo=6)
+    p.cilindro((s * 2.02, 0, 0.8), 0.18, 0.04, "MaderaOscuraCostura", rotacion=(0, 90, 0), segmentos=14)
+p.caja((0, -0.79, 0.8), (1.2, 0.04, 0.5), "CremaCostura")                                    # etiqueta
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Lampara")                                                                         # flexo, unos 4 de alto
+p.cilindro((0, 0, 0.12), 1.0, 0.24, "AzulCostura", segmentos=24)
+p.tubo((0, 0, 0.2), (0.4, 0, 2.4), 0.09, "Metal", segmentos=8)
+p.esfera((0.4, 0, 2.4), (0.16, 0.16, 0.16), "Metal", segmentos=10, anillos=6)
+p.tubo((0.4, 0, 2.4), (-1.1, 0, 3.6), 0.08, "Metal", segmentos=8)
+p.cilindro((-1.4, 0, 3.3), 0.25, 1.0, "AzulCostura", radio_arriba=0.85, rotacion=(0, 45, 0), segmentos=24)  # pantalla
+p.esfera((-1.7, 0, 3.0), (0.35, 0.35, 0.35), "Luz", segmentos=14, anillos=8)
+objetos.append(p.crear(bisel=0.02))
+
+p = Pieza("Maceta")
+p.cilindro((0, 0, 0.6), 0.75, 1.2, "Terracota", radio_arriba=0.95, segmentos=24)
+p.toro((0, 0, 1.2), 0.95, 0.1, "Terracota", segmentos=24, segmentos_tubo=6)
+p.cilindro((0, 0, 1.18), 0.88, 0.05, "MaderaOscuraCostura", segmentos=24)
+for k in range(9):                                                                           # hojas redondas
+    a = math.radians(k * 40)
+    r = 0.3 + 0.15 * (k % 3)
+    p.esfera((r * math.cos(a), r * math.sin(a), 1.6 + 0.35 * (k % 3)), (0.5, 0.35, 0.22), "HojaVerde",
+             rotacion=(25, 0, k * 40), segmentos=14, anillos=8)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Banderita")                                                                       # cuelga del hilo (origen arriba)
+p.cilindro((0, 0, -0.21), 0.42, 0.03, "Equipo", rotacion=(90, 90, 0), segmentos=3)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("PosteBoton")                                                                      # poste de barandilla, 1 de alto
+p.cilindro((0, 0, 0.5), 0.1, 1.0, "MaderaCostura", segmentos=10)
+boton(p, (0, 0, 1.02), 0.24, "Equipo")
+objetos.append(p.crear(bisel=0.0))
+
+# ---------------------------------------------------------------------------
 # Exportar y vistas (una, desde arriba y atrás, como la cámara del juego)
 # ---------------------------------------------------------------------------
 
@@ -286,6 +372,8 @@ vistas(objetos, CARPETA_VISTAS, "kit_costura", [
     ("camara_juego", ["Carrete", "PanelAcordeon", "MitadCremalleraAncha", "Banderin", "Flecha"], 1.0, (0, 13, 12), (0, 0, 0)),
     ("alfileteros", ["Alfiletero12x7", "PuenteCinta"], 1.0, (0, -22, 14), (0, 0, 0)),
     ("arco", ["ArcoTela", "Dedal"], 1.5, (0, -30, 8), (0, 0, 3)),
+    ("taller", ["MaquinaCoser", "Acerico", "RolloTela", "Lampara", "Maceta"], 1.5, (0, -26, 9), (0, 0, 2.2)),
+    ("guias", ["Banderita", "PosteBoton", "Banderita"], 0.5, (0, -5, 1.5), (0, 0, 0.4)),
     ("decorado", ["Boton", "CarreteDePie", "Tijeras", "CintaRollo", "Banderin", "Flecha"], 1.0, (0, -14, 7), (0, 0, 0.6)),
 ], color_fondo=(0.86, 0.76, 0.64), material_suelo="MaderaCostura")
 

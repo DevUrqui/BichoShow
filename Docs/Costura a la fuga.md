@@ -134,3 +134,18 @@ Las losas se visten en el propio generador (función `Vestir`), así valen para 
 - Marco de madera debajo, ribete acolchado en el borde y botones cosidos en el frente.
 - Los descansos y el camino lateral llevan parches de tela en damero, con su pespunte (alguno en coral).
 - La tabla de corte y la meta llevan cuadrícula y regla.
+
+Telas con dibujo (`Editor/TelasCostura.cs`). Las texturas se generan con código en gris y blanco, y el color lo pone cada material:
+
+- Cuadros vichy en los descansos.
+- Lunares en los suelos amarillos.
+- Cuadrícula fina en la tabla de corte.
+- Vetas en la madera.
+- Papel pintado en la pared.
+- Parches de lunares, vichy y rayas.
+
+Alrededor del recorrido:
+
+- Cuatro gradas con público de bichos (del kit del plató), encima de carretes gigantes, y torres de focos en la salida y la meta.
+- En la mesa: la máquina de coser gigante, el acerico de tomate con alfileres, rollos de tela, un flexo, macetas, botones, tijeras y una estantería con rollos.
+- En la salida, los descansos y la meta: guirnaldas de banderitas. La salida y la meta llevan además barandillas de hilo con postes de botón.
