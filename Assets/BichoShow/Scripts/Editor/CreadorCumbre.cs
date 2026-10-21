@@ -14,7 +14,8 @@ namespace BichoShow.Herramientas
     /// (440 m, casi 4 vueltas, pendiente del 13 %) alrededor del tallo de un girasol gigante, dentro
     /// de un invernadero con público. Sin puntos de control; la savia sube desde el suelo.
     ///  · Sección 1 (m 0-110, 13 m de ancho): mariquitas que rebotan (quietas y patrullando) y hojas trampolín.
-    ///  · Sección 2 (m 110-230, 9 m): bolas de polen rodando por el centro, valla con huecos y puentes de hoja.
+    ///  · Sección 2 (m 110-230, 9 m): bolas de polen de cuatro clases por todo el ancho, mariquitas que barren,
+    ///    valla con huecos y puentes de hoja.
     ///  · Sección 3 (m 230-340, 7 m): suelo de néctar resbaladizo, mariquitas rápidas y ventiladores.
     ///  · Sección 4 (m 340-428, 6 m): la pista se rompe; los huecos se cruzan sobre pétalos que suben y bajan.
     ///  · La cima: la cabeza del girasol gira y, en su centro, el arco de META gira con ella.
@@ -25,7 +26,7 @@ namespace BichoShow.Herramientas
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cumbre.unity";
         /// <summary>Súbela al cambiar el generador: así, al darle a Play, Unity avisa si la escena es vieja (EscenasAnticuadas).</summary>
-        public const int Version = 3;
+        public const int Version = 4;
         const string CarpetaMallas = E.Raiz + "/Modelos/Girasol";
 
         // --- La espiral ---
@@ -493,7 +494,7 @@ namespace BichoShow.Herramientas
             bolasGo.transform.SetParent(g, false);
             var bolas = bolasGo.AddComponent<BolasPolen>();
             var lista = new List<Rigidbody>();
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 14; i++)
             {
                 var b = new GameObject($"Bola de polen {i + 1}");
                 b.transform.SetParent(bolasGo.transform, false);
@@ -509,7 +510,11 @@ namespace BichoShow.Herramientas
             bolas.camino = camino.ToArray();
             bolas.fuera = fuera.ToArray();
             bolas.ancho = ancho.ToArray();
-            bolas.cadencia = 3f;
+            bolas.cadencia = 2.4f;
+            bolas.velocidad = 8f;
+            // Dos mariquitas que barren la pista de lado a lado: empujan hacia los carriles de las bolas.
+            MariquitaPista(g, 146f, 0.5f, 0.12f, 0.88f, 3.2f, 0f);
+            MariquitaPista(g, 186f, 0.5f, 0.12f, 0.88f, 3.2f, 0.5f);
             // El cañón de polen, arriba.
             KitObjetos.Poner("CanonConfeti", decorado, Punto(229f, 0.5f), Angulo(229f) * Mathf.Rad2Deg + 90f, null, 2f, false, KitObjetos.KitPlato);
 

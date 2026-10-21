@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -8,6 +9,7 @@ namespace BichoShow
     /// se ve su silueta en blanco a través de ello, para no perderlo nunca de vista. Duplica el
     /// cuerpo con dos materiales: uno marca dónde el bicho se ve y el otro pinta la silueta donde
     /// no (así no sale cuando el bicho se tapa a sí mismo). Lo añade ControladorBicho solo.
+    /// Solo se ve en los bichos que lleva una persona (los bots no tienen silueta).
     /// </summary>
     public class SiluetaBicho : MonoBehaviour
     {
@@ -15,15 +17,30 @@ namespace BichoShow
 
         static Material marca, silueta;
 
+        readonly List<Renderer> copias = new List<Renderer>();
+        ControladorBicho bicho;
+
         void Start()
         {
+            bicho = GetComponent<ControladorBicho>();
             if (!PrepararMateriales()) return;
             foreach (var cuerpo in GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
                 if (cuerpo.sharedMesh == null || cuerpo.name.StartsWith("Silueta")) continue;
-                Duplicar(cuerpo, "Silueta (marca)", marca);
-                Duplicar(cuerpo, "Silueta", silueta);
+                copias.Add(Duplicar(cuerpo, "Silueta (marca)", marca));
+                copias.Add(Duplicar(cuerpo, "Silueta", silueta));
             }
+            Actualizar();
+        }
+
+        // Después de Retirar (que enciende todos los renderers) y de que un bot tome o deje el bicho.
+        void LateUpdate() => Actualizar();
+
+        void Actualizar()
+        {
+            bool ver = bicho != null && !bicho.Retirado && !bicho.EsBot;
+            if (copias.Count == 0 || copias[0].enabled == ver) return;
+            foreach (var c in copias) if (c != null) c.enabled = ver;
         }
 
         bool PrepararMateriales()
@@ -39,7 +56,7 @@ namespace BichoShow
         }
 
         /// <summary>Otro SkinnedMeshRenderer con la misma malla y los mismos huesos: se deforma igual.</summary>
-        static void Duplicar(SkinnedMeshRenderer origen, string nombre, Material material)
+        static Renderer Duplicar(SkinnedMeshRenderer origen, string nombre, Material material)
         {
             var go = new GameObject(nombre);
             go.transform.SetParent(origen.transform, false);
@@ -57,6 +74,7 @@ namespace BichoShow
             var materiales = new Material[Mathf.Max(1, origen.sharedMesh.subMeshCount)];
             for (int i = 0; i < materiales.Length; i++) materiales[i] = material;
             copia.sharedMaterials = materiales;
+            return copia;
         }
 
         // Enter Play Mode sin recargar dominio: los materiales estáticos se vuelven a crear.

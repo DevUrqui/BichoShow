@@ -34,7 +34,7 @@ La pista avanza hacia la derecha vista desde fuera. Los carriles tienen colores:
 | Sección | Metros | Ancho | Qué hay |
 |---|---|---|---|
 | 1. La base | 0–110 | 13 m | Diez mariquitas: cuatro quietas que vibran y seis que patrullan de lado a lado. Tres **hojas trampolín** en los bordes. Un tramo sin valla. |
-| 2. El bombardeo | 110–230 | 9 m | **Bolas de polen** que bajan rodando por el centro, cada 3 s. Cinco tramos sin valla. Tres **puentes de hoja** cortan por dentro. |
+| 2. El bombardeo | 110–230 | 9 m | **Bolas de polen** de cuatro clases que bajan rodando por todo el ancho, cada 2,4 s y a veces de dos en dos. Dos mariquitas que barren la pista. Cinco tramos sin valla. Tres **puentes de hoja** cortan por dentro. |
 | 3. El tallo ventoso | 230–340 | 7 m | Suelo de **rocío y néctar** que resbala. Seis mariquitas el doble de rápidas. Tres **ventiladores** con ráfagas, y sin valla donde soplan. |
 | 4. Las teclas de pétalo | 340–428 | 6 m | La pista se rompe en seis **huecos**. Se cruzan sobre **pétalos piano** que suben y bajan; en dos de los huecos hay dos pétalos a contratiempo. |
 | La cima | 428–440 y la cabeza | 6 m | Recta llana hasta la **cabeza giratoria**, con dos mariquitas guardianas y el **arco de META** en el centro. |
@@ -43,7 +43,13 @@ Cómo funcionan las pruebas:
 
 - **Mariquitas:** rebotan a quien las toca, hacia fuera y un poco hacia arriba, y lo tumban un momento. Cerca del borde sin valla, te pueden tirar.
 - **Hojas trampolín:** lanzan de 13 a 23 m pista arriba. Después se cierran 4 s y se oscurecen. Donde aterrizas hay una hoja pequeña pintada.
-- **Bolas de polen:** salen del cañón del metro 229 y bajan por el centro hasta el metro 104. Si te pillan, te empujan cuesta abajo y te tumban. Por el carril de dentro se esquivan mejor.
+- **Bolas de polen:** salen del cañón del metro 229 y bajan hasta el metro 104 por cualquier carril, así que no hay sitio seguro. Si te pillan, te empujan cuesta abajo y te tumban. Hay cuatro clases:
+  - **Normal:** va recta por su carril.
+  - **Zigzag** (3 de cada 10): cambia de carril de lado a lado.
+  - **Saltarina** (2 de cada 10): va botando. Cuando sube se puede pasar por debajo.
+  - **Gigante** (1 de cada 8): más grande y más lenta, tapa media pista.
+  - A veces salen dos a la vez, una por cada lado.
+- **Mariquitas que barren (sección 2):** cruzan la pista de lado a lado y te empujan hacia las bolas.
 - **Puentes de hoja:** atajos de 19 m por dentro de la espiral, de una curva a la siguiente. Se inclinan hacia el lado donde haya más peso: si vais dos por el mismo lado, la hoja se ladea.
 - **Ventiladores:** cada 5 s avisan (las aspas aceleran) y soplan 1,4 s hacia fuera de la pista. En el néctar se patina, así que hay que ir pegado al lado de dentro.
 - **Pétalos piano:** suben y bajan 0,8 m cada 3 s. Hay que saltar cuando el pétalo está bajo. Si caes por el hueco, aterrizas en la vuelta de abajo.
@@ -60,7 +66,8 @@ Gira alrededor del tallo y siempre mira hacia dentro, pero con calma para que no
 - Al girar, los bichos se quedan en el centro del plano: se suaviza el punto al que mira, no la posición.
 - Mira 0,6 s por delante de cada bicho, para que los trampolines y los atajos no lo saquen por arriba. Si alguien se sale muy lejos de golpe, gira más deprisa para alcanzarlo.
 - El decorado que se pone entre la cámara y un bicho (gradas, banderolas, pétalos de la cabeza…) se vuelve invisible mientras estorba, aunque sigue dando sombra. Lo hace `CamaraSinEstorbos`, en la cámara.
-- Si aun así algo tapa a un bicho (el abejorro, la pista de arriba…), se ve su **silueta blanca** a través. Esto vale en todos los mapas: lo pone `SiluetaBicho` en cada bicho. No sale cuando el bicho se tapa a sí mismo, solo cuando lo tapa otra cosa.
+- Si aun así algo tapa a un bicho (el abejorro, la pista de arriba…), se ve su **silueta blanca** a través. Esto vale en todos los mapas: lo pone `SiluetaBicho` en cada bicho. Solo la tienen los bichos que lleva una persona, no los bots. No sale cuando el bicho se tapa a sí mismo, solo cuando lo tapa otra cosa.
+- Para que el decorado oculto no parpadee, se mira la forma real de cada pieza, no una caja grande alrededor. Además, para volver a verse tiene que dejar de estorbar con margen y tarda 1,2 s. Solo cuenta lo que tapa a los bichos de las personas.
 
 Si sigue mareando, en el Inspector de `Camara` sube `margenOrbita` (gira menos veces) o baja `velocidadMaximaOrbita` (gira más despacio). Si aún se sale alguien por arriba, sube `anticipacion`.
 
@@ -89,7 +96,7 @@ Juega solo, con los bots activados, y comprueba en orden:
 1. **Salida y cámara.** Los 4 bichos caben en la salida. Al subir, la cámara gira con ellos sin marear y no se mete dentro de la pista de arriba.
 2. **Sección 1.** El rebote de las mariquitas se nota pero no siempre te tira. Las hojas trampolín te dejan en la pista, no fuera.
 3. **Sección 2.**
-   - Las bolas se ven venir y se pueden esquivar por dentro.
+   - Las bolas se ven venir y se pueden esquivar, pero hay que estar atento: no hay carril seguro.
    - En los huecos de la valla da miedo, pero se pasa.
    - Los puentes se cruzan solo, y con dos encima se ladean.
 4. **Sección 3.** El néctar resbala sin ser imposible. La ráfaga se ve venir y, por el lado de dentro, no te tira siempre.
@@ -107,6 +114,8 @@ Si algo no va, estos son los valores a tocar. Están en el Inspector de cada obj
 | Hoja trampolín | `alturaVuelo`, `cierre` | Lo alto del salto y cuánto rato se cierra |
 | Bolas de polen | `velocidad`, `cadencia` | Lo rápido que bajan y cada cuánto sale una |
 | Bolas de polen | `empujon`, `tropiezo` | Fuerza del golpe |
+| Bolas de polen | `zigzag`, `saltarina`, `gigante`, `pareja` | Lo a menudo que sale cada clase de bola, y dos a la vez |
+| Bolas de polen | `alturaBote`, `periodoBote`, `escalaGigante` | Cómo bota la saltarina y lo grande que es la gigante |
 | Puente de hoja | `gradosPorMetro`, `inclinacionMaxima` | Cuánto se inclina con el peso |
 | Viento | `periodo`, `duracion`, `fuerza` | Cada cuánto sopla, cuánto rato y con qué fuerza |
 | Néctar resbaladizo | `agarre` | 0 = hielo, 1 = suelo normal |
@@ -123,7 +132,7 @@ Las medidas de la espiral están en `Editor/CreadorCumbre.cs`: el largo, el anch
 
 ## Los bots
 
-- Siguen los puntos de `Mapa/RutaBots`: por el centro de la pista y, en la sección de las bolas, por el carril de dentro.
+- Siguen los puntos de `Mapa/RutaBots`: por el centro de la pista y, en la sección de las bolas, por el carril de dentro (allí ahora también les pueden pillar).
 - Los hábiles cogen a veces los puentes de hoja.
 - En los huecos esperan a que el pétalo esté a tiro y saltan de pétalo en pétalo.
 - En la cabeza van a un punto delante del arco y a otro detrás. Los dos giran con el arco, así que acaban cruzándolo por la boca.
