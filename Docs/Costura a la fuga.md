@@ -129,4 +129,8 @@ blender -b --factory-startup -P Arte/Blender/crear_kit_costura.py -- Assets/Bich
 
 Las vistas previas quedan en `Arte/Blender/vistas/kit_costura_*.png`; una de ellas está tomada desde la cámara del juego. Después, vuelve a crear la escena.
 
-Pendiente: las losas (tabla de corte, suelos de tela) siguen siendo bloques redondeados con la cuadrícula y el pespunte pintados.
+Las losas se visten en el propio generador (función `Vestir`), así valen para cualquier medida:
+
+- Marco de madera debajo, ribete acolchado en el borde y botones cosidos en el frente.
+- Los descansos y el camino lateral llevan parches de tela en damero, con su pespunte (alguno en coral).
+- La tabla de corte y la meta llevan cuadrícula y regla.

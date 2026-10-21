@@ -28,7 +28,7 @@ namespace BichoShow.Herramientas
 
         static Transform mapa, suelos, obstaculos, decorado, rutaBots;
         static readonly List<PuntoRuta> ruta = new List<PuntoRuta>();
-        static Material turquesa, turquesaClaro, mostaza, coral, azul, madera, mesa, crema, dorado, rejilla, dedal;
+        static Material turquesa, turquesaClaro, mostaza, mostazaClaro, coral, azul, madera, mesa, crema, dorado, rejilla, dedal, negro;
         static Material fondoCoral, fondoAzul, fondoMostaza, fondoTurquesa, fondoPared, fondoGris;
 
         [MenuItem("BichoShow/Crear escena: Costura a la fuga")]
@@ -53,6 +53,8 @@ namespace BichoShow.Herramientas
             dorado = E.CrearMaterial("CosturaDorado", new Color(1f, 0.78f, 0.3f), 0.7f);
             rejilla = E.CrearMaterial("CosturaRejilla", new Color(0.08f, 0.44f, 0.44f), 0.2f);
             dedal = E.CrearMaterial("CosturaDedal", new Color(0.8f, 0.8f, 0.84f), 0.85f);
+            mostazaClaro = E.CrearMaterial("CosturaMostazaClaro", new Color(0.97f, 0.8f, 0.42f), 0.25f);
+            negro = E.CrearMaterial("CosturaNegro", new Color(0.12f, 0.1f, 0.1f), 0.2f);
             // El fondo, apagado: que no compita con el recorrido.
             fondoCoral = E.CrearMaterial("CosturaFondoCoral", new Color(0.7f, 0.48f, 0.44f), 0.2f);
             fondoAzul = E.CrearMaterial("CosturaFondoAzul", new Color(0.42f, 0.48f, 0.58f), 0.2f);
@@ -84,11 +86,13 @@ namespace BichoShow.Herramientas
             // =================================================================
             Losa("TablaCorte", -9f, 9f, 0f, 14f, 0f, turquesa);
             Cuadricula(-9f, 9f, 0f, 14f, 0f);
+            Regla(-9f, 0f, 14f, 0f);
             Arco("SALIDA", 4f, 0f, 18f);
             Flecha(new Vector3(0f, 0f, 10.5f), 0f, crema);
             // Primer saltito (1,5 m) a un escalón (+0,6 m): para aprender a saltar.
             Losa("Escalon", -6f, 6f, 15.5f, 23f, 0.6f, turquesaClaro);
             Pespunte(-6f, 6f, 15.5f, 23f, 0.6f);
+            Parches(-6f, 6f, 15.5f, 23f, 0.6f, turquesa);
             Flecha(new Vector3(0f, 0.6f, 20.5f), 0f, azul);
             controles.Add(PuntoControl(1, 18f, -6f, 6f, 0.6f));
 
@@ -115,6 +119,7 @@ namespace BichoShow.Herramientas
             // Descanso y bifurcación
             Losa("Descanso1", -10f, 13f, 44f, 51f, 0.6f, turquesa);
             Pespunte(-10f, 13f, 44f, 51f, 0.6f);
+            Parches(-10f, 13f, 44f, 51f, 0.6f, turquesaClaro);
             controles.Add(PuntoControl(2, 46.5f, -10f, 13f, 0.6f));
             Flecha(new Vector3(-3f, 0.6f, 49.3f), 0f, crema);
             Flecha(new Vector3(7.5f, 0.6f, 48.8f), 25f, crema);
@@ -141,7 +146,10 @@ namespace BichoShow.Herramientas
                 (6.5f, 15f, 68.5f, 71.5f), (6.5f, 9.5f, 71.5f, 73f),
             };
             for (int i = 0; i < lado.Length; i++)
+            {
                 Losa($"Camino lateral {i + 1}", lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, mostaza);
+                Parches(lado[i].Item1, lado[i].Item2, lado[i].Item3, lado[i].Item4, 0.6f, mostazaClaro);
+            }
             Barandillas(0.6f,
                 (6.5f, 51f, 6.5f, 58.5f), (9.5f, 51f, 9.5f, 58.5f),
                 (6.5f, 58.5f, 6.5f, 61.5f), (6.5f, 61.5f, 12f, 61.5f), (9.5f, 58.5f, 15f, 58.5f), (15f, 58.5f, 15f, 71.5f),
@@ -155,6 +163,7 @@ namespace BichoShow.Herramientas
             // Descanso 2: se juntan las dos rutas.
             Losa("Descanso2", -10f, 16f, 73f, 79f, 0.6f, turquesa);
             Pespunte(-10f, 16f, 73f, 79f, 0.6f);
+            Parches(-10f, 16f, 73f, 79f, 0.6f, turquesaClaro);
             controles.Add(PuntoControl(3, 75.5f, -10f, 16f, 0.6f));
             Flecha(new Vector3(-4.5f, 0.6f, 77.5f), 0f, crema);
             Flecha(new Vector3(4.5f, 0.6f, 77.5f), 0f, crema);
@@ -165,12 +174,14 @@ namespace BichoShow.Herramientas
             // Izquierda: ancha (4,4 m) y lenta, en dos mitades con un descansillo entre medias.
             var izq1 = Cremallera("Cremallera ancha 1", -4.5f, 4.4f, 79f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 0f, coral);
             Losa("Descansillo", -6.7f, -2.3f, 89f, 91.5f, 0.6f, mostaza);
+            Pespunte(-6.7f, -2.3f, 89f, 91.5f, 0.6f);
             var izq2 = Cremallera("Cremallera ancha 2", -4.5f, 4.4f, 91.5f, 5, 2f, 0.6f, 2.5f, 2.5f, 1f, 4.5f, coral);
             // Derecha: estrecha (2,4 m) y de una tirada, con el cursor más rápido.
             var der = Cremallera("Cremallera estrecha", 4.5f, 2.4f, 79f, 9, 2.5f, 0.6f, 4.6f, 1.4f, 0.8f, 0f, azul);
 
             Losa("Destino", -9f, 9f, 101.5f, 108f, 0.6f, turquesa);
             Pespunte(-9f, 9f, 101.5f, 108f, 0.6f);
+            Parches(-9f, 9f, 101.5f, 108f, 0.6f, turquesaClaro);
             controles.Add(PuntoControl(4, 104.5f, -9f, 9f, 0.6f));
             Flecha(new Vector3(0f, 0.6f, 106.5f), 0f, crema);
 
@@ -192,6 +203,7 @@ namespace BichoShow.Herramientas
             Kit("PuenteCinta", decorado, new Vector3(0f, 3.8f, 137f));
             Losa("Meta", -9f, 9f, 138f, 147f, 3.8f, turquesa);
             Cuadricula(-9f, 9f, 138f, 147f, 3.8f);
+            Regla(-9f, 138f, 147f, 3.8f);
             Arco("META", 142f, 3.8f, 18f);
             var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, 3.8f + 1.5f, 144.5f), new Vector3(18f, 3f, 5f));
             Dedal(new Vector3(12f, 3.8f, 144f));
@@ -275,8 +287,82 @@ namespace BichoShow.Herramientas
         {
             var go = E.Bloque(nombre, suelos, new Vector3((x0 + x1) * 0.5f, arriba - grosor * 0.5f, (z0 + z1) * 0.5f),
                               new Vector3(x1 - x0, grosor, z1 - z0), material);
-            if (patas) Patas(x0, x1, z0, z1, arriba - grosor);
+            if (patas)
+            {
+                Patas(x0, x1, z0, z1, arriba - grosor - 0.3f);
+                Vestir(x0, x1, z0, z1, arriba, grosor);
+            }
             return go;
+        }
+
+        /// <summary>
+        /// Lo que hace que una losa parezca de costura y no un bloque: un marco de madera debajo
+        /// (la tela va "tapizada" encima), un ribete acolchado por el borde y botones en el frente.
+        /// </summary>
+        static void Vestir(float x0, float x1, float z0, float z1, float arriba, float grosor)
+        {
+            float w = x1 - x0, d = z1 - z0, abajo = arriba - grosor;
+            M.Decorado(PrimitiveType.Cube, "Marco", decorado, new Vector3((x0 + x1) * 0.5f, abajo - 0.15f, (z0 + z1) * 0.5f),
+                       new Vector3(w + 0.35f, 0.3f, d + 0.35f), madera);
+
+            // Ribete: un cordón por los cuatro bordes de arriba.
+            const float r = 0.11f, dentro = 0.06f;
+            foreach (float z in new[] { z0 + dentro, z1 - dentro })
+            {
+                var c = M.Decorado(PrimitiveType.Cylinder, "Ribete", decorado, new Vector3((x0 + x1) * 0.5f, arriba, z), new Vector3(r * 2f, w * 0.5f, r * 2f), crema);
+                if (c != null) c.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+            }
+            foreach (float x in new[] { x0 + dentro, x1 - dentro })
+            {
+                var c = M.Decorado(PrimitiveType.Cylinder, "Ribete", decorado, new Vector3(x, arriba, (z0 + z1) * 0.5f), new Vector3(r * 2f, d * 0.5f, r * 2f), crema);
+                if (c != null) c.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            }
+
+            // Botones cosidos en el frente (la cara que ve la cámara).
+            int botones = Mathf.Max(2, Mathf.RoundToInt(w / 6f) + 1);
+            for (int i = 0; i < botones; i++)
+            {
+                float x = Mathf.Lerp(x0 + 0.7f, x1 - 0.7f, botones == 1 ? 0.5f : i / (float)(botones - 1));
+                var boton = Kit("Boton", decorado, new Vector3(x, arriba - grosor * 0.5f, z0 - 0.02f), 0f, i % 2 == 0 ? dorado : coral, 0.38f);
+                boton.transform.rotation = Quaternion.Euler(-90f, 0f, 0f) * boton.transform.rotation;
+            }
+        }
+
+        /// <summary>
+        /// Parches de tela cosidos encima de un suelo: en damero, del tono "parche" (y alguno de
+        /// coral para que no sea monótono), cada uno con su pespunte.
+        /// </summary>
+        static void Parches(float x0, float x1, float z0, float z1, float arriba, Material parche)
+        {
+            int nx = Mathf.Max(1, Mathf.RoundToInt((x1 - x0) / 4f)), nz = Mathf.Max(1, Mathf.RoundToInt((z1 - z0) / 3.5f));
+            float cx = (x1 - x0) / nx, cz = (z1 - z0) / nz;
+            int semilla = Mathf.Abs(Mathf.RoundToInt(x0 * 7f + z0 * 13f));
+            for (int i = 0; i < nx; i++)
+                for (int j = 0; j < nz; j++)
+                {
+                    if ((i + j) % 2 == 1) continue;
+                    bool acento = (i * 3 + j * 5 + semilla) % 7 == 0;
+                    float a0 = x0 + i * cx + 0.45f, a1 = x0 + (i + 1) * cx - 0.45f;
+                    float b0 = z0 + j * cz + 0.45f, b1 = z0 + (j + 1) * cz - 0.45f;
+                    if (a1 - a0 < 0.8f || b1 - b0 < 0.8f) continue;
+                    Pegatina("Parche", a0, a1, b0, b1, arriba, acento ? coral : parche, -0.004f);
+                    const float g = 0.06f, m = 0.15f;
+                    Pegatina("Pespunte parche", a0 + m, a1 - m, b0 + m, b0 + m + g, arriba, crema);
+                    Pegatina("Pespunte parche", a0 + m, a1 - m, b1 - m - g, b1 - m, arriba, crema);
+                    Pegatina("Pespunte parche", a0 + m, a0 + m + g, b0 + m, b1 - m, arriba, crema);
+                    Pegatina("Pespunte parche", a1 - m - g, a1 - m, b0 + m, b1 - m, arriba, crema);
+                }
+        }
+
+        /// <summary>Regla en el borde izquierdo de la tabla de corte: marcas cada medio metro.</summary>
+        static void Regla(float x0, float z0, float z1, float arriba)
+        {
+            Pegatina("Regla", x0 + 0.5f, x0 + 1.5f, z0 + 0.5f, z1 - 0.5f, arriba, mostazaClaro, 0.004f);
+            for (float z = z0 + 1f; z < z1 - 0.6f; z += 0.5f)
+            {
+                bool larga = Mathf.Abs(z - Mathf.Round(z)) < 0.01f;
+                Pegatina("Marca regla", x0 + 0.5f, x0 + (larga ? 1.1f : 0.85f), z - 0.025f, z + 0.025f, arriba, negro, 0.008f);
+            }
         }
 
         /// <summary>Patas de madera de una losa hasta la mesa (decorado).</summary>
@@ -291,9 +377,9 @@ namespace BichoShow.Herramientas
         }
 
         /// <summary>Algo pintado en el suelo (sin colisión): guías, marcas.</summary>
-        static void Pegatina(string nombre, float x0, float x1, float z0, float z1, float arriba, Material material)
+        static void Pegatina(string nombre, float x0, float x1, float z0, float z1, float arriba, Material material, float elevar = 0f)
         {
-            M.Decorado(PrimitiveType.Cube, nombre, decorado, new Vector3((x0 + x1) * 0.5f, arriba + 0.012f, (z0 + z1) * 0.5f),
+            M.Decorado(PrimitiveType.Cube, nombre, decorado, new Vector3((x0 + x1) * 0.5f, arriba + 0.012f + elevar, (z0 + z1) * 0.5f),
                        new Vector3(x1 - x0, 0.02f, z1 - z0), material);
         }
 
