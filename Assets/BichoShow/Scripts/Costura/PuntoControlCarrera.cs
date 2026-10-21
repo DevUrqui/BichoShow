@@ -37,7 +37,7 @@ namespace BichoShow
         {
             var cuerpo = otro.attachedRigidbody;
             if (cuerpo == null || !cuerpo.TryGetComponent(out ControladorBicho bicho)) return;
-            if (RondaCostura.Instancia != null) RondaCostura.Instancia.PuntoAlcanzado(bicho, this);
+            if (RondaCarrera.Activa != null) RondaCarrera.Activa.PuntoAlcanzado(bicho, this);
         }
     }
 }

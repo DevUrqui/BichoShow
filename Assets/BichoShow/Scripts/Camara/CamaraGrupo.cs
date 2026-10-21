@@ -75,6 +75,12 @@ namespace BichoShow
 
         public Camera Camara => cam;
 
+        /// <summary>Bichos que la cámara no tiene en cuenta (p. ej. los que celebran en el podio).</summary>
+        public static readonly HashSet<ControladorBicho> SinEncuadrar = new HashSet<ControladorBicho>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Limpiar() => SinEncuadrar.Clear();
+
         Camera cam;
         Vector3 velocidad;
         float inclinacionActual;
@@ -217,7 +223,7 @@ namespace BichoShow
                     if (!b.EsBot) { hayHumanos = true; break; }
 
             foreach (var b in bichos)
-                if (!hayHumanos || !b.EsBot)
+                if ((!hayHumanos || !b.EsBot) && !SinEncuadrar.Contains(b))
                     Anotar(destino, b);
 
             // Lo que viene por delante también tiene que verse; y un poco por detrás, para que los

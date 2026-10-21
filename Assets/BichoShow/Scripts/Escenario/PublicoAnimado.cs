@@ -44,11 +44,18 @@ namespace BichoShow
 
         void Celebrar(ControladorBicho _) => finCelebracion = Time.time + duracionCelebracion;
 
+        /// <summary>Todo el público, de fiesta este rato (p. ej. golpeando las gradas al final de una carrera).</summary>
+        public static void FiestaTodos(float segundos) => fiestaTodosHasta = Mathf.Max(fiestaTodosHasta, Time.time + segundos);
+        static float fiestaTodosHasta = -100f;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Limpiar() => fiestaTodosHasta = -100f;
+
         void Update()
         {
             if (miembros == null) return;
             float t = Time.time;
-            bool fiesta = t < finCelebracion;
+            bool fiesta = t < finCelebracion || t < fiestaTodosHasta;
 
             for (int i = 0; i < miembros.Length; i++)
             {

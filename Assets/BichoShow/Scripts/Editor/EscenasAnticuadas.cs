@@ -21,6 +21,7 @@ namespace BichoShow.Herramientas
         static readonly (string ruta, int version, System.Action crear)[] Generadas =
         {
             (CreadorCumbre.RutaEscena, CreadorCumbre.Version, CreadorCumbre.Crear),
+            (CreadorDespensa.RutaEscena, CreadorDespensa.Version, CreadorDespensa.Crear),
         };
 
         static EscenasAnticuadas() => EditorApplication.playModeStateChanged += AlCambiarModo;

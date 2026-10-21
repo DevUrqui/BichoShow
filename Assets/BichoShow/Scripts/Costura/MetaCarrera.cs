@@ -12,7 +12,7 @@ namespace BichoShow
         {
             var cuerpo = otro.attachedRigidbody;
             if (cuerpo == null || !cuerpo.TryGetComponent(out ControladorBicho bicho)) return;
-            if (RondaCostura.Instancia != null) RondaCostura.Instancia.Llegar(bicho);
+            if (RondaCarrera.Activa != null) RondaCarrera.Activa.Llegar(bicho);
         }
     }
 }

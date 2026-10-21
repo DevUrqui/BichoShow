@@ -17,7 +17,7 @@ namespace BichoShow.Herramientas
     /// </summary>
     public static class Ambientes
     {
-        public enum Tema { Barrio, Playa, Plato, Taller, Invernadero }
+        public enum Tema { Barrio, Playa, Plato, Taller, Invernadero, Cocina }
 
         const string Carpeta = E.Raiz + "/Ambiente";
 
@@ -52,6 +52,16 @@ namespace BichoShow.Herramientas
                         niebla = new Color(0.86f, 0.76f, 0.64f), nieblaInicio = 70f, nieblaFin = 230f,
                         ambienteCielo = new Color(0.95f, 0.85f, 0.72f), ambienteHorizonte = new Color(0.75f, 0.62f, 0.5f), ambienteSuelo = new Color(0.4f, 0.3f, 0.24f),
                         bloom = 0.35f, umbralBloom = 1f, contraste = 10f, saturacion = 15f, temperatura = 12f, vineta = 0.22f, exposicion = 0.05f,
+                    };
+                case Tema.Cocina: // mañana luminosa entrando por la ventana de la cocina
+                    return new Ajustes
+                    {
+                        sol = new Color(1f, 0.94f, 0.82f), intensidadSol = 1.55f, rotacionSol = new Vector3(52f, -35f, 0f),
+                        relleno = new Color(0.65f, 0.8f, 1f), intensidadRelleno = 0.4f, rotacionRelleno = new Vector3(30f, 150f, 0f),
+                        cieloTinte = new Color(0.8f, 0.9f, 1f), cieloSuelo = new Color(0.6f, 0.5f, 0.42f), exposicionCielo = 1.15f,
+                        niebla = new Color(0.95f, 0.9f, 0.82f), nieblaInicio = 90f, nieblaFin = 300f,
+                        ambienteCielo = new Color(0.95f, 0.93f, 0.88f), ambienteHorizonte = new Color(0.82f, 0.75f, 0.65f), ambienteSuelo = new Color(0.5f, 0.4f, 0.32f),
+                        bloom = 0.4f, umbralBloom = 0.95f, contraste = 10f, saturacion = 22f, temperatura = 6f, vineta = 0.18f, exposicion = 0.08f,
                     };
                 case Tema.Invernadero: // atardecer dorado entrando por el cristal del invernadero
                     return new Ajustes
@@ -115,6 +125,7 @@ namespace BichoShow.Herramientas
             if (nombre.Contains("Voley")) return Tema.Playa;
             if (nombre.Contains("Costura")) return Tema.Taller;
             if (nombre.Contains("Cumbre")) return Tema.Invernadero;
+            if (nombre.Contains("Despensa")) return Tema.Cocina;
             if (nombre.Contains("Final") || nombre.Contains("Menu")) return Tema.Plato;
             return Tema.Barrio;
         }

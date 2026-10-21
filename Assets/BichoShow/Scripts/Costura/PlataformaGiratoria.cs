@@ -16,8 +16,13 @@ namespace BichoShow
         public float radio = 2f;
         [Tooltip("Altura de la cara de arriba respecto al pivote.")]
         public float alturaArriba;
+        [Tooltip("Sube y baja un poco, como si flotara (m; 0 = quieta). Los tapones del fregadero.")]
+        public float balanceo;
+        public float periodoBalanceo = 2.2f;
 
         Rigidbody rb;
+        Vector3 inicio;
+        float fase;
         readonly Collider[] encima = new Collider[16];
         readonly HashSet<Rigidbody> movidos = new HashSet<Rigidbody>();
 
@@ -26,6 +31,8 @@ namespace BichoShow
             rb = GetComponent<Rigidbody>();
             rb.isKinematic = true;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
+            inicio = transform.position;
+            fase = (inicio.x * 0.37f + inicio.z * 0.23f) % 1f;
         }
 
         void FixedUpdate()
@@ -33,6 +40,8 @@ namespace BichoShow
             float grados = velocidad * Time.fixedDeltaTime;
             Quaternion paso = Quaternion.Euler(0f, grados, 0f);
             rb.MoveRotation(paso * rb.rotation);
+            if (balanceo > 0f)
+                rb.MovePosition(inicio + Vector3.up * balanceo * Mathf.Sin((Time.time / periodoBalanceo + fase) * Mathf.PI * 2f));
 
             // Quien va encima gira con la plataforma (si no, se le escurriría por debajo).
             Vector3 centro = transform.position + Vector3.up * (alturaArriba + 0.6f);
