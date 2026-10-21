@@ -93,6 +93,14 @@ namespace BichoShow
             if (puestoGorro != null) helice = puestoGorro.transform.Find("HeliceAspas");
             puestoComplemento = Colgar(Complementos[Complemento], anclaCara, giroCara);
             puestoCuerpo = Colgar(Cuerpos[Cuerpo], anclaPecho, giroPecho);
+
+            // Que la silueta (la de cuando algo tapa al bicho) no salga por encima de la ropa.
+            if (TryGetComponent(out SiluetaBicho silueta))
+            {
+                silueta.MarcarPrendas(puestoGorro);
+                silueta.MarcarPrendas(puestoComplemento);
+                silueta.MarcarPrendas(puestoCuerpo);
+            }
         }
 
         GameObject Colgar(string prenda, Transform ancla, Quaternion giro)

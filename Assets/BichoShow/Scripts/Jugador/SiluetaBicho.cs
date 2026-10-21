@@ -10,6 +10,8 @@ namespace BichoShow
     /// cuerpo con dos materiales: uno marca dónde el bicho se ve y el otro pinta la silueta donde
     /// no (así no sale cuando el bicho se tapa a sí mismo). Lo añade ControladorBicho solo.
     /// Solo se ve en los bichos que lleva una persona (los bots no tienen silueta).
+    /// Las prendas del vestuario (y la mano) también marcan "aquí se ve el bicho": si no, la
+    /// silueta del cuerpo que tapan saldría encima de ellas y se verían blanqueadas.
     /// </summary>
     public class SiluetaBicho : MonoBehaviour
     {
@@ -30,6 +32,7 @@ namespace BichoShow
                 copias.Add(Duplicar(cuerpo, "Silueta (marca)", marca));
                 copias.Add(Duplicar(cuerpo, "Silueta", silueta));
             }
+            MarcarPrendas(gameObject);
             Actualizar();
         }
 
@@ -53,6 +56,32 @@ namespace BichoShow
             silueta = new Material(shaderSilueta) { name = "SiluetaBicho" };
             silueta.SetColor("_Color", color);
             return true;
+        }
+
+        /// <summary>
+        /// Las piezas rígidas del bicho (gorros, gafas, capa, la mano…) marcan dónde se ven, como el
+        /// cuerpo. Lo llama el vestuario cada vez que cuelga una prenda.
+        /// </summary>
+        public void MarcarPrendas(GameObject raiz)
+        {
+            if (raiz == null || !PrepararMateriales()) return;
+            foreach (var r in raiz.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (r.name.StartsWith("Silueta") || r.transform.Find("Silueta (marca)") != null) continue;
+                if (!r.TryGetComponent(out MeshFilter filtro) || filtro.sharedMesh == null) continue;
+                var go = new GameObject("Silueta (marca)");
+                go.transform.SetParent(r.transform, false);
+                go.AddComponent<MeshFilter>().sharedMesh = filtro.sharedMesh;
+                var copia = go.AddComponent<MeshRenderer>();
+                copia.shadowCastingMode = ShadowCastingMode.Off;
+                copia.receiveShadows = false;
+                copia.lightProbeUsage = LightProbeUsage.Off;
+                copia.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                var materiales = new Material[Mathf.Max(1, filtro.sharedMesh.subMeshCount)];
+                for (int i = 0; i < materiales.Length; i++) materiales[i] = marca;
+                copia.sharedMaterials = materiales;
+                copia.enabled = r.enabled;
+            }
         }
 
         /// <summary>Otro SkinnedMeshRenderer con la misma malla y los mismos huesos: se deforma igual.</summary>
