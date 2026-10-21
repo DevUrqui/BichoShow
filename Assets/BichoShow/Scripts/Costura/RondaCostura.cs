@@ -9,16 +9,12 @@ namespace BichoShow
     /// no llega, según lo lejos que haya ido. Cuando llega el primero, a los demás les quedan
     /// unos segundos. Si te caes, vuelves al último punto de control que hayas cruzado.
     /// </summary>
-    public class RondaCostura : RondaBase
+    public class RondaCostura : RondaRuta
     {
         [Header("Carrera")]
         [Tooltip("Puntos de control, en orden (sin contar la salida).")]
         public PuntoControlCarrera[] puntosControl;
         public MetaCarrera meta;
-        [Tooltip("Todos los puntos del camino de los bots.")]
-        public PuntoRuta[] ruta;
-        [Tooltip("Por dónde empiezan los bots.")]
-        public PuntoRuta inicioRuta;
         [Tooltip("Z de la salida y de la meta (para el porcentaje de carrera de quien no llega).")]
         public float zSalida;
         public float zMeta = 145f;
@@ -60,7 +56,7 @@ namespace BichoShow
             return llegada[indice] > 0 ? $"¡{llegada[indice]}º EN META!" : $"{Mathf.FloorToInt(avance[indice] * 100f)}% de carrera";
         }
 
-        public bool HaLlegado(ControladorBicho b) => b != null && b.IndiceJugador >= 0 && b.IndiceJugador < 4 && llegada[b.IndiceJugador] > 0;
+        public override bool HaLlegado(ControladorBicho b) => b != null && b.IndiceJugador >= 0 && b.IndiceJugador < 4 && llegada[b.IndiceJugador] > 0;
 
         void Awake() => Instancia = this;
 
@@ -188,26 +184,6 @@ namespace BichoShow
                 Mensaje($"¡Ya hay ganador! Quedan {tiempoTrasPrimero:0} segundos", EstiloShow.Oro, 3f);
                 Sonidos.Reproducir(Sonido.Alarma, null, 0.6f);
             }
-        }
-
-        // ---------------------------------------------------------------------
-        // Bots
-        // ---------------------------------------------------------------------
-
-        /// <summary>El punto del camino más cercano (prefiere los de delante): para seguir tras caerse.</summary>
-        public PuntoRuta PuntoRutaCercano(Vector3 posicion)
-        {
-            PuntoRuta mejor = inicioRuta;
-            float mejorCoste = float.MaxValue;
-            if (ruta == null) return mejor;
-            foreach (var p in ruta)
-            {
-                if (p == null) continue;
-                Vector3 d = p.transform.position - posicion;
-                float coste = d.magnitude + (d.z < -1f ? 8f : 0f) + Mathf.Max(0f, d.y - 1f) * 4f;
-                if (coste < mejorCoste) { mejorCoste = coste; mejor = p; }
-            }
-            return mejor;
         }
     }
 }

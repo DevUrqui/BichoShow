@@ -34,7 +34,7 @@ namespace BichoShow
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void LimpiarEstaticos() => Instancia = null;
 
-        [Tooltip("Todas las pruebas posibles. Cada show elige unas cuantas al azar y acaba con las finales.")]
+        [Tooltip("Todas las pruebas posibles. Cada show elige unas cuantas al azar y acaba con una de las finales.")]
         public Prueba[] pruebas = PruebasPorDefecto();
         [Tooltip("Pruebas (sin contar la final) que se juegan en cada show.")]
         public int pruebasPorShow = 3;
@@ -102,6 +102,7 @@ namespace BichoShow
             new Prueba { escena = "Costura", nombre = "Costura a la fuga" },
             new Prueba { escena = "Voley", nombre = "Voley atados" },
             new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2, esFinal = true },
+            new Prueba { escena = "Cumbre", nombre = "LA GRAN FINAL: La Cumbre del Girasol", multiplicador = 2, esFinal = true },
         };
 
         void OnEnable()
@@ -146,7 +147,7 @@ namespace BichoShow
 
         /// <summary>
         /// Sortea las pruebas de este show (solo las que estén en el build, sin repetir) y pone
-        /// las finales al final. Así cada partida es distinta.
+        /// una final a sorteo al acabar. Así cada partida es distinta.
         /// </summary>
         void ElegirPrograma()
         {
@@ -158,7 +159,9 @@ namespace BichoShow
                 programa.Add(bolsa[k]);
                 bolsa.RemoveAt(k);
             }
-            programa.AddRange(pruebas.Where(p => p.esFinal && Application.CanStreamedLevelBeLoaded(p.escena)));
+            // Una sola gran final, a sorteo entre las que haya.
+            var finales = pruebas.Where(p => p.esFinal && Application.CanStreamedLevelBeLoaded(p.escena)).ToList();
+            if (finales.Count > 0) programa.Add(finales[Random.Range(0, finales.Count)]);
         }
 
         void CargarRonda()

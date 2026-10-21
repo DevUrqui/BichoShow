@@ -40,6 +40,14 @@ namespace BichoShow
         public bool priorizarHumanos = true;
         [Tooltip("En carreras: además de a los jugadores, encuadra este trozo por delante de ellos (m, hacia donde mira la cámara).")]
         public float adelanto;
+        [Header("Órbita (pruebas alrededor de una torre: la cumbre del girasol)")]
+        [Tooltip("La cámara gira alrededor del eje, siempre por fuera de los jugadores y mirando hacia dentro.")]
+        public bool orbitar;
+        public Vector3 ejeOrbita;
+        [Tooltip("Altura de la cámara respecto a lo que se aleja hacia fuera (más = más desde arriba).")]
+        public float alturaOrbita = 0.75f;
+        float anguloOrbita, velocidadAnguloOrbita;
+        bool hayAnguloOrbita;
         [Tooltip("Dónde mirar cuando todavía no hay nadie jugando.")]
         public Vector3 centroSinJugadores = Vector3.zero;
 
@@ -80,6 +88,7 @@ namespace BichoShow
         void LateUpdate()
         {
             RecogerPuntos(puntos);
+            if (orbitar) Orbitar(false);
             Encuadre(puntos, cam.aspect, null, out _, out float inclinacionObjetivo, out _);
             inclinacionActual = Mathf.SmoothDamp(inclinacionActual, inclinacionObjetivo, ref velocidadInclinacion, suavizado * 1.5f);
             Quaternion rotacion = Rotacion(inclinacionActual);
@@ -99,6 +108,7 @@ namespace BichoShow
             if (cam == null) cam = GetComponent<Camera>();
             float a = aspecto ?? cam.aspect;
             RecogerPuntos(puntos);
+            if (orbitar) Orbitar(true);
             Encuadre(puntos, a, null, out _, out inclinacionActual, out _);
             transform.rotation = Rotacion(inclinacionActual);
             Encuadre(puntos, a, inclinacionActual, out Vector3 posicion, out _, out _);
@@ -106,6 +116,29 @@ namespace BichoShow
             posicionSinSacudida = posicion;
             velocidad = Vector3.zero;
             velocidadInclinacion = 0f;
+        }
+
+        /// <summary>
+        /// Coloca la "dirección" de la cámara por fuera de los jugadores, en el ángulo medio en el
+        /// que están alrededor del eje (con vectores, para que no salte al dar la vuelta).
+        /// </summary>
+        void Orbitar(bool alInstante)
+        {
+            Vector3 suma = Vector3.zero;
+            foreach (var p in puntos)
+            {
+                var fuera = new Vector3(p.x - ejeOrbita.x, 0f, p.z - ejeOrbita.z);
+                if (fuera.sqrMagnitude > 0.01f) suma += fuera.normalized;
+            }
+            if (puntos.Count == 0) suma = new Vector3(centroSinJugadores.x - ejeOrbita.x, 0f, centroSinJugadores.z - ejeOrbita.z);
+            if (suma.sqrMagnitude > 0.04f)
+            {
+                float objetivo = Mathf.Atan2(suma.x, suma.z) * Mathf.Rad2Deg;
+                if (alInstante || !hayAnguloOrbita) { anguloOrbita = objetivo; velocidadAnguloOrbita = 0f; hayAnguloOrbita = true; }
+                else anguloOrbita = Mathf.SmoothDampAngle(anguloOrbita, objetivo, ref velocidadAnguloOrbita, suavizado * 2f);
+            }
+            float rad = anguloOrbita * Mathf.Deg2Rad;
+            direccion = new Vector3(Mathf.Sin(rad), alturaOrbita, Mathf.Cos(rad));
         }
 
         // ---------------------------------------------------------------------

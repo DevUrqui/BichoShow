@@ -17,18 +17,20 @@ namespace BichoShow.Herramientas
         public const string KitPlaya = E.Raiz + "/Modelos/KitPlaya.fbx";
         public const string KitPlato = E.Raiz + "/Modelos/KitPlato.fbx";
         public const string KitCostura = E.Raiz + "/Modelos/KitCostura.fbx";
+        public const string KitGirasol = E.Raiz + "/Modelos/KitGirasol.fbx";
         const string CarpetaMateriales = E.CarpetaMateriales + "/Kit";
 
         /// <summary>Materiales que brillan, con su intensidad (la pantalla, poco: encima va texto).</summary>
         static readonly Dictionary<string, float> Emisivos = new Dictionary<string, float>
         {
-            { "Faro", 2.5f }, { "Luz", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f }, { "Chispa", 4f }, { "Llama", 3f },
+            { "Faro", 2.5f }, { "Luz", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f }, { "Chispa", 4f }, { "Llama", 3f }, { "Estrella", 1.5f },
         };
         static readonly HashSet<string> Brillantes = new HashSet<string>
         {
             "Cristal", "Ventana", "Pantalla", "Metal", "Llanta",
             "Botella", "BotellaAmbar", "FlotadorRojo", "PatoAmarillo", "OjoBlanco", "PupilaNegra",
             "Oro", "Lente", "GuanteRojo", "BombaNegra", "Seta", "GemaRoja", "GemaAzul", "PianoNegro", "DedalCostura",
+            "MariquitaRoja", "MariquitaNegra", "AlaCristal", "Semilla", "VentiladorCuerpo",
         };
 
         /// <summary>Giro (en Y) para que una pieza, que mira a su +Z, mire hacia un punto.</summary>

@@ -15,6 +15,8 @@ namespace BichoShow
         public bool saltar;
         [Tooltip("Esperar aquí hasta que este obstáculo diga que es buen momento (IEsperaBot).")]
         public MonoBehaviour esperarA;
+        [Tooltip("Ir con la mano estirada (botón de agarrar) hacia aquí: para coger algo al vuelo.")]
+        public bool agarrar;
         [Tooltip("Ancho útil a cada lado (m): cada bot va por su carril, sin amontonarse.")]
         public float anchura = 1f;
 

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace BichoShow
 {
     /// <summary>
-    /// Bot de carrera ("Costura a la fuga"): sigue los PuntoRuta de la escena. En cada punto
+    /// Bot de carrera (Costura a la fuga, La Cumbre del Girasol): sigue los PuntoRuta de la escena. En cada punto
     /// salta si hay hueco y espera si el obstáculo lo pide (carrete en su carril, panel a punto
     /// de inclinarse, cremallera abierta). Los hábiles cogen más la ruta difícil y reaccionan
     /// antes; los torpes dudan, se despistan y prefieren el camino largo.
@@ -13,9 +13,10 @@ namespace BichoShow
         [Range(0f, 1f)] public float habilidad = 0.55f;
 
         public Vector2 Mover { get; private set; }
-        public bool Agarrar => false;
+        /// <summary>Con la mano estirada cuando va a por algo que hay que agarrar (la corona de la cumbre).</summary>
+        public bool Agarrar => objetivo != null && objetivo.agarrar;
 
-        RondaCostura ronda;
+        RondaRuta ronda;
         ControladorBicho bicho;
         Camera camara;
         PuntoRuta objetivo;
@@ -28,9 +29,9 @@ namespace BichoShow
         public bool ConsumirSaltar() { bool s = saltarPendiente; saltarPendiente = false; return s; }
         public bool ConsumirLanzarse() { bool s = lanzarsePendiente; lanzarsePendiente = false; return s; }
 
-        public void Configurar(RondaCostura rondaCostura, float nivel)
+        public void Configurar(RondaRuta rondaCarrera, float nivel)
         {
-            ronda = rondaCostura;
+            ronda = rondaCarrera;
             habilidad = nivel;
         }
 
@@ -38,7 +39,7 @@ namespace BichoShow
         {
             bicho = GetComponent<ControladorBicho>();
             camara = Camera.main;
-            if (ronda == null) ronda = RondaCostura.Instancia;
+            if (ronda == null) ronda = FindAnyObjectByType<RondaRuta>();
             carril = Random.Range(-1f, 1f);
             semilla = Random.value * 100f;
             if (bicho != null) bicho.AlReaparecer += AlReaparecer;
@@ -105,6 +106,15 @@ namespace BichoShow
                 destino = objetivo.transform.position + objetivo.transform.right * (carril * objetivo.anchura);
                 hacia = Plano(destino - yo);
                 distancia = hacia.magnitude;
+            }
+
+            // Ya ha dejado atrás su punto (una hoja trampolín lo ha lanzado) o está en otro piso
+            // (se ha caído a la vuelta de abajo): buscar otro.
+            if (ronda.AvanceDe(objetivo.transform.position) < ronda.AvanceDe(yo) - 2.5f || Mathf.Abs(objetivo.transform.position.y - yo.y) > 6f)
+            {
+                objetivo = null;
+                Mover = Vector2.zero;
+                return;
             }
 
             // Atascado (empujado contra algo, escalón…): saltar; si sigue, buscar otro punto.
