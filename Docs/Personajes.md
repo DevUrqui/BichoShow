@@ -4,13 +4,13 @@ Cada jugador elige su bicho en **Vestuario**, en la primera fila ("Bicho"). La r
 
 | Bicho | Qué es | Lo suyo |
 |---|---|---|
-| **Bichete** | Mariquita | Caparazón con lunares y raya |
-| **Zumbi** | Abeja | Rayas negras, aguijón y dos pares de alitas que aletean (más rápido en el aire) |
-| **Concha** | Caracol | Concha en espiral a la espalda y antenas con bolas gordas |
-| **Cornelio** | Escarabajo | Caparazón partido en dos y cuerno de rinoceronte |
-| **Chispa** | Luciérnaga | Capucha oscura, alitas y un farolillo en el culete que brilla y da luz de verdad |
+| **Bichete** | Mariquita | Huevo redondo con caparazón de lunares y raya |
+| **Zumbi** | Abeja | Bola gorda amarilla con tres rayas negras, pelusa en la cabeza, aguijón y dos pares de alas grandes que aletean (más rápido en el aire) |
+| **Concha** | Caracol | Alto y estrecho, con los ojos en lo alto de las antenas y una concha enorme en espiral a la espalda |
+| **Cornelio** | Escarabajo | Bajito, ancho y forzudo: brazos y patas gordos, élitros grandes, cejo de gruñón y un cuerno de rinoceronte |
+| **Chispa** | Luciérnaga | Flaca y de ojos grandes, con capucha oscura, alas, lucecitas en las antenas y un farolillo enorme en el culete que alumbra de verdad |
 
-Todos tienen el mismo esqueleto, las mismas animaciones y los mismos anclajes para la ropa, así que juegan exactamente igual: el bicho solo cambia el aspecto. La piel y el caparazón (o la concha) se tiñen del color del jugador, como siempre.
+Cada uno tiene su propia silueta, pero los mismos huesos y animaciones, así que juegan exactamente igual: el bicho solo cambia el aspecto. La piel y el caparazón se tiñen del color del jugador; la concha del caracol, las rayas de la abeja y el farol de la luciérnaga guardan su color. La ropa se ajusta a la talla de cada uno.
 
 ## Prepararlos en Unity (una vez)
 
@@ -35,9 +35,9 @@ Las vistas de prueba salen en `Arte/Blender/vistas/personaje_<bicho>_*.png`.
 
 Para añadir uno nuevo:
 
-1. Añade su forma en `crear_personaje.py`, sin cambiar los huesos ni el orden de los materiales.
+1. Añade su forma en `crear_personaje.py` (su fila en `FORMAS` y lo suyo), sin cambiar los nombres de los huesos ni el orden de los materiales.
 2. Genera su `.fbx` en `Assets/BichoShow/Modelos/` con el nombre del bicho.
-3. Añádelo a `Especies` y `Nombres` en `Scripts/Personaje/PersonajeBicho.cs`, y su paleta en `Paleta` de `Scripts/Editor/CreadorPersonajeAnimado.cs`.
+3. Añádelo a `Especies` y `Nombres` en `Scripts/Personaje/PersonajeBicho.cs`, y su paleta (`Paleta`) y su talla de ropa en `Scripts/Editor/CreadorPersonajeAnimado.cs`.
 4. En Unity, **BichoShow → Personaje: preparar los personajes**.
 
 Online solo cabe un número de bicho por jugador (hasta 255), así que no hace falta tocar nada más.

@@ -56,7 +56,7 @@ namespace BichoShow
                 bicho.renderersColor = modelo.piel;
                 if (bicho.ColorJugador.a > 0f) bicho.AsignarColor(bicho.ColorJugador);
             }
-            if (TryGetComponent(out Vestuario vestuario)) vestuario.CambiarAnclas(modelo.anclaGorro, modelo.anclaCara, modelo.anclaPecho, aspecto);
+            if (TryGetComponent(out Vestuario vestuario)) vestuario.CambiarAnclas(modelo.anclaGorro, modelo.anclaCara, modelo.anclaPecho, aspecto, modelo.tallaRopa);
             if (TryGetComponent(out SiluetaBicho silueta)) silueta.Rehacer();
             // Si el bicho está fuera (saboteando, eliminado…), el modelo nuevo tampoco se ve.
             if (retirado) foreach (var r in modelo.GetComponentsInChildren<Renderer>(true)) r.enabled = false;

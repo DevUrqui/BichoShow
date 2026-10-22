@@ -67,7 +67,7 @@ namespace BichoShow.Herramientas
             if (!File.Exists(E.RutaPrefabBicho) || !File.Exists(E.Raiz + "/Modelos/Bichete.fbx")) return false;
             if (CreadorPersonajeAnimado.Preparados()) return false;
             int opcion = EditorUtility.DisplayDialogComplex("Bicho Show",
-                "Los personajes (Bichete, Zumbi, Concha, Cornelio y Chispa) no están preparados: sin eso no se puede elegir bicho en el vestuario.\n\n¿Prepararlos ahora?",
+                "Los personajes (Bichete, Zumbi, Concha, Cornelio y Chispa) no están preparados o sus modelos han cambiado.\n\n¿Prepararlos ahora?",
                 "Preparar y jugar", "Cancelar", "Jugar así");
             if (opcion == 2) return false;
             EditorApplication.isPlaying = false;

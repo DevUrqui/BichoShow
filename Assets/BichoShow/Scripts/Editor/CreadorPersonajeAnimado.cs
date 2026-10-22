@@ -29,13 +29,20 @@ namespace BichoShow.Herramientas
         // El personaje que se está preparando
         static string RutaModelo, RutaControlador, ScriptBlender;
 
-        /// <summary>¿Están los prefabs de todos los bichos y el bicho sabe cambiar de uno a otro?</summary>
+        /// <summary>
+        /// ¿Están los prefabs de todos los bichos, al día con su modelo (no hay un .fbx más nuevo)
+        /// y el bicho sabe cambiar de uno a otro?
+        /// </summary>
         public static bool Preparados()
         {
             var bicho = AssetDatabase.LoadAssetAtPath<GameObject>(E.RutaPrefabBicho);
             if (bicho == null || bicho.GetComponent<PersonajeBicho>() == null) return false;
             foreach (var n in PersonajeBicho.Especies)
-                if (AssetDatabase.LoadAssetAtPath<GameObject>($"{CarpetaPersonajes}/{n}.prefab") == null) return false;
+            {
+                string prefab = $"{CarpetaPersonajes}/{n}.prefab", modelo = $"{E.Raiz}/Modelos/{n}.fbx";
+                if (!System.IO.File.Exists(prefab)) return false;
+                if (System.IO.File.Exists(modelo) && System.IO.File.GetLastWriteTimeUtc(modelo) > System.IO.File.GetLastWriteTimeUtc(prefab)) return false;
+            }
             return true;
         }
 
@@ -106,6 +113,9 @@ namespace BichoShow.Herramientas
                 { "Suela", (new Color(0.95f, 0.95f, 0.92f), 0.3f) },
                 { "Luz", (new Color(1f, 0.95f, 0.45f), 0.6f) },
                 { "Ala", (new Color(0.82f, 0.94f, 1f, 0.55f), 0.9f) },
+                // Estos dos no se tiñen con el color del jugador: son de cada bicho.
+                { "Concha", (new Color(0.93f, 0.72f, 0.45f), 0.55f) },
+                { "Pelo", (new Color(1f, 0.95f, 0.8f), 0.1f) },
             };
             switch (bicho)
             {
@@ -119,6 +129,7 @@ namespace BichoShow.Herramientas
                     c["Piel"] = (new Color(0.62f, 0.85f, 0.5f), 0.55f);
                     c["Caparazon"] = (new Color(0.85f, 0.55f, 0.35f), 0.7f);
                     c["Barriga"] = (new Color(0.95f, 0.97f, 0.8f), 0.4f);
+                    c["Mancha"] = (new Color(0.5f, 0.3f, 0.18f), 0.4f); // la espiral de la concha
                     c["Bota"] = (new Color(0.9f, 0.42f, 0.62f), 0.45f);
                     break;
                 case "Cornelio": // escarabajo: azul brillante, cuerno oscuro, zapatillas amarillas
@@ -188,6 +199,8 @@ namespace BichoShow.Herramientas
                 if (modelo == null) continue;
                 try
                 {
+                    // Talla de la ropa: lo ancho que es cada uno respecto a Bichete (ver FORMAS en crear_personaje.py).
+                    modelo.tallaRopa = bicho switch { "Zumbi" => 1.12f, "Concha" => 0.85f, "Cornelio" => 1.18f, "Chispa" => 0.88f, _ => 1f };
                     if (bicho == "Chispa") LuzFarol(modelo);
                     PrefabUtility.SaveAsPrefabAsset(modelo.gameObject, $"{CarpetaPersonajes}/{bicho}.prefab");
                     hechos++;
@@ -205,7 +218,7 @@ namespace BichoShow.Herramientas
             var cadera = CreadorPersonaje.Buscar(modelo.transform, "Cadera");
             var go = new GameObject("LuzFarol");
             go.transform.SetParent(modelo.transform, false);
-            go.transform.localPosition = new Vector3(0f, 0.5f, -0.55f); // detrás, a la altura del farol
+            go.transform.localPosition = new Vector3(0f, 0.65f, -1.05f); // detrás del farol (que sobresale del culete)
             if (cadera != null) go.transform.SetParent(cadera, true);
             var luz = go.AddComponent<Light>();
             luz.type = LightType.Point;
@@ -350,6 +363,7 @@ namespace BichoShow.Herramientas
                     vestuario.anclaCara = modelo.anclaCara;
                     vestuario.anclaPecho = modelo.anclaPecho;
                     vestuario.referencia = aspecto;
+                    vestuario.talla = modelo.tallaRopa;
                 }
 
                 if (conEspecies) { if (!raiz.TryGetComponent(out PersonajeBicho _)) raiz.AddComponent<PersonajeBicho>(); }

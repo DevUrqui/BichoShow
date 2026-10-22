@@ -48,6 +48,8 @@ namespace BichoShow
         public Transform anclaPecho;
         [Tooltip("Lo que marca 'de pie y mirando al frente' (el objeto Aspecto).")]
         public Transform referencia;
+        [Tooltip("Tamaño de la ropa (1 = Bichete; cada personaje trae la suya).")]
+        public float talla = 1f;
 
         public int Gorro { get; private set; }
         public int Complemento { get; private set; }
@@ -62,8 +64,9 @@ namespace BichoShow
         }
 
         /// <summary>El personaje ha cambiado: anclajes nuevos y la ropa, otra vez puesta en ellos.</summary>
-        public void CambiarAnclas(Transform gorro, Transform cara, Transform pecho, Transform referenciaNueva)
+        public void CambiarAnclas(Transform gorro, Transform cara, Transform pecho, Transform referenciaNueva, float tallaNueva = 1f)
         {
+            talla = tallaNueva > 0f ? tallaNueva : 1f;
             anclaGorro = gorro;
             anclaCara = cara;
             anclaPecho = pecho;
@@ -133,7 +136,7 @@ namespace BichoShow
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = giro;
             Vector3 escala = ancla.lossyScale;
-            go.transform.localScale = new Vector3(1f / Mathf.Max(0.001f, escala.x), 1f / Mathf.Max(0.001f, escala.y), 1f / Mathf.Max(0.001f, escala.z));
+            go.transform.localScale = new Vector3(talla / Mathf.Max(0.001f, escala.x), talla / Mathf.Max(0.001f, escala.y), talla / Mathf.Max(0.001f, escala.z));
 
             // Si el bicho está retirado (saboteando), la prenda tampoco se ve.
             if (TryGetComponent(out ControladorBicho bicho) && bicho.Retirado)

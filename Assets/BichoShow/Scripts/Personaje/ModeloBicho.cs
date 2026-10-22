@@ -16,6 +16,8 @@ namespace BichoShow
         [Tooltip("Alas (abeja, luciérnaga): aletean por código.")]
         public Transform alaIzq, alaDer;
         public Transform anclaGorro, anclaCara, anclaPecho;
+        [Tooltip("Tamaño de la ropa en este bicho (1 = Bichete): gorros, gafas y capas se ajustan a su cuerpo.")]
+        public float tallaRopa = 1f;
         [Tooltip("Renderers cuya piel (y caparazón) se tiñen con el color del jugador.")]
         public Renderer[] piel;
     }

@@ -5,14 +5,18 @@ Uso (sin abrir Blender; rutas completas):
     blender -b --factory-startup -P crear_personaje.py -- <salida.fbx> <salida.blend> <carpeta_vistas> <especie>
     especie: bichete · abeja · caracol · escarabajo · luciernaga
 
-Todas las especies comparten cuerpo, esqueleto, anclajes del vestuario, materiales (mismo orden)
-y animaciones: en Unity se cambian unas por otras sin tocar nada más. Cambia lo que las distingue:
-  - bichete: caparazón de mariquita con raya y lunares.
-  - abeja: rayas negras, dos pares de alitas (huesos AlaIzq/AlaDer: Unity las hace aletear),
-    aguijón y antenas con bolita negra.
-  - caracol: concha en espiral a la espalda (se tiñe como el caparazón) y antenas largas.
-  - escarabajo: caparazón partido en dos élitros brillantes y un cuerno de rinoceronte.
-  - luciernaga: alitas, capucha oscura y farolillo en el culete (material "Luz": brilla).
+Todas las especies comparten los nombres de los huesos, los anclajes del vestuario, los materiales
+(mismo orden) y las animaciones: en Unity se cambian unas por otras sin tocar nada más. Cada una
+tiene su silueta (FORMAS: tamaño y forma del cuerpo, grosor, ojos, antenas) y lo suyo:
+  - bichete: huevo redondo con caparazón de mariquita, raya y lunares.
+  - abeja: bola gorda y peluda, tres rayas negras, pelusa en la cabeza, dos pares de alas grandes
+    (huesos AlaIzq/AlaDer: Unity las hace aletear) y aguijón.
+  - caracol: alto y estrecho con la base ancha, ojos en lo alto de las antenas y una concha enorme
+    en espiral (material "Concha": no se tiñe).
+  - escarabajo: bajito y ancho de hombros, brazos y patas gordos, élitros grandes, cejo de
+    gruñón y un cuerno de rinoceronte.
+  - luciernaga: flaca, ojos grandes, capucha oscura, alas y un farolillo enorme en el culete
+    (material "Luz": brilla), y lucecitas en las antenas.
 
 Diseño pensado para la cámara del juego (alta y desde atrás) y para que al girar no parezca
 un recortable: cuerpo redondo como un huevo, caparazón de mariquita a la espalda (del color
@@ -25,7 +29,8 @@ Una sola malla con pesos y un esqueleto:
                  > Muslo > Espinilla > Pie
 El cuerpo se reparte entre Cadera y Cuerpo según la altura: se dobla como una gominola.
 Materiales (orden fijo): Piel (se tiñe con el color del jugador), Caparazon (se tiñe más
-oscuro), Barriga, Mancha, Ojo, Pupila, Brillo, Boca, Lengua, Rubor, Bota, Suela.
+oscuro), Barriga, Mancha, Ojo, Pupila, Brillo, Boca, Lengua, Rubor, Bota, Suela, Luz, Ala,
+Concha, Pelo.
 Animaciones (en bucle): Quieto, Andar, Correr, Saltar, Caer, Tumbado, Celebrar.
 
 Convenciones: Z arriba, mira hacia -Y, pies en Z = 0, metros. "Izq" = lado de X negativa.
@@ -55,23 +60,46 @@ LADOS = ((-1, "Izq"), (1, "Der"))
 # Medidas
 # ---------------------------------------------------------------------------
 
-CENTRO = Vector((0.0, 0.0, 0.88))     # centro del cuerpo-huevo
-RADIOS = Vector((0.50, 0.46, 0.58))   # medio ancho, medio fondo, medio alto (abajo es un poco más ancho)
-PERA = 0.10                           # cuánto más ancho es abajo que arriba
+# Cada bicho tiene su silueta: centro del cuerpo (altura), radios (medio ancho, medio fondo,
+# medio alto), pera (cuánto más ancho es abajo que arriba; negativo: más ancho arriba),
+# grosor de brazos y patas, tamaño de los ojos y antenas (codo y punta desde la base).
+FORMAS = {
+    #              centro  radios                 pera   grosor ojos  antena medio          antena punta
+    "bichete":    (0.88, (0.50, 0.46, 0.58),  0.10, 1.00, 1.00, (0.08, -0.04, 0.20), (0.18, -0.11, 0.34)),
+    "abeja":      (0.86, (0.58, 0.54, 0.55),  0.14, 1.00, 1.00, (0.12, -0.02, 0.14), (0.22, -0.16, 0.20)),  # bola peluda
+    "caracol":    (0.95, (0.40, 0.40, 0.69),  0.26, 0.90, 1.00, (0.04, -0.03, 0.20), (0.10, -0.08, 0.36)),  # alto, base ancha, ojos en antenas
+    "escarabajo": (0.80, (0.62, 0.50, 0.50), -0.12, 1.30, 0.85, (0.10, 0.00, 0.10), (0.20, -0.05, 0.15)),  # bajito y ancho de hombros
+    "luciernaga": (0.95, (0.42, 0.40, 0.55),  0.04, 0.85, 1.15, (0.10, -0.10, 0.24), (0.14, -0.32, 0.30)),  # flaca, culete-farol enorme
+}
+_f = FORMAS[ESPECIE]
+CENTRO = Vector((0.0, 0.0, _f[0]))
+RADIOS = Vector(_f[1])
+PERA = _f[2]
+GROSOR = _f[3]
+OJOS = _f[4]
+ARRIBA = CENTRO.z + RADIOS.z           # lo más alto de la cabeza
+ANCHO = RADIOS.x / 0.5                 # respecto a Bichete (separa patas, ojos…)
 
-HOMBRO = Vector((0.44, 0.0, 0.86))
-CODO = Vector((0.58, -0.05, 0.72))
-MUNECA = Vector((0.64, -0.09, 0.58))
-PUNTA_MANO = Vector((0.66, -0.11, 0.46))
-CADERA = Vector((0.20, 0.0, 0.40))
-RODILLA = Vector((0.22, -0.03, 0.26))
-TOBILLO = Vector((0.24, 0.0, 0.13))
-PUNTA_PIE = Vector((0.24, -0.22, 0.04))
-ANTENA_BASE = Vector((0.12, 0.06, 1.42))
-ANTENA_MEDIO = Vector((0.20, 0.02, 1.62))
-ANTENA_PUNTA = Vector((0.30, -0.05, 1.76))
-ALA_BASE = Vector((0.16, 0.42, 1.02))
-ALA_PUNTA = Vector((0.62, 0.62, 1.22))
+
+def altura(k):
+    """Altura relativa al cuerpo: 0 = centro, 1 = arriba del todo, -1 = abajo del todo."""
+    return CENTRO.z + k * RADIOS.z
+
+
+HOMBRO = Vector((RADIOS.x * 0.88, 0.0, CENTRO.z - 0.02))
+CODO = HOMBRO + Vector((0.14, -0.05, -0.14))
+MUNECA = HOMBRO + Vector((0.20, -0.09, -0.28))
+PUNTA_MANO = HOMBRO + Vector((0.22, -0.11, -0.40))
+CADERA = Vector((0.20 * ANCHO, 0.0, 0.40))
+RODILLA = Vector((0.22 * ANCHO, -0.03, 0.26))
+TOBILLO = Vector((0.24 * ANCHO, 0.0, 0.13))
+PUNTA_PIE = Vector((0.24 * ANCHO, -0.22, 0.04))
+ANTENA_BASE = Vector((0.24 * RADIOS.x + (0.06 if ESPECIE == "caracol" else 0.0), 0.06, ARRIBA - 0.04))
+ANTENA_MEDIO = ANTENA_BASE + Vector(_f[5])
+ANTENA_PUNTA = ANTENA_BASE + Vector(_f[6])
+ALA_BASE = Vector((0.32 * RADIOS.x, RADIOS.y * 0.9, altura(0.24)))
+ALA_PUNTA = ALA_BASE + Vector((0.46, 0.20, 0.20))
+OJO_X, OJO_Z = 0.34 * RADIOS.x, altura(0.483)
 
 
 def espejo(v, lado):
@@ -133,7 +161,12 @@ COLORES = {
     "Brillo": ((1.0, 1.0, 1.0), 0.1), "Boca": ((0.28, 0.06, 0.1), 0.6), "Lengua": ((1.0, 0.45, 0.55), 0.5),
     "Rubor": ((1.0, 0.55, 0.6), 0.7), "Bota": ((0.2, 0.75, 0.75), 0.5), "Suela": ((0.95, 0.95, 0.92), 0.7),
     "Luz": ((1.0, 0.95, 0.4), 0.3), "Ala": ((0.85, 0.95, 1.0), 0.15),
+    "Concha": ((0.93, 0.72, 0.45), 0.35), "Pelo": ((1.0, 0.95, 0.8), 0.9),   # estos dos no se tiñen
 }
+if ESPECIE == "caracol":
+    COLORES["Mancha"] = ((0.5, 0.3, 0.18), 0.4)
+if ESPECIE == "abeja":
+    COLORES["Piel"] = ((1.0, 0.78, 0.2), 0.55)
 ORDEN_MATERIALES = list(COLORES.keys())
 MAT = {n: material(n, c, r) for n, (c, r) in COLORES.items()}
 
@@ -163,14 +196,14 @@ hueso("Cadera", (0, 0, 0.40), (0, 0, 0.70), "Raiz")
 hueso("Cuerpo", (0, 0, 0.70), (0, 0, 1.40), "Cadera")
 # Anclajes del vestuario (sin pesos): Unity cuelga de aquí gorros y complementos.
 #   AnclaGorro: en lo alto de la cabeza · AnclaCara: delante de los ojos · AnclaPecho: encima de la barriga
-_ojo = delante(0.17, 1.16, -0.07)
-hueso("AnclaGorro", (0, 0.0, 1.37), (0, 0.0, 1.55), "Cuerpo")
-hueso("AnclaCara", (0, _ojo.y - 0.12, 1.16), (0, _ojo.y - 0.25, 1.16), "Cuerpo")
-_pecho = delante(0.0, 0.76, 0.0)
+_ojo = delante(OJO_X, OJO_Z, -0.07)
+hueso("AnclaGorro", (0, 0.0, ARRIBA - 0.09), (0, 0.0, ARRIBA + 0.09), "Cuerpo")
+hueso("AnclaCara", (0, _ojo.y - 0.12, OJO_Z), (0, _ojo.y - 0.25, OJO_Z), "Cuerpo")
+_pecho = delante(0.0, altura(-0.207), 0.0)
 hueso("AnclaPecho", _pecho, _pecho + Vector((0, -0.12, 0)), "Cuerpo")
-print("Anclas: cara y =", round(_ojo.y - 0.12, 3), "· pecho =", tuple(round(v, 3) for v in _pecho))
+print("Anclas: gorro z =", round(ARRIBA - 0.09, 3), "· cara y =", round(_ojo.y - 0.12, 3), "· pecho =", tuple(round(v, 3) for v in _pecho))
 for lado, s in LADOS:
-    ojo = delante(0.17 * lado, 1.16, 0.0)
+    ojo = delante(OJO_X * lado, OJO_Z, 0.0)
     hueso(f"Ojo{s}", ojo, ojo + Vector((0, -0.12, 0)), "Cuerpo")
     hueso(f"Antena{s}1", espejo(ANTENA_BASE, lado), espejo(ANTENA_MEDIO, lado), "Cuerpo")
     hueso(f"Antena{s}2", espejo(ANTENA_MEDIO, lado), espejo(ANTENA_PUNTA, lado), f"Antena{s}1", True)
@@ -263,12 +296,15 @@ deformar_pera(esfera(bm, CENTRO, RADIOS, 0, 40, 24))
 cuerpo = nuevo("Cuerpo", bm, ["Piel"])
 pesar_por_altura(cuerpo)
 
-def casquete(nombre, material, quitar, escala=1.06, grosor=0.045):
-    """Una capa sobre el cuerpo (caparazón, rayas, capucha): se quitan los vértices que cumplan "quitar"."""
+def casquete(nombre, material, quitar, escala=1.06, grosor=0.045, cortes=()):
+    """Una capa sobre el cuerpo (caparazón, rayas, capucha): se quitan los vértices que cumplan "quitar"
+    y lo que quede al otro lado de cada corte (punto, normal: se quita hacia donde apunta), con borde limpio."""
     bm = bmesh.new()
     verts = esfera(bm, CENTRO + Vector((0, 0.01, 0.02)), RADIOS * escala, 0, 48, 48)
     deformar_pera(verts)
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if quitar(v.co)], context="VERTS")
+    for punto, normal in cortes:
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=Vector(punto), plane_no=Vector(normal), clear_outer=True)
     obj = nuevo(nombre, bm, [material])
     mod = obj.modifiers.new("Grosor", "SOLIDIFY")
     mod.thickness = grosor
@@ -280,14 +316,9 @@ def casquete(nombre, material, quitar, escala=1.06, grosor=0.045):
     return obj
 
 
-if ESPECIE in ("bichete", "escarabajo"):
-    # --- Caparazón en la espalda (el escarabajo, partido en dos élitros por el medio) ---
-    if ESPECIE == "bichete":
-        casquete("Caparazon", "Caparazon", lambda c: c.y < 0.10 or c.z < 0.42)
-    else:
-        casquete("Caparazon", "Caparazon", lambda c: c.y < 0.06 or c.z < 0.36 or abs(c.x) < 0.035, escala=1.08, grosor=0.06)
-
 if ESPECIE == "bichete":
+    # --- Caparazón de mariquita en la espalda, con raya y lunares ---
+    casquete("Caparazon", "Caparazon", lambda c: c.y < 0.10 or c.z < altura(-0.79))
     bm = bmesh.new()
     for i in range(16):
         elev = -0.55 + 1.35 * i / 15  # de abajo (espalda baja) a arriba (nuca)
@@ -297,7 +328,6 @@ if ESPECIE == "bichete":
     raya = nuevo("Raya", bm, ["Mancha"])
     pesar_por_altura(raya)
 
-    # --- Lunares del caparazón ---
     bm = bmesh.new()
     for lado, _ in LADOS:
         for azimut, elev, radio in ((35, 0.35, 0.10), (60, -0.05, 0.085), (28, -0.3, 0.075), (70, 0.45, 0.06)):
@@ -308,35 +338,46 @@ if ESPECIE == "bichete":
     lunares = nuevo("Lunares", bm, ["Mancha"])
     pesar_por_altura(lunares)
 
-if ESPECIE == "abeja":
-    # --- Rayas negras alrededor del cuerpo (por delante las tapa la barriga) ---
-    for i, (z0, z1) in enumerate(((0.33, 0.5), (0.64, 0.82))):
-        casquete(f"Raya{i}", "Mancha", lambda c, z0=z0, z1=z1: c.z < z0 or c.z > z1, escala=1.035, grosor=0.02)
-    # --- Aguijón ---
-    puntas = [Vector((0, 0.38, 0.42)), Vector((0, 0.5, 0.36)), Vector((0, 0.62, 0.28))]
+if ESPECIE == "escarabajo":
+    # --- Caparazón enorme partido en dos élitros que le cubren espalda y costados ---
+    for lado, s in LADOS:
+        casquete(f"Elitro{s}", "Caparazon", lambda c: False, escala=1.1, grosor=0.08,
+                 cortes=(((lado * 0.025, 0, 0), (-lado, 0, 0)), ((0, -0.1, 0), (0, -1, 0)), ((0, 0, altura(-0.88)), (0, 0, -1))))
 
-if ESPECIE == "caracol":
-    pass  # la concha va con los tubos (más abajo)
+if ESPECIE == "abeja":
+    # --- Tres rayas negras gordas (la de arriba, solo por detrás: no cruza la cara) ---
+    for i, (k0, k1, solo_detras) in enumerate(((-0.95, -0.68, False), (-0.42, -0.16, False), (0.1, 0.36, True))):
+        casquete(f"Raya{i}", "Mancha",
+                 lambda c, z0=altura(k0), z1=altura(k1), d=solo_detras: c.z < z0 or c.z > z1 or (d and c.y < -0.12),
+                 escala=1.035, grosor=0.025)
+    # --- Pelusa en lo alto de la cabeza ---
+    bm = bmesh.new()
+    for x, y, z, r in ((0.0, 0.02, 0.05, 0.12), (-0.1, 0.06, 0.0, 0.09), (0.1, 0.06, 0.0, 0.09), (0.0, -0.08, 0.0, 0.08)):
+        esfera(bm, (x, y, ARRIBA + z - 0.04), (r, r, r * 0.85), 0, 16, 8)
+    pelusa = nuevo("Pelusa", bm, ["Pelo"])
+    pesar_todo(pelusa, "Cuerpo")
 
 if ESPECIE == "luciernaga":
-    # --- Capucha oscura y farolillo que brilla en el culete ---
-    casquete("Capucha", "Mancha", lambda c: c.z < 1.3, escala=1.03, grosor=0.03)
+    # --- Capucha oscura y un farolillo enorme que brilla en el culete ---
+    casquete("Capucha", "Mancha", lambda c: c.z < altura(0.72), escala=1.03, grosor=0.03)
+    farol_centro = Vector((0, RADIOS.y + 0.16, altura(-0.6)))
     bm = bmesh.new()
-    esfera(bm, (0, 0.36, 0.5), (0.36, 0.3, 0.3), 0, 32, 16)
+    esfera(bm, farol_centro, (0.36, 0.42, 0.36), 0, 32, 16)
     farol = nuevo("Farol", bm, ["Luz"])
     pesar_todo(farol, "Cadera")
     bm = bmesh.new()
-    esfera(bm, (0, 0.3, 0.56), (0.39, 0.3, 0.12), 0, 32, 12)          # aro oscuro donde empieza el farol
+    for i, (dy, r, rz) in enumerate(((-0.2, 0.37, 0.33), (0.08, 0.385, 0.35))):   # aros oscuros: parece un farolillo
+        esfera(bm, farol_centro + Vector((0, dy, 0)), (r, 0.05, rz), 0, 32, 10)
     aro = nuevo("AroFarol", bm, ["Mancha"])
     pesar_todo(aro, "Cadera")
 
 if CON_ALAS:
-    # --- Alitas (cada lado con su hueso; la abeja lleva dos pares) ---
+    # --- Alas (cada lado con su hueso; la abeja lleva dos pares grandes) ---
     for lado, s in LADOS:
         bm = bmesh.new()
         base = espejo(ALA_BASE, lado)
         direccion = (espejo(ALA_PUNTA, lado) - base).normalized()
-        pares = ((0.3, 0.16, 0.0), (0.2, 0.11, -0.16)) if ESPECIE == "abeja" else ((0.34, 0.15, 0.0),)
+        pares = ((0.44, 0.22, 0.0), (0.3, 0.15, -0.2)) if ESPECIE == "abeja" else ((0.36, 0.15, 0.0), (0.26, 0.11, -0.14))
         for largo, ancho, baja in pares:
             centro = base + direccion * (largo * 0.95) + Vector((0, 0, baja))
             arriba = (Vector((0, 0, 1)) - direccion * direccion.z).normalized()
@@ -346,28 +387,35 @@ if CON_ALAS:
         ala = nuevo(f"Ala{s}", bm, ["Ala"])
         pesar_todo(ala, f"Ala{s}")
 
+
 # --- Barriga ---
 bm = bmesh.new()
-p = delante(0.0, 0.60, -0.06)
-esfera(bm, p, (0.27, 0.1, 0.23), 0, 28, 14)
+p = delante(0.0, altura(-0.483), -0.06)
+esfera(bm, p, (0.54 * RADIOS.x, 0.1, 0.4 * RADIOS.z), 0, 28, 14)
 barriga = nuevo("Barriga", bm, ["Barriga"])
 pesar_por_altura(barriga)
 
 # --- Ojos (hueso propio, para parpadear) ---
-for lado, s in LADOS:
-    centro = delante(0.17 * lado, 1.16, -0.07)
-    bm = bmesh.new()
-    esfera(bm, centro, (0.145, 0.11, 0.165), 0)
-    pupila = centro + Vector((-0.012 * lado, -0.1, -0.015))
-    esfera(bm, pupila, (0.075, 0.03, 0.09), 1, 20, 10)
-    esfera(bm, pupila + Vector((0.025, -0.022, 0.035)), (0.026, 0.012, 0.026), 2, 12, 6)
-    esfera(bm, pupila + Vector((-0.02, -0.024, -0.035)), (0.012, 0.008, 0.012), 2, 10, 6)
-    ojo = nuevo(f"Ojo{s}", bm, ["Ojo", "Pupila", "Brillo"])
-    pesar_todo(ojo, f"Ojo{s}")
+def ojo_entero(bm, centro, k, lado):
+    """Ojo blanco con pupila y dos brillos, mirando al frente (-Y); k = tamaño."""
+    esfera(bm, centro, (0.145 * k, 0.11 * k, 0.165 * k), 0)
+    pupila = centro + Vector((-0.012 * lado, -0.1 * k, -0.015 * k))
+    esfera(bm, pupila, (0.075 * k, 0.03 * k, 0.09 * k), 1, 20, 10)
+    esfera(bm, pupila + Vector((0.025, -0.022, 0.035)) * k, (0.026 * k, 0.012 * k, 0.026 * k), 2, 12, 6)
+    esfera(bm, pupila + Vector((-0.02, -0.024, -0.035)) * k, (0.012 * k, 0.008 * k, 0.012 * k), 2, 10, 6)
+
+
+# (el caracol los lleva en la punta de las antenas)
+if ESPECIE != "caracol":
+    for lado, s in LADOS:
+        bm = bmesh.new()
+        ojo_entero(bm, delante(OJO_X * lado, OJO_Z, -0.07), OJOS, lado)
+        ojo = nuevo(f"Ojo{s}", bm, ["Ojo", "Pupila", "Brillo"])
+        pesar_todo(ojo, f"Ojo{s}")
 
 # --- Boca abierta con lengua, y coloretes ---
 bm = bmesh.new()
-p = delante(0.0, 0.93, 0.0)
+p = delante(0.0, altura(0.086), 0.0)
 for v in esfera(bm, p, (0.15, 0.03, 0.085), 0, 24, 12):                         # hueco de la boca
     if v.co.z > p.z:
         v.co.z = p.z + (v.co.z - p.z) * 0.18                                       # arriba plana: una "D" sonriente
@@ -376,7 +424,7 @@ boca = nuevo("Boca", bm, ["Boca", "Lengua"])
 pesar_por_altura(boca)
 for lado, s in LADOS:
     bm = bmesh.new()
-    p = delante(0.32 * lado, 1.0, -0.005)
+    p = delante(0.64 * RADIOS.x * lado, altura(0.207), -0.005)
     esfera(bm, p, (0.075, 0.025, 0.045), 0, 16, 8, rot=hacia(Vector((0.55 * lado, -1, 0))) @ Matrix.Rotation(math.pi / 2, 4, "X"))
     rubor = nuevo(f"Rubor{s}", bm, ["Rubor"])
     pesar_por_altura(rubor)
@@ -384,9 +432,10 @@ for lado, s in LADOS:
 # --- Manoplas y zapatillas ---
 for lado, s in LADOS:
     bm = bmesh.new()
-    c = espejo(Vector((0.66, -0.1, 0.5)), lado)
-    esfera(bm, c, (0.11, 0.1, 0.115), 0)
-    esfera(bm, c + Vector((-0.05 * lado, -0.07, 0.045)), (0.045, 0.04, 0.05), 0, 16, 8)
+    c = espejo(HOMBRO + Vector((0.22, -0.1, -0.36)), lado)
+    g = 1.0 + (GROSOR - 1.0) * 0.6
+    esfera(bm, c, (0.11 * g, 0.1 * g, 0.115 * g), 0)
+    esfera(bm, c + Vector((-0.05 * lado, -0.07, 0.045)) * g, (0.045 * g, 0.04 * g, 0.05 * g), 0, 16, 8)
     mano = nuevo(f"Mano{s}", bm, ["Piel"])
     pesar_todo(mano, f"Mano{s}")
 
@@ -463,47 +512,73 @@ def mezcla(t, t0, ancho, a, b):
 
 
 for lado, s in LADOS:
-    pts = [espejo(Vector((0.36, 0.0, 0.88)), lado), espejo(HOMBRO, lado), espejo(CODO, lado), espejo(MUNECA, lado),
-           espejo(Vector((0.65, -0.1, 0.52)), lado)]
-    tubo(f"Brazo{s}", pts, 0.062,
+    pts = [espejo(HOMBRO + Vector((-0.08, 0.0, 0.02)), lado), espejo(HOMBRO, lado), espejo(CODO, lado), espejo(MUNECA, lado),
+           espejo(HOMBRO + Vector((0.21, -0.1, -0.34)), lado)]
+    tubo(f"Brazo{s}", pts, 0.062 * GROSOR,
          lambda t, s=s: mezcla(t, 0.15, 0.08, "Cuerpo", f"Brazo{s}") if t < 0.3 else
          (mezcla(t, 0.52, 0.09, f"Brazo{s}", f"Antebrazo{s}") if t < 0.85 else mezcla(t, 0.9, 0.05, f"Antebrazo{s}", f"Mano{s}")),
-         radio_final=0.055)
+         radio_final=0.055 * GROSOR)
 
-    pts = [espejo(Vector((0.16, 0.0, 0.50)), lado), espejo(CADERA, lado), espejo(RODILLA, lado), espejo(TOBILLO, lado),
-           espejo(Vector((0.24, 0.0, 0.08)), lado)]
-    tubo(f"Pata{s}", pts, 0.075,
+    pts = [espejo(Vector((0.16 * ANCHO, 0.0, 0.50)), lado), espejo(CADERA, lado), espejo(RODILLA, lado), espejo(TOBILLO, lado),
+           espejo(Vector((TOBILLO.x, 0.0, 0.08)), lado)]
+    tubo(f"Pata{s}", pts, 0.075 * GROSOR,
          lambda t, s=s: mezcla(t, 0.15, 0.08, "Cadera", f"Muslo{s}") if t < 0.3 else
          (mezcla(t, 0.5, 0.08, f"Muslo{s}", f"Espinilla{s}") if t < 0.85 else mezcla(t, 0.88, 0.05, f"Espinilla{s}", f"Pie{s}")))
 
     pts = [espejo(ANTENA_BASE + Vector((0, 0.02, -0.08)), lado), espejo(ANTENA_BASE, lado), espejo(ANTENA_MEDIO, lado),
            espejo(ANTENA_PUNTA, lado)]
-    tubo(f"Antena{s}", pts, 0.026,
+    grosor_antena = {"caracol": 0.045, "escarabajo": 0.032}.get(ESPECIE, 0.026)
+    tubo(f"Antena{s}", pts, grosor_antena,
          lambda t, s=s: mezcla(t, 0.2, 0.08, "Cuerpo", f"Antena{s}1") if t < 0.45 else mezcla(t, 0.62, 0.1, f"Antena{s}1", f"Antena{s}2"),
-         anillos=18, lados=10, radio_final=0.02)
+         anillos=18, lados=10, radio_final=grosor_antena * 0.8)
     bm = bmesh.new()
-    radio_bolita = {"caracol": 0.09, "abeja": 0.055, "escarabajo": 0.05, "luciernaga": 0.05}.get(ESPECIE, 0.07)
-    esfera(bm, espejo(ANTENA_PUNTA, lado), (radio_bolita, radio_bolita, radio_bolita), 0, 20, 10)
-    bolita = nuevo(f"Bolita{s}", bm, ["Piel" if ESPECIE in ("bichete", "caracol") else "Mancha"])
+    if ESPECIE == "caracol":
+        # Los ojos del caracol, en lo alto de las antenas.
+        ojo_entero(bm, espejo(ANTENA_PUNTA, lado) + Vector((0, -0.02, 0.06)), 0.8, lado)
+        bolita = nuevo(f"OjoAntena{s}", bm, ["Ojo", "Pupila", "Brillo"])
+    else:
+        radio_bolita = {"abeja": 0.065, "escarabajo": 0.05, "luciernaga": 0.075}.get(ESPECIE, 0.07)
+        esfera(bm, espejo(ANTENA_PUNTA, lado), (radio_bolita, radio_bolita, radio_bolita), 0, 20, 10)
+        bolita = nuevo(f"Bolita{s}", bm, [{"bichete": "Piel", "luciernaga": "Luz"}.get(ESPECIE, "Mancha")])
     pesar_todo(bolita, f"Antena{s}2")
 
 if ESPECIE == "abeja":
-    tubo("Aguijon", puntas, 0.07, lambda t: [("Cadera", 1.0)], anillos=10, lados=12, radio_final=0.005, mat="Mancha")
+    puntas = [Vector((0, RADIOS.y * 0.85, altura(-0.8))), Vector((0, RADIOS.y + 0.1, altura(-0.92))), Vector((0, RADIOS.y + 0.26, altura(-1.02)))]
+    tubo("Aguijon", puntas, 0.09, lambda t: [("Cadera", 1.0)], anillos=10, lados=12, radio_final=0.005, mat="Mancha")
 
 if ESPECIE == "escarabajo":
-    # Cuerno de rinoceronte, curvado hacia arriba, entre los ojos y la frente.
-    cuerno = [Vector((0, -0.28, 1.26)), Vector((0, -0.42, 1.4)), Vector((0, -0.46, 1.58)), Vector((0, -0.38, 1.74))]
-    tubo("Cuerno", cuerno, 0.1, lambda t: [("Cuerpo", 1.0)], anillos=16, lados=14, radio_final=0.018, mat="Mancha")
+    # Cejo gordo y oscuro encima de los ojos: cara de forzudo gruñón.
+    cejo = []
+    for i in range(7):
+        x = (-1 + 2 * i / 6) * OJO_X * 1.55
+        cejo.append(delante(x, OJO_Z + 0.16 - 0.05 * abs(x) / OJO_X, -0.03))
+    tubo("Cejo", cejo, 0.05, lambda t: [("Cuerpo", 1.0)], anillos=24, lados=12, mat="Mancha")
+    # Cuerno de rinoceronte, grande y curvado hacia arriba, en la frente.
+    base = delante(0.0, altura(0.66), 0.0) + Vector((0, 0.08, 0))
+    cuerno = [base, base + Vector((0, -0.18, 0.14)), base + Vector((0, -0.26, 0.38)), base + Vector((0, -0.16, 0.6))]
+    tubo("Cuerno", cuerno, 0.13, lambda t: [("Cuerpo", 1.0)], anillos=18, lados=16, radio_final=0.02, mat="Mancha")
 
 if ESPECIE == "caracol":
-    # Concha en espiral a la espalda: un tubo que se enrosca hacia dentro y adelgaza.
-    centro_concha = Vector((0, 0.74, 0.92))
-    puntos_concha = []
-    for i in range(15):
-        a = i / 14 * 3.2 * math.pi
-        r = 0.42 * math.exp(-0.17 * a)
-        puntos_concha.append(centro_concha + Vector((0, r * math.sin(a), -r * math.cos(a))))
-    tubo("Concha", puntos_concha, 0.25, lambda t: [("Cuerpo", 1.0)], anillos=60, lados=20, radio_final=0.04, mat="Caparazon")
+    # Concha en espiral a la espalda, grande (asoma por encima de la cabeza): un tubo que se
+    # enrosca hacia dentro y adelgaza, con la espiral marcada en oscuro a los dos lados.
+    centro_concha = Vector((0, RADIOS.y + 0.24, CENTRO.z + 0.12))
+    vueltas, r0, caida = 3.2 * math.pi, 0.5, 0.17
+    grueso0, grueso1 = 0.3, 0.04
+    ANCHO_CONCHA = 1.55   # más ancha que alta de sección: desde atrás se ve como una concha, no como una rueda
+
+    def espiral(u):
+        a = u * vueltas
+        r = r0 * math.exp(-caida * a)
+        return centro_concha + Vector((0, r * math.sin(a), -r * math.cos(a)))
+
+    tubo("Concha", [espiral(i / 14) for i in range(15)], grueso0, lambda t: [("Cuerpo", 1.0)],
+         anillos=60, lados=20, radio_final=grueso1, mat="Concha")
+    concha = piezas[-1]
+    for v in concha.data.vertices:
+        v.co.x *= ANCHO_CONCHA
+    for lado, s in LADOS:
+        linea = [espiral(i / 40) + Vector((lado * 0.95 * ANCHO_CONCHA * (grueso0 + (grueso1 - grueso0) * i / 40), 0, 0)) for i in range(41)]
+        tubo(f"Espiral{s}", linea, 0.03, lambda t: [("Cuerpo", 1.0)], anillos=80, lados=8, radio_final=0.012, mat="Mancha")
 
 # ---------------------------------------------------------------------------
 # Una sola malla, materiales en orden fijo, con el esqueleto
@@ -738,7 +813,7 @@ if CARPETA_VISTAS:
     escena.camera = camara
     escena.render.resolution_x = escena.render.resolution_y = 600
 
-    def foto(nombre, accion, cuadro, posicion, mirar=(0, 0, 0.85), escala=2.3):
+    def foto(nombre, accion, cuadro, posicion, mirar=(0, 0, 1.0), escala=2.7):
         esqueleto.animation_data.action = accion
         escena.frame_set(cuadro)
         camara.data.ortho_scale = escala
