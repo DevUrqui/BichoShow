@@ -102,6 +102,7 @@ namespace BichoShow
             new Prueba { escena = "Costura", nombre = "Costura a la fuga" },
             new Prueba { escena = "Despensa", nombre = "Despensa Deslizante" },
             new Prueba { escena = "Voley", nombre = "Voley atados" },
+            new Prueba { escena = "Cortacesped", nombre = "El Cortacésped Mecha" },
             new Prueba { escena = "Final", nombre = "LA GRAN FINAL: Juntos o nada", multiplicador = 2, esFinal = true },
             new Prueba { escena = "Cumbre", nombre = "LA GRAN FINAL: La Cumbre del Girasol", multiplicador = 2, esFinal = true },
         };
