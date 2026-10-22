@@ -23,6 +23,8 @@ namespace BichoShow
         public Transform brazoIzq, brazoDer, antebrazoIzq, antebrazoDer, manoIzq, manoDer;
         [Tooltip("Antenas (opcional): se bambolean como un muelle con los acelerones, frenazos y botes.")]
         public Transform antenaIzq, antenaDer, puntaAntenaIzq, puntaAntenaDer;
+        [Tooltip("Alas (opcional: abeja, luciérnaga): aletean solas, más deprisa en el aire.")]
+        public Transform alaIzq, alaDer;
 
         [Header("Antenas")]
         public float rigidezAntenas = 110f;
@@ -67,6 +69,7 @@ namespace BichoShow
         // Brazos al agarrar
         Vector3 brazoAManoIzq, brazoAManoDer;
         Quaternion antebrazoReposoIzq, antebrazoReposoDer;
+        Quaternion alaReposoIzq, alaReposoDer;
         float pesoAgarre;
 
         // Antenas (muelle) y giro
@@ -86,16 +89,41 @@ namespace BichoShow
                 animador.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
             rotacionVisual = transform.rotation;
+            Reposo();
+            siguienteParpadeo = Time.time + Random.Range(1f, 4f);
+        }
 
-            // Pose de reposo (la del modelo antes de que el Animator la toque).
+        /// <summary>Pose de reposo (la del modelo antes de que el Animator la toque).</summary>
+        void Reposo()
+        {
             if (ojoIzq != null) { escalaOjoIzq = ojoIzq.localScale; ejeArribaIzq = EjeHaciaArriba(ojoIzq); }
             if (ojoDer != null) { escalaOjoDer = ojoDer.localScale; ejeArribaDer = EjeHaciaArriba(ojoDer); }
             if (brazoIzq != null && manoIzq != null) brazoAManoIzq = brazoIzq.InverseTransformDirection(manoIzq.position - brazoIzq.position);
             if (brazoDer != null && manoDer != null) brazoAManoDer = brazoDer.InverseTransformDirection(manoDer.position - brazoDer.position);
             if (antebrazoIzq != null) antebrazoReposoIzq = antebrazoIzq.localRotation;
             if (antebrazoDer != null) antebrazoReposoDer = antebrazoDer.localRotation;
+            if (alaIzq != null) alaReposoIzq = alaIzq.localRotation;
+            if (alaDer != null) alaReposoDer = alaDer.localRotation;
+        }
 
-            siguienteParpadeo = Time.time + Random.Range(1f, 4f);
+        /// <summary>Otro personaje (PersonajeBicho): sus huesos, su animador y su pose de reposo.</summary>
+        public void Reconectar(ModeloBicho m)
+        {
+            animador = m.animador;
+            if (animador != null)
+            {
+                animador.applyRootMotion = false;
+                animador.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                if (animador.runtimeAnimatorController != null) animador.Play(0, 0, Random.value);
+            }
+            ojoIzq = m.ojoIzq; ojoDer = m.ojoDer;
+            brazoIzq = m.brazoIzq; brazoDer = m.brazoDer;
+            antebrazoIzq = m.antebrazoIzq; antebrazoDer = m.antebrazoDer;
+            manoIzq = m.manoIzq; manoDer = m.manoDer;
+            antenaIzq = m.antenaIzq; antenaDer = m.antenaDer;
+            puntaAntenaIzq = m.puntaAntenaIzq; puntaAntenaDer = m.puntaAntenaDer;
+            alaIzq = m.alaIzq; alaDer = m.alaDer;
+            Reposo();
         }
 
         void Start()
@@ -151,7 +179,20 @@ namespace BichoShow
             Orientar(dt);
             BrazosAlAgarrar(dt);
             Antenas(dt);
+            Alas();
             Ojos();
+        }
+
+        /// <summary>Las alitas aletean siempre un poco; en el aire, a toda pastilla.</summary>
+        void Alas()
+        {
+            if (alaIzq == null && alaDer == null) return;
+            bool enAire = Time.time - ultimoEnSuelo > 0.12f;
+            float aleteo = enAire ? Mathf.Sin(Time.time * 55f) * 38f : Mathf.Sin(Time.time * 22f) * 9f;
+            Vector3 eje = raizVisual != null ? raizVisual.forward : transform.forward;
+            // Desde la pose de reposo (las animaciones no mueven las alas: si no, el giro se acumularía).
+            if (alaIzq != null) { alaIzq.localRotation = alaReposoIzq; alaIzq.rotation = Quaternion.AngleAxis(-aleteo, eje) * alaIzq.rotation; }
+            if (alaDer != null) { alaDer.localRotation = alaReposoDer; alaDer.rotation = Quaternion.AngleAxis(aleteo, eje) * alaDer.rotation; }
         }
 
         /// <summary>

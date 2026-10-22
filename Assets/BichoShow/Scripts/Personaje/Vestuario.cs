@@ -3,7 +3,7 @@ using UnityEngine;
 namespace BichoShow
 {
     /// <summary>
-    /// Gorros, cosas de la cara y cosas del cuerpo de Bichete. Cuelgan de los anclajes de su
+    /// Qué bicho es cada concursante (PersonajeBicho) y su ropa: gorros, cosas de la cara y del cuerpo. Cuelgan de los anclajes de su
     /// esqueleto (AnclaGorro, AnclaCara, AnclaPecho), así siguen al cuerpo al andar, saltar o caerse.
     /// Las prendas son prefabs en Resources/Vestuario (los crea el menú del personaje, y se rehacen
     /// solos cuando cambia el kit de vestuario). Lo que elige cada jugador se guarda; los bots se
@@ -52,6 +52,26 @@ namespace BichoShow
         public int Gorro { get; private set; }
         public int Complemento { get; private set; }
         public int Cuerpo { get; private set; }
+        /// <summary>Qué bicho es (PersonajeBicho): Bichete, Zumbi, Concha…</summary>
+        public int Especie => TryGetComponent(out PersonajeBicho p) ? p.Especie : 0;
+
+        /// <summary>Cambia de personaje (la ropa se queda puesta: pasa a los anclajes del nuevo).</summary>
+        public void PonerEspecie(int especie)
+        {
+            if (TryGetComponent(out PersonajeBicho p)) p.Poner(especie);
+        }
+
+        /// <summary>El personaje ha cambiado: anclajes nuevos y la ropa, otra vez puesta en ellos.</summary>
+        public void CambiarAnclas(Transform gorro, Transform cara, Transform pecho, Transform referenciaNueva)
+        {
+            anclaGorro = gorro;
+            anclaCara = cara;
+            anclaPecho = pecho;
+            if (referenciaNueva != null) referencia = referenciaNueva;
+            listo = false;
+            Preparar();
+            Poner(Gorro, Complemento, Cuerpo);
+        }
 
         Quaternion giroGorro = Quaternion.identity, giroCara = Quaternion.identity, giroPecho = Quaternion.identity;
         GameObject puestoGorro, puestoComplemento, puestoCuerpo;
@@ -133,6 +153,13 @@ namespace BichoShow
         static string ClaveGorro(int jugador) => $"BichoShow.Vestuario.Gorro{jugador}";
         static string ClaveComplemento(int jugador) => $"BichoShow.Vestuario.Complemento{jugador}";
         static string ClaveCuerpo(int jugador) => $"BichoShow.Vestuario.Cuerpo{jugador}";
+        static string ClaveEspecie(int jugador) => $"BichoShow.Vestuario.Especie{jugador}";
+
+        public static void GuardarEspecie(int jugador, int especie)
+        {
+            PlayerPrefs.SetInt(ClaveEspecie(jugador), especie);
+            PlayerPrefs.Save();
+        }
 
         public static void Guardar(int jugador, int gorro, int complemento, int cuerpo)
         {
@@ -147,6 +174,7 @@ namespace BichoShow
         {
             if (bicho == null || !bicho.TryGetComponent(out Vestuario v)) return;
             int i = bicho.IndiceJugador;
+            v.PonerEspecie(PlayerPrefs.GetInt(ClaveEspecie(i), 0));
             v.Poner(PlayerPrefs.GetInt(ClaveGorro(i), 0), PlayerPrefs.GetInt(ClaveComplemento(i), 0), PlayerPrefs.GetInt(ClaveCuerpo(i), 0));
         }
 
@@ -154,6 +182,7 @@ namespace BichoShow
         public static void PonerAlAzar(ControladorBicho bicho)
         {
             if (bicho == null || !bicho.TryGetComponent(out Vestuario v)) return;
+            v.PonerEspecie(Random.Range(0, PersonajeBicho.Especies.Length));
             v.Poner(Random.value < 0.85f ? Random.Range(1, Gorros.Length) : 0,
                     Random.value < 0.55f ? Random.Range(1, Complementos.Length) : 0,
                     Random.value < 0.5f ? Random.Range(1, Cuerpos.Length) : 0);

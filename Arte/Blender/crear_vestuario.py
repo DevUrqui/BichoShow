@@ -5,7 +5,7 @@ Uso (sin abrir Blender):
     blender -b --factory-startup -P crear_vestuario.py -- <salida.fbx> <salida.blend> [carpeta_vistas]
     (con rutas completas: si son relativas, Blender las toma desde C:\\)
 
-Cada pieza tiene el origen en su punto de anclaje del esqueleto de Bichete (crear_bichete.py):
+Cada pieza tiene el origen en su punto de anclaje del esqueleto de Bichete (crear_personaje.py):
   - Gorros: AnclaGorro, en lo alto de la cabeza (la pieza se apoya ahí).
   - Cara (gafas, bigote, barba…): AnclaCara, justo delante de los ojos (x = 0, a la altura de los ojos).
   - Cuerpo (pajarita, medalla, capa, mochila…): AnclaPecho, sobre la barriga. Desde ahí, el centro
@@ -349,7 +349,7 @@ vistas(objetos, CARPETA_VISTAS, "vestuario", [
 ], color_fondo=(0.86, 0.85, 0.92))
 
 # ---------------------------------------------------------------------------
-# Probador: un maniquí de Bichete (mismas medidas que crear_bichete.py) con conjuntos puestos
+# Probador: un maniquí de Bichete (mismas medidas que crear_personaje.py) con conjuntos puestos
 # ---------------------------------------------------------------------------
 
 CENTRO = Vector((0.0, 0.0, 0.88))

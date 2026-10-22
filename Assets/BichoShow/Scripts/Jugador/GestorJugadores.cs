@@ -258,7 +258,7 @@ namespace BichoShow
         }
 
         /// <summary>En el anfitrión: crea el bicho de un jugador que juega desde otro ordenador.</summary>
-        public EntradaRemota CrearRemoto(ulong cliente, byte local, int gorro, int complemento, int cuerpo)
+        public EntradaRemota CrearRemoto(ulong cliente, byte local, int gorro, int complemento, int cuerpo, int especie)
         {
             int indice = IndiceLibre();
             var go = InstanciarSinMando(out EntradaRemota entrada);
@@ -270,7 +270,11 @@ namespace BichoShow
             var bicho = go.GetComponent<ControladorBicho>();
             bicho.AsignarIndice(indice);
             Preparar(bicho, indice, $"J{indice + 1} (online)");
-            if (go.TryGetComponent(out Vestuario v)) v.Poner(gorro, complemento, cuerpo);
+            if (go.TryGetComponent(out Vestuario v))
+            {
+                v.PonerEspecie(especie);
+                v.Poner(gorro, complemento, cuerpo);
+            }
             remotos.Add(bicho);
             if (go.TryGetComponent(out AnimadorBicho a)) a.Celebrar(2.5f); // ¡hola!
             Sonidos.Reproducir(Sonido.Aparecer, bicho.transform.position);

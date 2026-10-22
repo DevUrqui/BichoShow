@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
+using E = BichoShow.Herramientas.CreadorEscenaPrueba;
 
 namespace BichoShow.Herramientas
 {
@@ -10,7 +11,8 @@ namespace BichoShow.Herramientas
     /// Al darle a Play, comprueba si alguna escena hecha por un generador es de una versión
     /// anterior de ese generador (el código ha cambiado, pero la escena no se ha vuelto a crear).
     /// Si es así, ofrece rehacerla antes de jugar. Cada generador guarda en su escena un objeto
-    /// vacío llamado "Version del generador N".
+    /// vacío llamado "Version del generador N". También avisa si faltan por preparar los
+    /// personajes (Bichete, Zumbi, Concha…) y ofrece prepararlos.
     /// </summary>
     [InitializeOnLoad]
     static class EscenasAnticuadas
@@ -29,6 +31,7 @@ namespace BichoShow.Herramientas
         static void AlCambiarModo(PlayModeStateChange cambio)
         {
             if (cambio != PlayModeStateChange.ExitingEditMode) return;
+            if (FaltanPersonajes()) return;
 
             var viejas = new System.Collections.Generic.List<(string ruta, int version, System.Action crear)>();
             foreach (var g in Generadas)
@@ -53,6 +56,28 @@ namespace BichoShow.Herramientas
                 foreach (var v in viejas) if (VersionEnArchivo(v.ruta) < v.version) return;
                 EditorApplication.isPlaying = true;
             };
+        }
+
+        /// <summary>
+        /// Si hay modelos de los personajes pero no están preparados, ofrece prepararlos (y entonces
+        /// cancela este Play y vuelve a darle cuando acaba). Devuelve si ha cancelado el Play.
+        /// </summary>
+        static bool FaltanPersonajes()
+        {
+            if (!File.Exists(E.RutaPrefabBicho) || !File.Exists(E.Raiz + "/Modelos/Bichete.fbx")) return false;
+            if (CreadorPersonajeAnimado.Preparados()) return false;
+            int opcion = EditorUtility.DisplayDialogComplex("Bicho Show",
+                "Los personajes (Bichete, Zumbi, Concha, Cornelio y Chispa) no están preparados: sin eso no se puede elegir bicho en el vestuario.\n\n¿Prepararlos ahora?",
+                "Preparar y jugar", "Cancelar", "Jugar así");
+            if (opcion == 2) return false;
+            EditorApplication.isPlaying = false;
+            if (opcion == 1) return true;
+            EditorApplication.delayCall += () =>
+            {
+                CreadorPersonajeAnimado.AplicarBichete();
+                if (CreadorPersonajeAnimado.Preparados()) EditorApplication.isPlaying = true;
+            };
+            return true;
         }
 
         /// <summary>La versión anotada en la escena (0 si no tiene, como las de antes de este aviso).</summary>

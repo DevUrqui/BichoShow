@@ -1,6 +1,6 @@
 # Vestuario
 
-Cada jugador viste a su Bichete en **Vestuario**, desde el menú. Hay tres huecos y se puede llevar una cosa de cada a la vez. Lo que elige cada uno se guarda, y los bots se visten al azar. Online, cada uno ve la ropa de los demás.
+Cada jugador elige su bicho y lo viste en **Vestuario**, desde el menú (los bichos están en [Personajes](Personajes.md)). Hay tres huecos de ropa y se puede llevar una cosa de cada a la vez. Lo que elige cada uno se guarda, y los bots se visten al azar. Online, cada uno ve la ropa de los demás.
 
 ## Lo que hay
 
@@ -18,8 +18,8 @@ La capa y la mochila van a la espalda. Con la cámara de las carreras, que va de
 
 En **Vestuario**, cada jugador con su mando:
 
-- Arriba y abajo cambian de fila (gorro, cara, cuerpo).
-- Izquierda y derecha cambian la prenda.
+- Arriba y abajo cambian de fila (bicho, gorro, cara, cuerpo).
+- Izquierda y derecha cambian el bicho o la prenda.
 - **A**: listo.
 - **START**: volver.
 

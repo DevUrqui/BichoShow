@@ -25,8 +25,16 @@ namespace BichoShow
         void Start()
         {
             bicho = GetComponent<ControladorBicho>();
+            Rehacer();
+        }
+
+        /// <summary>Duplica el cuerpo para la silueta (otra vez si cambia el personaje: PersonajeBicho).</summary>
+        public void Rehacer()
+        {
             if (!PrepararMateriales()) return;
-            foreach (var cuerpo in GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            foreach (var c in copias) if (c != null) Destroy(c.gameObject);
+            copias.Clear();
+            foreach (var cuerpo in GetComponentsInChildren<SkinnedMeshRenderer>(false))
             {
                 if (cuerpo.sharedMesh == null || cuerpo.name.StartsWith("Silueta")) continue;
                 copias.Add(Duplicar(cuerpo, "Silueta (marca)", marca));

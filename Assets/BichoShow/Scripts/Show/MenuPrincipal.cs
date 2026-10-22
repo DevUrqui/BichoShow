@@ -233,8 +233,8 @@ namespace BichoShow
 
                 if (!listo)
                 {
-                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + 2) % 3; Sonidos.Reproducir(Sonido.MenuMover); }
-                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % 3; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + 3) % 4; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % 4; Sonidos.Reproducir(Sonido.MenuMover); }
                     if (stick.x > 0.6f && antes.x <= 0.6f) CambiarPrenda(entrada, fila, +1);
                     if (stick.x < -0.6f && antes.x >= -0.6f) CambiarPrenda(entrada, fila, -1);
                     filaVestuario[entrada] = fila;
@@ -263,6 +263,17 @@ namespace BichoShow
         void CambiarPrenda(PlayerInput entrada, int fila, int sentido)
         {
             if (!entrada.TryGetComponent(out Vestuario v)) return;
+            if (fila == 0)
+            {
+                // El bicho: Bichete, Zumbi, Concha…
+                int n = PersonajeBicho.Especies.Length;
+                int especie = (v.Especie + sentido + n) % n;
+                v.PonerEspecie(especie);
+                Vestuario.GuardarEspecie(entrada.playerIndex, especie);
+                Sonidos.Reproducir(Sonido.Aparecer, entrada.transform.position, 0.9f, 1f);
+                return;
+            }
+            fila--;
             int gorro = v.Gorro, complemento = v.Complemento, cuerpo = v.Cuerpo;
             if (fila == 0) gorro = (gorro + sentido + Vestuario.Gorros.Length) % Vestuario.Gorros.Length;
             else if (fila == 1) complemento = (complemento + sentido + Vestuario.Complementos.Length) % Vestuario.Complementos.Length;
@@ -282,7 +293,7 @@ namespace BichoShow
             jugadores.Sort((a, b) => a.playerIndex.CompareTo(b.playerIndex));
             float hueco = px(20f);
             float ancho = Mathf.Min(px(430f), (w * 0.94f - hueco * (jugadores.Count - 1)) / Mathf.Max(1, jugadores.Count));
-            float alto = px(312f);
+            float alto = px(374f);
             float x = w * 0.5f - (jugadores.Count * ancho + (jugadores.Count - 1) * hueco) * 0.5f;
             float y = h - alto - px(120f);
 
@@ -306,12 +317,14 @@ namespace BichoShow
                 }
                 else
                 {
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(68f), panel.width - px(28f), px(56f)), "Gorro",
-                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 0);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(130f), panel.width - px(28f), px(56f)), "Cara",
-                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 1);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(192f), panel.width - px(28f), px(56f)), "Cuerpo",
-                               Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 2);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(68f), panel.width - px(28f), px(56f)), "Bicho",
+                               PersonajeBicho.Nombres[Mathf.Clamp(v.Especie, 0, PersonajeBicho.Nombres.Length - 1)], !listo && fila == 0);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(130f), panel.width - px(28f), px(56f)), "Gorro",
+                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 1);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(192f), panel.width - px(28f), px(56f)), "Cara",
+                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 2);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(254f), panel.width - px(28f), px(56f)), "Cuerpo",
+                               Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 3);
                 }
                 var boton = new Rect(panel.x + panel.width * 0.2f, panel.yMax - px(56f), panel.width * 0.6f, px(46f));
                 EstiloShow.Panel(boton, listo ? EstiloShow.Verde : EstiloShow.Morado.WithAlpha(0.9f), boton.height * 0.5f, -1f, false);
