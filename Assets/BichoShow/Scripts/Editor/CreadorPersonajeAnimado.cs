@@ -25,7 +25,7 @@ namespace BichoShow.Herramientas
         const string CarpetaAnimaciones = E.Raiz + "/Animaciones";
         const string CarpetaPersonajes = E.Raiz + "/Resources/Personajes";
         /// <summary>Sube cuando cambia cómo se montan los personajes: el aviso de Play pide rehacerlos.</summary>
-        public const int VersionPersonajes = 4;
+        public const int VersionPersonajes = 5;
         static readonly string[] Animaciones = { "Quieto", "Andar", "Correr", "Saltar", "Caer", "Tumbado", "Celebrar" };
 
         // El personaje que se está preparando
@@ -174,6 +174,17 @@ namespace BichoShow.Herramientas
                     c["Barriga"] = (new Color(0.95f, 0.95f, 0.6f), 0.4f);
                     c["Mancha"] = (new Color(0.2f, 0.35f, 0.12f), 0.5f);
                     break;
+                case "Serafin": // serpiente coral: bandas rojas, negras y amarillas; cascabel del color del jugador
+                    c["Piel"] = (new Color(0.92f, 0.25f, 0.2f), 0.65f);
+                    c["Mancha"] = (new Color(0.1f, 0.08f, 0.1f), 0.6f);
+                    c["Concha"] = (new Color(1f, 0.85f, 0.2f), 0.6f);
+                    break;
+                case "Croqueta": // rana de ojos rojos: verde, costados azules, barriga clarita
+                    c["Piel"] = (new Color(0.35f, 0.8f, 0.3f), 0.7f);
+                    c["Ojo"] = (new Color(0.95f, 0.18f, 0.12f), 0.8f);
+                    c["Mancha"] = (new Color(0.2f, 0.4f, 0.92f), 0.6f);
+                    c["Barriga"] = (new Color(1f, 0.96f, 0.78f), 0.4f);
+                    break;
             }
 
             var materiales = new Dictionary<string, Material>();
@@ -240,7 +251,8 @@ namespace BichoShow.Herramientas
                     modelo.tallaRopa = bicho switch
                     {
                         "Zumbi" => 0.88f, "Concha" => 0.85f, "Cornelio" => 1.18f, "Chispa" => 0.88f,
-                        "Gusi" => 0.88f, "Ocho" => 0.92f, "Migas" => 0.9f, "Brinco" => 0.72f, _ => 1f,
+                        "Gusi" => 0.88f, "Ocho" => 0.92f, "Migas" => 0.9f, "Brinco" => 0.72f,
+                        "Serafin" => 0.8f, "Croqueta" => 1.15f, _ => 1f,
                     };
                     modelo.version = VersionPersonajes;
                     if (bicho == "Chispa") LuzFarol(modelo);

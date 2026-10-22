@@ -12,9 +12,11 @@ Cada jugador elige su bicho en **Vestuario**, en la primera fila ("Bicho"). La r
 | **Ocho** | Araña | Bajita y morada, con un culete enorme con manchas naranjas, seis ojos, colmillos y cuatro patas de más |
 | **Migas** | Hormiga | Cabezona con ojos negros de insecto, cintura finísima, culete gordo, mandíbulas y antenas acodadas |
 | **Brinco** | Saltamontes | Verde lima, cara alargada con dientes de conejo, alas plegadas y patas saltadoras con la rodilla por encima del cuerpo |
+| **Serafín** | Serpiente | De pie sobre su propio cuerpo a bandas rojas, negras y amarillas, con la cola enroscada en el suelo, cascabel (del color del jugador), sonrisa enorme y lengua bífida; sin brazos, pero con zapatillas |
+| **Croqueta** | Rana | Ancha y achaparrada, con ojos rojos saltones encima de la cabeza, sonrisa de oreja a oreja, costados azules y barriga clarita |
 | **Chispa** | Luciérnaga | Flaca y de ojos grandes, con capucha oscura, alas, lucecitas en las antenas y un farolillo enorme en el culete que alumbra de verdad |
 
-Cada uno tiene su propio cuerpo y su cara (unos son un "huevo" con la cara en el cuerpo, otros tienen la cabeza aparte o van por segmentos), pero los mismos huesos y animaciones, así que juegan exactamente igual: el bicho solo cambia el aspecto. **El color del jugador:** Bichete se tiñe entero, como siempre. Los demás llevan siempre sus colores (abeja amarilla, caracol aguamarina, escarabajo azul con caparazón verde metalizado, luciérnaga lila, oruga rosa, araña morada, hormiga naranja, saltamontes verde lima) y el color del jugador va en las manoplas y las zapatillas. La ropa se ajusta a la talla de cada uno.
+Cada uno tiene su propio cuerpo y su cara (unos son un "huevo" con la cara en el cuerpo, otros tienen la cabeza aparte o van por segmentos), pero los mismos huesos y animaciones, así que juegan exactamente igual: el bicho solo cambia el aspecto. **El color del jugador:** Bichete se tiñe entero, como siempre. Los demás llevan siempre sus colores (abeja amarilla, caracol aguamarina, escarabajo azul con caparazón verde metalizado, luciérnaga lila, oruga rosa, araña morada, hormiga naranja, saltamontes verde lima, serpiente coral, rana verde de ojos rojos) y el color del jugador va en las manoplas y las zapatillas (en la serpiente, en las zapatillas y el cascabel). La ropa se ajusta a la talla de cada uno.
 
 ## Prepararlos en Unity (una vez)
 
@@ -29,7 +31,7 @@ Si se te olvida, al darle a Play sale un aviso que ofrece prepararlos.
 
 ## Cambiar o añadir un bicho
 
-Los modelos los hace `Arte/Blender/crear_personaje.py`. El cuarto argumento es el bicho: `bichete`, `abeja`, `caracol`, `escarabajo`, `luciernaga`, `oruga`, `arana`, `hormiga` o `saltamontes`. Usa siempre rutas completas, por ejemplo para la abeja:
+Los modelos los hace `Arte/Blender/crear_personaje.py`. El cuarto argumento es el bicho: `bichete`, `abeja`, `caracol`, `escarabajo`, `luciernaga`, `oruga`, `arana`, `hormiga`, `saltamontes`, `serpiente` o `rana`. Usa siempre rutas completas, por ejemplo para la abeja:
 
 ```
 blender -b --factory-startup -P Arte/Blender/crear_personaje.py -- F:/Proyectos/UnityProyectos/BichoShow/BichoShow/Assets/BichoShow/Modelos/Zumbi.fbx F:/Proyectos/UnityProyectos/BichoShow/BichoShow/Arte/Blender/Zumbi.blend F:/Proyectos/UnityProyectos/BichoShow/BichoShow/Arte/Blender/vistas abeja

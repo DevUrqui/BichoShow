@@ -3,7 +3,7 @@ Bicho Show — los concursantes: Bichete (mariquita) y sus compañeros, con esqu
 
 Uso (sin abrir Blender; rutas completas):
     blender -b --factory-startup -P crear_personaje.py -- <salida.fbx> <salida.blend> <carpeta_vistas> <especie>
-    especie: bichete · abeja · caracol · escarabajo · luciernaga · oruga · arana · hormiga · saltamontes
+    especie: bichete · abeja · caracol · escarabajo · luciernaga · oruga · arana · hormiga · saltamontes · serpiente · rana
 
 Todas las especies comparten los nombres de los huesos, los anclajes del vestuario, los materiales
 (mismo orden) y las animaciones: en Unity se cambian unas por otras sin tocar nada más. Cada una
@@ -25,6 +25,11 @@ tiene su diseño (DISENOS: tipo de cuerpo, tronco, cabeza, cara, ojos, boca, ant
     anillos; mandíbulas y antenas acodadas.
   - saltamontes: cara de caballo con dientes de conejo, alas plegadas a la espalda, antenas muy
     largas y las patas saltadoras con la rodilla por encima del cuerpo.
+  - serpiente: de pie sobre su propio cuerpo (un tubo a bandas rojas, negras y amarillas que sube
+    desde la cola enroscada en el suelo), cabeza ancha, sonrisa enorme, lengua bífida, cascabel del
+    color del jugador y sin brazos (asoman las zapatillas por debajo).
+  - rana: ancha y achaparrada, ojos rojos saltones encima de la cabeza con la pupila en raya,
+    sonrisa de oreja a oreja, costados azules; sin antenas.
 
 Diseño pensado para la cámara del juego (alta y desde atrás) y para que al girar no parezca
 un recortable: cuerpo redondo como un huevo, caparazón de mariquita a la espalda (del color
@@ -78,7 +83,7 @@ LADOS = ((-1, "Izq"), (1, "Der"))
 #   la cabeza) y separación de los ojos.  grosor de brazos y patas, tamaño y estilo de ojos, boca,
 #   antenas (codo y punta desde la base), y material de brazos/patas y de antenas.
 _HUEVO = dict(tipo="huevo", cara=(0.483, 0.086, 0.207, 0.34), ojos="normal", boca="abierta", barriga=True,
-              extremidad="Piel", mat_antena="Piel", antenas=True)
+              extremidad="Piel", mat_antena="Piel", antenas=True, brazos=True, boca_ancho=0.11)
 DISENOS = {
     "bichete":    dict(_HUEVO, tronco=(0.88, (0.50, 0.46, 0.58), 0.10), grosor=1.00, tam_ojos=1.00,
                        antena=((0.08, -0.04, 0.20), (0.18, -0.11, 0.34))),
@@ -110,6 +115,14 @@ DISENOS = {
                        cabeza=((0.0, -0.1, 1.25), (0.34, 0.42, 0.4)), cara=(0.38, -0.4, -0.1, 0.52),
                        grosor=0.75, tam_ojos=1.0, boca="dientes",
                        antena=((0.08, 0.12, 0.30), (0.18, 0.45, 0.5))),                       # cara de caballo, antenas largas
+    "serpiente":  dict(_HUEVO, tipo="serpiente", tronco=(0.75, (0.22, 0.22, 0.3), 0.0),
+                       cabeza=((0.0, -0.12, 1.22), (0.4, 0.44, 0.28)), cara=(0.4, -0.32, -0.05, 0.42),
+                       grosor=0.8, tam_ojos=1.0, boca="sonrisa", boca_ancho=0.24, barriga=False,
+                       brazos=False, antenas=False,
+                       antena=((0.06, 0.0, 0.10), (0.12, 0.0, 0.16))),                        # de pie sobre sí misma, sin brazos
+    "rana":       dict(_HUEVO, tronco=(0.72, (0.62, 0.52, 0.48), 0.22), cara=(0.8, 0.0, 0.22, 0.5),
+                       grosor=0.95, tam_ojos=1.0, ojos="rana", boca="sonrisa", boca_ancho=0.36,
+                       antenas=False, antena=((0.06, 0.0, 0.10), (0.12, 0.0, 0.16))),         # ancha, ojos saltones arriba
 }
 D = DISENOS[ESPECIE]
 TIPO = D["tipo"]
@@ -123,7 +136,7 @@ if TIPO == "huevo":
 else:
     CAB_C, CAB_R = Vector(D["cabeza"][0]), Vector(D["cabeza"][1])
 ARRIBA = CAB_C.z + CAB_R.z             # lo más alto de la cabeza
-ANCHO = max(0.85, RADIOS.x / 0.5)      # separación de las patas respecto a Bichete
+ANCHO = max(0.85, min(1.15, RADIOS.x / 0.5))   # separación de las patas respecto a Bichete
 
 
 def altura(k):
@@ -229,7 +242,15 @@ if ESPECIE != "bichete":
     COLORES["Piel"] = {"abeja": ((1.0, 0.8, 0.15), 0.5), "caracol": ((0.45, 0.8, 0.78), 0.55),
                        "escarabajo": ((0.36, 0.5, 0.95), 0.45), "luciernaga": ((0.62, 0.52, 0.92), 0.5),
                        "hormiga": ((0.9, 0.38, 0.2), 0.45), "arana": ((0.42, 0.3, 0.58), 0.6),
-                       "oruga": ((0.98, 0.55, 0.75), 0.5), "saltamontes": ((0.6, 0.86, 0.2), 0.5)}[ESPECIE]
+                       "oruga": ((0.98, 0.55, 0.75), 0.5), "saltamontes": ((0.6, 0.86, 0.2), 0.5),
+                       "serpiente": ((0.92, 0.25, 0.2), 0.35), "rana": ((0.35, 0.8, 0.3), 0.3)}[ESPECIE]
+if ESPECIE == "serpiente":
+    COLORES["Mancha"] = ((0.1, 0.08, 0.1), 0.4)        # bandas negras
+    COLORES["Concha"] = ((1.0, 0.85, 0.2), 0.4)        # bandas amarillas
+if ESPECIE == "rana":
+    COLORES["Ojo"] = ((0.95, 0.18, 0.12), 0.2)         # ojos rojos
+    COLORES["Mancha"] = ((0.2, 0.4, 0.92), 0.4)        # costados azules
+    COLORES["Barriga"] = ((1.0, 0.96, 0.78), 0.6)
 if ESPECIE == "hormiga":
     COLORES["Caparazon"] = ((0.62, 0.2, 0.12), 0.25)   # el culete
     COLORES["Mancha"] = ((0.22, 0.1, 0.08), 0.35)
@@ -377,19 +398,26 @@ def deformar_pera(verts):
 
 # --- Cuerpo: el huevo (la cara va en él), o un tronco (o segmentos) y una cabeza aparte ---
 bm = bmesh.new()
-if TIPO == "oruga":
+if TIPO == "serpiente":
+    pass   # el cuerpo es un tubo enroscado (más abajo, con los tubos)
+elif TIPO == "oruga":
     SEGMENTOS = [(Vector((0, 0.03, 0.42)), Vector((0.40, 0.37, 0.27))), (Vector((0, -0.01, 0.74)), RADIOS)]
     for c, rr in SEGMENTOS:
         esfera(bm, c, rr, 0, 36, 18)
 else:
     deformar_pera(esfera(bm, CENTRO, RADIOS, 0, 40, 24))
-cuerpo = nuevo("Cuerpo", bm, ["Piel"])
-pesar_por_altura(cuerpo)
+if TIPO != "serpiente":
+    cuerpo = nuevo("Cuerpo", bm, ["Piel"])
+    pesar_por_altura(cuerpo)
+else:
+    bm.free()
 if TIPO != "huevo":
     bm = bmesh.new()
     esfera(bm, CAB_C, CAB_R, 0, 40, 24)
     cabeza = nuevo("Cabeza", bm, ["Piel"])
     pesar_todo(cabeza, "Cuerpo")
+    if TIPO == "serpiente":
+        cuerpo = cabeza
 
 def casquete(nombre, material, quitar, escala=1.06, grosor=0.045, cortes=()):
     """Una capa sobre el cuerpo (caparazón, rayas, capucha): se quitan los vértices que cumplan "quitar"
@@ -480,6 +508,12 @@ if ESPECIE == "abeja":
     pelusa = nuevo("Pelusa", bm, ["Pelo"])
     pesar_todo(pelusa, "Cuerpo")
 
+if ESPECIE == "rana":
+    # --- Costados azules (por delante los tapa la barriga) ---
+    for lado, s in LADOS:
+        casquete(f"Costado{s}", "Mancha", lambda c: False, escala=1.02, grosor=0.02,
+                 cortes=(((lado * 0.42, 0, 0), (-lado, 0, 0)), ((0, 0, altura(0.12)), (0, 0, 1)),
+                         ((0, 0, altura(-0.75)), (0, 0, -1)), ((0, -0.18, 0), (0, -1, 0))))
 if ESPECIE == "hormiga":
     # --- Culete gordo detrás (unido por una cintura finísima, más abajo con los tubos) ---
     GASTER_EJE = Vector((0, math.cos(math.radians(-20)), math.sin(math.radians(-20))))
@@ -600,10 +634,29 @@ def ojo_insecto(bm, centro, k, lado):
     esfera(bm, centro + Vector((0.035, -0.1, -0.06)) * k, (0.02 * k, 0.01 * k, 0.022 * k), 2, 10, 6)
 
 
+def ojo_rana(bm, base, k, lado):
+    """Ojo saltón de rana: una cúpula de piel encima de la cabeza y, dentro, un ojo rojo con la
+    pupila en raya vertical (índices 0 = Ojo, 1 = Pupila, 2 = Brillo; la cúpula va aparte)."""
+    centro = base + Vector((0, -0.05, 0.1)) * k
+    esfera(bm, centro, (0.16 * k, 0.14 * k, 0.16 * k), 0, 28, 14)
+    pupila = centro + Vector((0, -0.125 * k, 0))
+    esfera(bm, pupila, (0.03 * k, 0.025 * k, 0.11 * k), 1, 16, 10)
+    esfera(bm, centro + Vector((-0.05, -0.12, 0.07)) * k, (0.03 * k, 0.015 * k, 0.035 * k), 2, 12, 6)
+
+
+if ESPECIE == "rana":
+    # Las cúpulas de piel de los ojos saltones (van con el cuerpo; el ojo de dentro, con su hueso).
+    bm = bmesh.new()
+    for lado, _ in LADOS:
+        esfera(bm, cara(OJO_X * lado, OJO_Z, -0.02) + Vector((0, 0.03, 0.06)), (0.2, 0.18, 0.18), 0, 28, 14)
+    cupulas = nuevo("Cupulas", bm, ["Piel"])
+    pesar_todo(cupulas, "Cuerpo")
 if ESPECIE != "caracol":   # (el caracol los lleva en la punta de las antenas)
     for lado, s in LADOS:
         bm = bmesh.new()
-        if D["ojos"] == "insecto":
+        if D["ojos"] == "rana":
+            ojo_rana(bm, cara(OJO_X * lado, OJO_Z, -0.02), OJOS, lado)
+        elif D["ojos"] == "insecto":
             # Un poco hacia los lados, como los de una abeja de verdad.
             c = cara(OJO_X * lado, OJO_Z, -0.06) + Vector((lado * 0.03, 0.0, 0.0))
             ojo_insecto(bm, c, OJOS, lado)
@@ -635,11 +688,13 @@ if D["boca"] in ("abierta", "dientes"):
     pesar_por_altura(boca)
 else:
     # Sonrisa cerrada: una curva fina.
-    puntos = 17
+    ancho_boca = D["boca_ancho"]
+    puntos = int(17 * max(1.0, ancho_boca / 0.11))
+    grueso = 0.024 if ancho_boca <= 0.11 else 0.032
     for i in range(puntos):
-        x = (-1 + 2 * i / (puntos - 1)) * 0.11
-        q = cara(x, BOCA_Z - 0.035 * (1 - (x / 0.11) ** 2), -0.005)
-        esfera(bm, q, (0.024, 0.02, 0.022), 0, 12, 6)
+        x = (-1 + 2 * i / (puntos - 1)) * ancho_boca
+        q = cara(x, BOCA_Z - min(0.07, 0.035 * ancho_boca / 0.11) * (1 - (x / ancho_boca) ** 2), -0.005)
+        esfera(bm, q, (grueso, 0.02, grueso * 0.9), 0, 12, 6)
     boca = nuevo("Boca", bm, ["Boca"])
     pesar_por_altura(boca)
 for lado, s in LADOS:
@@ -650,13 +705,14 @@ for lado, s in LADOS:
     pesar_por_altura(rubor)
 # --- Manoplas y zapatillas ---
 for lado, s in LADOS:
-    bm = bmesh.new()
-    c = espejo(HOMBRO + Vector((0.22, -0.1, -0.36)), lado)
-    g = 1.0 + (GROSOR - 1.0) * 0.6
-    esfera(bm, c, (0.11 * g, 0.1 * g, 0.115 * g), 0)
-    esfera(bm, c + Vector((-0.05 * lado, -0.07, 0.045)) * g, (0.045 * g, 0.04 * g, 0.05 * g), 0, 16, 8)
-    mano = nuevo(f"Mano{s}", bm, ["Guante"])
-    pesar_todo(mano, f"Mano{s}")
+    if D["brazos"]:   # (la serpiente no tiene)
+        bm = bmesh.new()
+        c = espejo(HOMBRO + Vector((0.22, -0.1, -0.36)), lado)
+        g = 1.0 + (GROSOR - 1.0) * 0.6
+        esfera(bm, c, (0.11 * g, 0.1 * g, 0.115 * g), 0)
+        esfera(bm, c + Vector((-0.05 * lado, -0.07, 0.045)) * g, (0.045 * g, 0.04 * g, 0.05 * g), 0, 16, 8)
+        mano = nuevo(f"Mano{s}", bm, ["Guante"])
+        pesar_todo(mano, f"Mano{s}")
 
     bm = bmesh.new()
     pie = espejo(Vector((TOBILLO.x, 0, 0)), lado)
@@ -681,7 +737,9 @@ def catmull(p0, p1, p2, p3, t):
     return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
 
 
-def tubo(nombre, puntos, radio, pesos_por_t, anillos=24, lados=12, radio_final=None, mat="Piel"):
+def tubo(nombre, puntos, radio, pesos_por_t, anillos=24, lados=12, radio_final=None, mat="Piel", perfil=None, bandas=None):
+    """Tubo por una curva suave. perfil(t) da el radio a lo largo (si no, de radio a radio_final);
+    bandas = [(material, anillos), …] lo pinta a rayas que se repiten."""
     ext = [puntos[0] + (puntos[0] - puntos[1])] + puntos + [puntos[-1] + (puntos[-1] - puntos[-2])]
     tramos = len(puntos) - 1
     centros = []
@@ -699,19 +757,27 @@ def tubo(nombre, puntos, radio, pesos_por_t, anillos=24, lados=12, radio_final=N
         normal = (normal_prev - tangente * normal_prev.dot(tangente)).normalized()
         binormal = tangente.cross(normal)
         normal_prev = normal
-        rr = radio if radio_final is None else radio + (radio_final - radio) * i / anillos
+        rr = perfil(i / anillos) if perfil else (radio if radio_final is None else radio + (radio_final - radio) * i / anillos)
         aros.append([bm.verts.new(c + (normal * math.cos(2 * math.pi * j / lados) + binormal * math.sin(2 * math.pi * j / lados)) * rr)
                      for j in range(lados)])
+    mats = [mat]
+    ciclo = []
+    if bandas:
+        mats = list(dict.fromkeys(m for m, _ in bandas))
+        for m, n in bandas:
+            ciclo += [mats.index(m)] * n
     for i in range(anillos):
         for j in range(lados):
             k = (j + 1) % lados
-            bm.faces.new((aros[i][j], aros[i][k], aros[i + 1][k], aros[i + 1][j]))
+            cara_ = bm.faces.new((aros[i][j], aros[i][k], aros[i + 1][k], aros[i + 1][j]))
+            if ciclo:
+                cara_.material_index = ciclo[i % len(ciclo)]
     for aro in (aros[0], aros[-1]):
         bm.faces.new(aro)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.verts.index_update()
     indices = [[v.index for v in aro] for aro in aros]
-    obj = nuevo(nombre, bm, [mat])
+    obj = nuevo(nombre, bm, mats)
     grupos = {}
     for i, idx in enumerate(indices):
         for nombre_hueso, peso in pesos_por_t(i / anillos):
@@ -735,10 +801,11 @@ for lado, s in LADOS:
            espejo(HOMBRO + Vector((0.21, -0.1, -0.34)), lado)]
     # Brazos y patas: del color del cuerpo, o negros de insecto (abeja, hormiga, araña).
     extremidad = D["extremidad"]
-    tubo(f"Brazo{s}", pts, 0.062 * GROSOR,
-         lambda t, s=s: mezcla(t, 0.15, 0.08, "Cuerpo", f"Brazo{s}") if t < 0.3 else
-         (mezcla(t, 0.52, 0.09, f"Brazo{s}", f"Antebrazo{s}") if t < 0.85 else mezcla(t, 0.9, 0.05, f"Antebrazo{s}", f"Mano{s}")),
-         radio_final=0.055 * GROSOR, mat=extremidad)
+    if D["brazos"]:
+        tubo(f"Brazo{s}", pts, 0.062 * GROSOR,
+             lambda t, s=s: mezcla(t, 0.15, 0.08, "Cuerpo", f"Brazo{s}") if t < 0.3 else
+             (mezcla(t, 0.52, 0.09, f"Brazo{s}", f"Antebrazo{s}") if t < 0.85 else mezcla(t, 0.9, 0.05, f"Antebrazo{s}", f"Mano{s}")),
+             radio_final=0.055 * GROSOR, mat=extremidad)
 
     pts = [espejo(Vector((0.16 * ANCHO, 0.0, 0.50)), lado), espejo(CADERA, lado), espejo(RODILLA, lado), espejo(TOBILLO, lado),
            espejo(Vector((TOBILLO.x, 0.0, 0.08)), lado)]
@@ -772,6 +839,35 @@ if ESPECIE == "abeja":
     _punta = ABD_CENTRO + ABD_EJE * ABD_LARGO * 0.9
     puntas = [_punta, _punta + ABD_EJE * 0.14, _punta + ABD_EJE * 0.28]
     tubo("Aguijon", puntas, 0.08, lambda t: [("Cadera", 1.0)], anillos=10, lados=12, radio_final=0.005, mat="Mancha")
+
+if ESPECIE == "serpiente":
+    # El cuerpo: un tubo grueso que sube desde la cola, enroscada en el suelo por detrás, hasta la
+    # cabeza, a rayas rojas, negras y amarillas (como una serpiente coral). Cascabel en la punta
+    # (del color del jugador) y lengua bífida fuera.
+    camino = [Vector(p) for p in ((0, -0.08, 1.06), (0, -0.03, 0.82), (0, 0.04, 0.56), (0, 0.12, 0.33), (0.03, 0.3, 0.19),
+                                  (0.26, 0.5, 0.14), (0.42, 0.78, 0.11), (0.22, 1.0, 0.09), (-0.08, 0.94, 0.08))]
+
+    def grosor_serpiente(t):
+        if t < 0.35:
+            return 0.2 + 0.06 * t / 0.35          # del cuello a la barriga, más gordo
+        return 0.04 + 0.22 * (1 - (t - 0.35) / 0.65) ** 0.9   # y luego adelgaza hasta la cola
+
+    cuerpo_serpiente = tubo("CuerpoSerpiente", camino, 0.2, lambda t: [], anillos=96, lados=20, perfil=grosor_serpiente,
+                            bandas=[("Piel", 9), ("Mancha", 3), ("Concha", 3), ("Mancha", 3)])
+    pesar_por_altura(cuerpo_serpiente)
+    bm = bmesh.new()
+    cola = camino[-1]
+    for i, (dx, dy, r) in enumerate(((-0.1, -0.04, 0.075), (-0.19, -0.075, 0.065), (-0.27, -0.1, 0.05))):
+        esfera(bm, cola + Vector((dx, dy, 0.02 + 0.01 * i)), (r, r * 0.9, r * 0.85), 0, 16, 8)
+    cascabel = nuevo("Cascabel", bm, ["Guante"])
+    pesar_todo(cascabel, "Cadera")
+    p = cara(0.0, BOCA_Z - 0.03, -0.01)
+    tubo("Lengua", [p + Vector((0, 0.04, 0)), p + Vector((0, -0.08, -0.02)), p + Vector((0, -0.17, -0.06))], 0.028,
+         lambda t: [("Cuerpo", 1.0)], anillos=10, lados=10, radio_final=0.02, mat="Lengua")
+    punta = p + Vector((0, -0.17, -0.06))
+    for lado, s in LADOS:
+        tubo(f"Lengua{s}", [punta, punta + Vector((lado * 0.025, -0.04, -0.01)), punta + Vector((lado * 0.05, -0.07, -0.005))], 0.02,
+             lambda t: [("Cuerpo", 1.0)], anillos=8, lados=8, radio_final=0.006, mat="Lengua")
 
 if ESPECIE == "hormiga":
     # Cintura finísima hasta el culete, cuello y mandíbulas.
