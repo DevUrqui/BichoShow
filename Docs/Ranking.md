@@ -30,8 +30,9 @@ Online, a cada jugador se le apunta el tiempo en su propio ordenador, con su nom
 Usa **Unity Leaderboards**, del mismo proyecto de Unity Cloud que las salas online.
 
 1. Abre el proyecto en Unity. La primera vez se instala solo el paquete **Leaderboards**; puede tardar un poco.
-2. Abre la ventana de despliegue: menú **Services → Deployment**. Si no está ahí, búscala en **Window → Services → Deployment**.
-3. Verás los tres rankings de `Assets/BichoShow/Rankings`: `tiempo-costura`, `tiempo-despensa` y `tiempo-cumbre`. Márcalos y pulsa **Deploy**.
+2. Elige el entorno de Unity Cloud (solo la primera vez): **Edit → Project Settings → Services → Environments** y selecciona **production**. Sin esto, Deploy falla con *"The environment has not been set"*.
+3. Abre la ventana de despliegue: menú **Services → Deployment**. Si no está ahí, búscala en **Window → Services → Deployment**.
+4. Verás los tres rankings de `Assets/BichoShow/Rankings`: `tiempo-costura`, `tiempo-despensa` y `tiempo-cumbre`. Márcalos y pulsa **Deploy**.
 
 Ya está: el juego sube los tiempos y los lee solo.
 
