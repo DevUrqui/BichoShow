@@ -5,7 +5,7 @@ Cada jugador elige su bicho en **Vestuario**, en la primera fila ("Bicho"). La r
 | Bicho | Qué es | Lo suyo |
 |---|---|---|
 | **Bichete** | Mariquita | Huevo redondo con caparazón de lunares y raya |
-| **Zumbi** | Abeja | Bola gorda amarilla con tres rayas negras, pelusa en la cabeza, aguijón y dos pares de alas grandes que aletean (más rápido en el aire) |
+| **Zumbi** | Abeja | Cabeza redonda y, detrás, un abdomen grande a rayas amarillas y negras con aguijón; collar y moño de pelusa y dos pares de alas grandes que aletean (más rápido en el aire) |
 | **Concha** | Caracol | Alto y estrecho, con los ojos en lo alto de las antenas y una concha enorme en espiral a la espalda |
 | **Cornelio** | Escarabajo | Bajito, ancho y forzudo: brazos y patas gordos, élitros grandes, cejo de gruñón y un cuerno de rinoceronte |
 | **Chispa** | Luciérnaga | Flaca y de ojos grandes, con capucha oscura, alas, lucecitas en las antenas y un farolillo enorme en el culete que alumbra de verdad |

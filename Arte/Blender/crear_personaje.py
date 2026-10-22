@@ -9,8 +9,9 @@ Todas las especies comparten los nombres de los huesos, los anclajes del vestuar
 (mismo orden) y las animaciones: en Unity se cambian unas por otras sin tocar nada más. Cada una
 tiene su silueta (FORMAS: tamaño y forma del cuerpo, grosor, ojos, antenas) y lo suyo:
   - bichete: huevo redondo con caparazón de mariquita, raya y lunares.
-  - abeja: bola gorda y peluda, tres rayas negras, pelusa en la cabeza, dos pares de alas grandes
-    (huesos AlaIzq/AlaDer: Unity las hace aletear) y aguijón.
+  - abeja: cabeza-tronco redonda y, detrás, un abdomen grande a rayas amarillas y negras (material
+    "Concha": no se tiñe) con aguijón, collar de pelusa, pelusa en la cabeza y dos pares de alas
+    grandes (huesos AlaIzq/AlaDer: Unity las hace aletear).
   - caracol: alto y estrecho con la base ancha, ojos en lo alto de las antenas y una concha enorme
     en espiral (material "Concha": no se tiñe).
   - escarabajo: bajito y ancho de hombros, brazos y patas gordos, élitros grandes, cejo de
@@ -66,7 +67,7 @@ LADOS = ((-1, "Izq"), (1, "Der"))
 FORMAS = {
     #              centro  radios                 pera   grosor ojos  antena medio          antena punta
     "bichete":    (0.88, (0.50, 0.46, 0.58),  0.10, 1.00, 1.00, (0.08, -0.04, 0.20), (0.18, -0.11, 0.34)),
-    "abeja":      (0.86, (0.58, 0.54, 0.55),  0.14, 1.00, 1.00, (0.12, -0.02, 0.14), (0.22, -0.16, 0.20)),  # bola peluda
+    "abeja":      (0.86, (0.50, 0.47, 0.52),  0.06, 1.00, 1.05, (0.12, -0.02, 0.14), (0.22, -0.16, 0.20)),  # cabeza-tronco + abdomen a rayas
     "caracol":    (0.95, (0.40, 0.40, 0.69),  0.26, 0.90, 1.00, (0.04, -0.03, 0.20), (0.10, -0.08, 0.36)),  # alto, base ancha, ojos en antenas
     "escarabajo": (0.80, (0.62, 0.50, 0.50), -0.12, 1.30, 0.85, (0.10, 0.00, 0.10), (0.20, -0.05, 0.15)),  # bajito y ancho de hombros
     "luciernaga": (0.95, (0.42, 0.40, 0.55),  0.04, 0.85, 1.15, (0.10, -0.10, 0.24), (0.14, -0.32, 0.30)),  # flaca, culete-farol enorme
@@ -166,7 +167,9 @@ COLORES = {
 if ESPECIE == "caracol":
     COLORES["Mancha"] = ((0.5, 0.3, 0.18), 0.4)
 if ESPECIE == "abeja":
-    COLORES["Piel"] = ((1.0, 0.78, 0.2), 0.55)
+    COLORES["Piel"] = ((1.0, 0.62, 0.25), 0.55)
+    COLORES["Concha"] = ((1.0, 0.8, 0.12), 0.45)     # el amarillo del abdomen (no se tiñe)
+    COLORES["Mancha"] = ((0.1, 0.07, 0.06), 0.4)
 ORDEN_MATERIALES = list(COLORES.keys())
 MAT = {n: material(n, c, r) for n, (c, r) in COLORES.items()}
 
@@ -345,11 +348,41 @@ if ESPECIE == "escarabajo":
                  cortes=(((lado * 0.025, 0, 0), (-lado, 0, 0)), ((0, -0.1, 0), (0, -1, 0)), ((0, 0, altura(-0.88)), (0, 0, -1))))
 
 if ESPECIE == "abeja":
-    # --- Tres rayas negras gordas (la de arriba, solo por detrás: no cruza la cara) ---
-    for i, (k0, k1, solo_detras) in enumerate(((-0.95, -0.68, False), (-0.42, -0.16, False), (0.1, 0.36, True))):
-        casquete(f"Raya{i}", "Mancha",
-                 lambda c, z0=altura(k0), z1=altura(k1), d=solo_detras: c.z < z0 or c.z > z1 or (d and c.y < -0.12),
-                 escala=1.035, grosor=0.025)
+    # --- Abdomen: un bombo grande detrás, a rayas amarillas y negras, que acaba en punta (con el
+    # aguijón). Va con la cadera y no se tiñe: es lo que la hace abeja aunque el cuerpo sea del
+    # color del jugador. ---
+    ABD_EJE = Vector((0, math.cos(math.radians(-22)), math.sin(math.radians(-22))))   # hacia atrás y un poco abajo
+    ABD_LARGO, ABD_ANCHO, ABD_ALTO = 0.58, 0.47, 0.44
+    ABD_CENTRO = Vector((0, RADIOS.y * 0.55, altura(-0.1))) + ABD_EJE * ABD_LARGO * 0.95
+    _arriba = (Vector((0, 0, 1)) - ABD_EJE * ABD_EJE.z).normalized()
+    # Los polos de la esfera, en las puntas del abdomen: los anillos quedan de través y las rayas, rectas.
+    _giro = Matrix((Vector((1, 0, 0)), ABD_EJE.cross(Vector((1, 0, 0))), ABD_EJE)).transposed().to_4x4()
+    bm = bmesh.new()
+    esfera(bm, ABD_CENTRO, (ABD_ANCHO, ABD_ALTO, ABD_LARGO), 0, 40, 36, rot=_giro)
+    for v in bm.verts:                                     # más fino hacia la punta, como una gota
+        d = v.co - ABD_CENTRO
+        k = d.dot(ABD_EJE) / ABD_LARGO
+        if k > 0:
+            a_lo_largo = ABD_EJE * d.dot(ABD_EJE)
+            v.co = ABD_CENTRO + a_lo_largo + (d - a_lo_largo) * (1 - 0.5 * k * k)
+    for cara in bm.faces:                                  # rayas: amarillo, negro, amarillo… y la punta negra
+        k = (cara.calc_center_median() - ABD_CENTRO).dot(ABD_EJE) / ABD_LARGO
+        cara.material_index = int(max(0.0, min(5.99, (k + 1.0) * 3.0))) % 2
+    abdomen = nuevo("Abdomen", bm, ["Concha", "Mancha"])
+    pesar_todo(abdomen, "Cadera")
+
+    # --- Collar de pelusa donde el abdomen se une al cuerpo ---
+    bm = bmesh.new()
+    base_abd = ABD_CENTRO - ABD_EJE * ABD_LARGO * 0.78
+    _lado = Vector((1, 0, 0))
+    for i in range(12):
+        a = 2 * math.pi * i / 12
+        p = base_abd + (_lado * math.cos(a) * 0.36 + _arriba * math.sin(a) * 0.33)
+        r = 0.12 + 0.02 * math.sin(3 * a)
+        esfera(bm, p, (r, r, r), 0, 14, 8)
+    collar = nuevo("CollarPelusa", bm, ["Pelo"])
+    pesar_todo(collar, "Cadera")
+
     # --- Pelusa en lo alto de la cabeza ---
     bm = bmesh.new()
     for x, y, z, r in ((0.0, 0.02, 0.05, 0.12), (-0.1, 0.06, 0.0, 0.09), (0.1, 0.06, 0.0, 0.09), (0.0, -0.08, 0.0, 0.08)):
@@ -543,8 +576,9 @@ for lado, s in LADOS:
     pesar_todo(bolita, f"Antena{s}2")
 
 if ESPECIE == "abeja":
-    puntas = [Vector((0, RADIOS.y * 0.85, altura(-0.8))), Vector((0, RADIOS.y + 0.1, altura(-0.92))), Vector((0, RADIOS.y + 0.26, altura(-1.02)))]
-    tubo("Aguijon", puntas, 0.09, lambda t: [("Cadera", 1.0)], anillos=10, lados=12, radio_final=0.005, mat="Mancha")
+    _punta = ABD_CENTRO + ABD_EJE * ABD_LARGO * 0.9
+    puntas = [_punta, _punta + ABD_EJE * 0.14, _punta + ABD_EJE * 0.28]
+    tubo("Aguijon", puntas, 0.08, lambda t: [("Cadera", 1.0)], anillos=10, lados=12, radio_final=0.005, mat="Mancha")
 
 if ESPECIE == "escarabajo":
     # Cejo gordo y oscuro encima de los ojos: cara de forzudo gruñón.

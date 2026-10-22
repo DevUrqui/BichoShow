@@ -119,10 +119,11 @@ namespace BichoShow.Herramientas
             };
             switch (bicho)
             {
-                case "Zumbi": // abeja: amarilla con rayas casi negras y zapatillas naranjas
-                    c["Piel"] = (new Color(1f, 0.78f, 0.2f), 0.4f);
+                case "Zumbi": // abeja: abdomen a rayas amarillas y casi negras (no se tiñe), pelusa y zapatillas naranjas
+                    c["Piel"] = (new Color(1f, 0.62f, 0.25f), 0.4f);
                     c["Barriga"] = (new Color(1f, 0.93f, 0.68f), 0.3f);
-                    c["Mancha"] = (new Color(0.14f, 0.09f, 0.06f), 0.6f);
+                    c["Concha"] = (new Color(1f, 0.8f, 0.12f), 0.5f);
+                    c["Mancha"] = (new Color(0.1f, 0.07f, 0.06f), 0.6f);
                     c["Bota"] = (new Color(0.98f, 0.48f, 0.2f), 0.45f);
                     break;
                 case "Concha": // caracol: verde lechuga, concha de galleta y zapatillas rosas
