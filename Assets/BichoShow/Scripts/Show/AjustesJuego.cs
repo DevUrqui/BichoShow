@@ -19,32 +19,46 @@ namespace BichoShow
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
 
-            // Una copia de los ajustes de entrada (para no tocar ningún archivo del proyecto).
-            // En el editor, la copia de la partida anterior ya no existe (Unity la destruye al
-            // parar): entonces se parte de unos ajustes nuevos.
+            // Una copia de los ajustes de entrada (para no tocar ningún archivo del proyecto). Se
+            // marca para que Unity no la borre al parar el juego en el editor: si la borrara, el
+            // Input System se quedaría apuntando a algo que ya no existe.
             var actuales = InputSystem.settings;
-            InputSettings ajustes;
-            if (actuales != null && actuales.name == NombreCopia) ajustes = actuales;
-            else ajustes = actuales != null ? Object.Instantiate(actuales) : ScriptableObject.CreateInstance<InputSettings>();
-            ajustes.name = NombreCopia;
-            ajustes.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-            InputSystem.settings = ajustes;
+            if (actuales != null && actuales.name == NombreCopia) return; // ya está puesta
+            InputSystem.settings = Copia(actuales);
+        }
 
-#if UNITY_EDITOR
-            // Al parar, se vuelven a poner los ajustes del proyecto (la copia deja de existir).
-            if (actuales != null && actuales.name != NombreCopia) original = actuales;
-            UnityEditor.EditorApplication.playModeStateChanged -= AlCambiarModo;
-            UnityEditor.EditorApplication.playModeStateChanged += AlCambiarModo;
-#endif
+        static InputSettings Copia(InputSettings desde)
+        {
+            var ajustes = desde != null ? Object.Instantiate(desde) : ScriptableObject.CreateInstance<InputSettings>();
+            ajustes.name = NombreCopia;
+            ajustes.hideFlags = HideFlags.HideAndDontSave;
+            ajustes.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            return ajustes;
         }
 
 #if UNITY_EDITOR
-        static InputSettings original;
+        /// <summary>
+        /// En el editor: si los ajustes de entrada se han quedado apuntando a una copia borrada
+        /// (de versiones anteriores de este script), se ponen unos nuevos antes de darle a Play.
+        /// </summary>
+        [UnityEditor.InitializeOnLoadMethod]
+        static void RepararEnEditor()
+        {
+            Reparar();
+            UnityEditor.EditorApplication.playModeStateChanged -= AlCambiarModo;
+            UnityEditor.EditorApplication.playModeStateChanged += AlCambiarModo;
+        }
 
         static void AlCambiarModo(UnityEditor.PlayModeStateChange cambio)
         {
-            if (cambio != UnityEditor.PlayModeStateChange.EnteredEditMode || original == null) return;
-            InputSystem.settings = original;
+            if (cambio == UnityEditor.PlayModeStateChange.ExitingEditMode) Reparar();
+        }
+
+        static void Reparar()
+        {
+            var actuales = InputSystem.settings;
+            // "== null" de Unity: también es cierto si el objeto existe en C# pero se ha borrado.
+            if (actuales == null) InputSystem.settings = Copia(null);
         }
 #endif
     }
