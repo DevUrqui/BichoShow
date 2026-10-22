@@ -181,14 +181,16 @@ namespace BichoShow.Herramientas
 
         /// <summary>
         /// Deja el modelo de pie, a escala 1, mirando a +Z (los ojos delante) y con los pies en
-        /// el suelo, pase lo que pase con los ejes al exportar desde Blender.
+        /// el suelo, pase lo que pase con los ejes al exportar desde Blender. Con puedeEstarTumbado, si
+        /// es más profundo que alto se pone de pie (para exportaciones viejas con Z arriba; no vale para
+        /// bichos largos de verdad, como Zumbi con su abdomen).
         /// </summary>
-        internal static void Orientar(Transform modelo, Transform raiz)
+        internal static void Orientar(Transform modelo, Transform raiz, bool puedeEstarTumbado = true)
         {
             Bounds b = Limites(modelo, raiz);
             if (b.size.y > 20f) modelo.localScale *= 0.01f;           // exportado en centímetros
             b = Limites(modelo, raiz);
-            if (b.size.z > b.size.y * 1.2f)                            // tumbado (Z arriba)
+            if (puedeEstarTumbado && b.size.z > b.size.y * 1.2f)      // tumbado (Z arriba)
                 modelo.localRotation = Quaternion.Euler(-90f, 0f, 0f) * modelo.localRotation;
 
             var cuerpo = Buscar(modelo, "Cuerpo");

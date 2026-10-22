@@ -24,6 +24,8 @@ namespace BichoShow.Herramientas
     {
         const string CarpetaAnimaciones = E.Raiz + "/Animaciones";
         const string CarpetaPersonajes = E.Raiz + "/Resources/Personajes";
+        /// <summary>Sube cuando cambia cómo se montan los personajes: el aviso de Play pide rehacerlos.</summary>
+        public const int VersionPersonajes = 2;
         static readonly string[] Animaciones = { "Quieto", "Andar", "Correr", "Saltar", "Caer", "Tumbado", "Celebrar" };
 
         // El personaje que se está preparando
@@ -40,7 +42,8 @@ namespace BichoShow.Herramientas
             foreach (var n in PersonajeBicho.Especies)
             {
                 string prefab = $"{CarpetaPersonajes}/{n}.prefab", modelo = $"{E.Raiz}/Modelos/{n}.fbx";
-                if (!System.IO.File.Exists(prefab)) return false;
+                var montado = AssetDatabase.LoadAssetAtPath<ModeloBicho>(prefab);
+                if (montado == null || montado.version < VersionPersonajes) return false;
                 if (System.IO.File.Exists(modelo) && System.IO.File.GetLastWriteTimeUtc(modelo) > System.IO.File.GetLastWriteTimeUtc(prefab)) return false;
             }
             return true;
@@ -202,6 +205,7 @@ namespace BichoShow.Herramientas
                 {
                     // Talla de la ropa: lo ancho que es cada uno respecto a Bichete (ver FORMAS en crear_personaje.py).
                     modelo.tallaRopa = bicho switch { "Zumbi" => 1.12f, "Concha" => 0.85f, "Cornelio" => 1.18f, "Chispa" => 0.88f, _ => 1f };
+                    modelo.version = VersionPersonajes;
                     if (bicho == "Chispa") LuzFarol(modelo);
                     PrefabUtility.SaveAsPrefabAsset(modelo.gameObject, $"{CarpetaPersonajes}/{bicho}.prefab");
                     hechos++;
@@ -255,7 +259,7 @@ namespace BichoShow.Herramientas
             modelo.name = modeloAsset.name;
             modelo.transform.localPosition = Vector3.zero;
             modelo.transform.localRotation = Quaternion.identity;
-            CreadorPersonaje.Orientar(modelo.transform, raiz.transform);
+            CreadorPersonaje.Orientar(modelo.transform, raiz.transform, false); // vienen de pie de Blender (y Zumbi es largo)
 
             if (!modelo.TryGetComponent(out Animator animator)) animator = modelo.AddComponent<Animator>();
             animator.runtimeAnimatorController = controlador;

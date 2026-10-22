@@ -18,6 +18,7 @@ namespace BichoShow
         public Transform anclaGorro, anclaCara, anclaPecho;
         [Tooltip("Tamaño de la ropa en este bicho (1 = Bichete): gorros, gafas y capas se ajustan a su cuerpo.")]
         public float tallaRopa = 1f;
+        [HideInInspector] public int version; // de la herramienta que lo montó (si es vieja, se vuelve a montar)
         [Tooltip("Renderers cuya piel (y caparazón) se tiñen con el color del jugador.")]
         public Renderer[] piel;
     }
