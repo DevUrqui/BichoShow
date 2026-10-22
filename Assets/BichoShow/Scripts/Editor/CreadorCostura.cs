@@ -10,20 +10,28 @@ namespace BichoShow.Herramientas
 {
     /// <summary>
     /// Menú "BichoShow > Crear escena: Costura a la fuga". La carrera sobre la mesa de costura,
-    /// a lo largo del eje Z. Tras la salida hay cuatro cruces: en cada uno se elige entre dos
-    /// caminos con pruebas distintas, que se juntan en un descanso (cada vez más a un lado):
+    /// a lo largo del eje Z (unos 335 m). Tras la salida hay cruces: en cada uno se elige entre
+    /// dos caminos con pruebas distintas, que se juntan en un descanso con punto de control:
     ///  1. Salida: la Tabla de Corte (z 0-23) y el escalón ancho.
     ///  2. Botones giratorios (derecha) o Carretes viajeros (izquierda) → Descanso 1 (z 46-53).
     ///  3. Puente acordeón (izquierda) o Cinta métrica rodante con agujas de tejer (derecha) → Descanso 2 (z 72-78).
     ///  4. Cremallera estrecha y rápida (derecha) o ancha y lenta (izquierda) → Destino (z 100-107).
-    ///  5. Escalera de carretes (derecha) o Alfileteros (izquierda) → Meta junto al dedal (z 137-146).
+    ///  5. Escalera de carretes (derecha) o Alfileteros (izquierda) → Descanso 5 (z 137-146).
+    ///  6. Botones elásticos (izquierda) o Pasarela de los dedales boxeadores (derecha) → Descanso 6.
+    ///  7. El campo de alfileres (salen por oleadas y lanzan por los aires) → Descanso 7.
+    ///  8. Carretes rodantes (izquierda) o Botones-tecla (derecha) → Descanso 8.
+    ///  9. Las tijeras gigantes (abiertas, por el centro; cerradas, por los lados) → Meta junto al dedal (z 325-334).
     ///
     /// Medidas pensadas para el bicho: corre a 6 m/s, salta ~2,1 m de alto y ~6,5 m de largo
     /// corriendo. Saltos: huecos de 1,5-2,5 m y escalones de hasta 1,2 m.
     /// </summary>
     public static class CreadorCostura
     {
-        const string RutaEscena = E.CarpetaEscenas + "/Costura.unity";
+        public const string RutaEscena = E.CarpetaEscenas + "/Costura.unity";
+        /// <summary>Sube al cambiar el recorrido: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
+        public const int Version = 2;
+        /// <summary>Altura de la segunda mitad (desde el Descanso 5 hasta la meta).</summary>
+        const float Y2 = 3.8f;
         /// <summary>Altura de la mesa (lo de abajo, decorado). La carrera va por encima, sobre patas.</summary>
         const float AlturaMesa = -9f;
 
@@ -119,7 +127,7 @@ namespace BichoShow.Herramientas
             // =================================================================
             Losa("SueloCarretes", -12f, -2f, 23f, 46f, 0.6f, telaLunares);
             float[] franjas = { 27f, 34f, 41f };                   // centro de cada franja (4 m de fondo)
-            float[] periodos = { 5.5f, 4.5f, 3.4f };               // de más lento a más rápido
+            float[] periodos = { 4.4f, 3.6f, 2.9f };               // de más lento a más rápido
             float[] desfases = { 0f, 0.35f, 0.7f };
             Material[] hilos = { coral, azul, turquesa };
             var carretes = new CarreteViajero[3];
@@ -137,7 +145,7 @@ namespace BichoShow.Herramientas
             // =================================================================
             var botones = new[] { new Vector2(6.5f, 26.8f), new Vector2(9f, 32.6f), new Vector2(6.5f, 38.4f), new Vector2(9f, 44f) };
             for (int i = 0; i < botones.Length; i++)
-                BotonGiratorio($"Boton giratorio {i + 1}", botones[i], 0.6f, 2f, i % 2 == 0 ? 28f : -34f, i % 2 == 0 ? coral : mostaza);
+                BotonGiratorio($"Boton giratorio {i + 1}", botones[i], 0.6f, 2f, i % 2 == 0 ? 40f : -48f, i % 2 == 0 ? coral : mostaza);
 
             // Descanso 1 (hacia la derecha): se juntan los dos caminos.
             Losa("Descanso1", -12f, 14f, 46f, 53f, 0.6f, telaVichy);
@@ -167,8 +175,8 @@ namespace BichoShow.Herramientas
             // 3b. LA CINTA MÉTRICA RODANTE (derecha): va hacia atrás y la barren agujas de tejer
             // =================================================================
             CintaRodante(8f, 6f, 53f, 72f, 0.6f);
-            Aguja("Aguja de tejer 1", new Vector3(8f, 0.6f, 59f), 70f, coral);
-            Aguja("Aguja de tejer 2", new Vector3(8f, 0.6f, 66f), -85f, azul);
+            Aguja("Aguja de tejer 1", new Vector3(8f, 0.6f, 59f), 95f, coral);
+            Aguja("Aguja de tejer 2", new Vector3(8f, 0.6f, 66f), -115f, azul);
 
             // Descanso 2 (hacia la izquierda)
             Losa("Descanso2", -14f, 12f, 72f, 78f, 0.6f, telaVichy);
@@ -227,17 +235,102 @@ namespace BichoShow.Herramientas
             cintaDerecha.transform.localScale = Vector3.Scale(cintaDerecha.transform.localScale, new Vector3(0.58f, 1f, 1.5f));
 
             // =================================================================
+            // DESCANSO 5 (donde antes estaba la meta): la carrera sigue
+            // =================================================================
+            Descanso("Descanso5", -12f, 12f, 137f, 146f, Y2, 6, controles, tablaCorte);
+            Flecha(new Vector3(-6.5f, Y2, 144.6f), -8f, azul);   // a los botones elásticos
+            Flecha(new Vector3(7f, Y2, 144.6f), 8f, azul);       // a los dedales
+
+            // =================================================================
+            // 6a. LOS BOTONES ELÁSTICOS (izquierda): botas en un botón y te lanza al siguiente
+            // =================================================================
+            Losa("Antes de los botones", -10f, -3f, 146f, 150f, Y2, telaLunares);
+            var elasticos = new[]
+            {
+                BotonElastico("Boton elastico 1", new Vector3(-6.5f, Y2, 154f), 0f, coral),
+                BotonElastico("Boton elastico 2", new Vector3(-6.5f, Y2, 168f), 0.33f, mostaza),
+                BotonElastico("Boton elastico 3", new Vector3(-6.5f, Y2, 182f), 0.66f, turquesa),
+            };
+
+            // =================================================================
+            // 6b. LA PASARELA DE LOS DEDALES (derecha): estrecha, y los dedales empujan al vacío
+            // =================================================================
+            Losa("Pasarela dedales", 5.5f, 8.5f, 146f, 190f, Y2, maderaVeta);
+            Pespunte(5.5f, 8.5f, 146f, 190f, Y2);
+            float[] zDedales = { 151f, 157f, 163f, 169f, 175f, 181f, 186f };
+            for (int i = 0; i < zDedales.Length; i++)
+                DedalBoxeador($"Dedal boxeador {i + 1}", 7f, Y2, zDedales[i], i % 2 == 0 ? 1f : -1f, i * 0.13f, i % 2 == 0 ? coral : azul);
+
+            // =================================================================
+            // DESCANSO 6
+            // =================================================================
+            Descanso("Descanso6", -12f, 12f, 190f, 197f, Y2, 7, controles, telaVichy);
+            Flecha(new Vector3(0f, Y2, 195.6f), 0f, crema);
+
+            // =================================================================
+            // 7. EL CAMPO DE ALFILERES: salen del acerico por oleadas y te lanzan por los aires
+            // =================================================================
+            var campo = CampoDeAlfileres(-8f, 8f, 197f, 237f, Y2);
+
+            // =================================================================
+            // DESCANSO 7
+            // =================================================================
+            Descanso("Descanso7", -12f, 12f, 237f, 244f, Y2, 8, controles, telaVichy);
+            Flecha(new Vector3(-6f, Y2, 242.6f), 0f, azul);      // a los carretes rodantes
+            Flecha(new Vector3(7f, Y2, 242.6f), 0f, azul);       // a los botones-tecla
+
+            // =================================================================
+            // 8a. LOS CARRETES RODANTES (izquierda): correr por encima sin que el giro te tire
+            // =================================================================
+            var rodantes = new List<CarreteRodante>();
+            float zCarrete = 245f;
+            Material[] hilosRodantes = { coral, turquesa, mostaza, azul };
+            for (int i = 0; i < 4; i++)
+            {
+                rodantes.Add(CarreteRodando($"Carrete rodante {i + 1}", -6f, zCarrete, zCarrete + 8f, Y2 + 0.6f,
+                                            2f + 0.4f * i, (i * 0.27f) % 1f, hilosRodantes[i]));
+                zCarrete += 9.6f;
+            }
+
+            // =================================================================
+            // 8b. LOS BOTONES-TECLA (derecha): suben y bajan como teclas de piano, a destiempo
+            // =================================================================
+            var teclas = new List<PetaloPiano>();
+            for (int i = 0; i < 7; i++)
+                teclas.Add(BotonTecla($"Boton tecla {i + 1}", new Vector2(i % 2 == 0 ? 6.4f : 8.2f, 247.5f + 5f * i), Y2, 1.6f,
+                                      (i * 0.17f) % 1f, i % 2 == 0 ? mostaza : coral));
+
+            // =================================================================
+            // DESCANSO 8
+            // =================================================================
+            Descanso("Descanso8", -12f, 12f, 284f, 291f, Y2, 9, controles, telaVichy);
+            Flecha(new Vector3(0f, Y2, 289.6f), 0f, crema);
+
+            // =================================================================
+            // 9. LAS TIJERAS GIGANTES: abiertas, por el centro; cerradas, por los lados
+            // =================================================================
+            Losa("Puente de las tijeras", -5f, 5f, 291f, 325f, Y2, telaVichyClaro);
+            Pespunte(-5f, 5f, 291f, 325f, Y2);
+            var tijeras = new[]
+            {
+                Tijeras("Tijeras 1", 296f, Y2, 2.2f, 1.0f, 0f, coral),
+                Tijeras("Tijeras 2", 303.5f, Y2, 1.7f, 1.2f, 0.35f, azul),
+                Tijeras("Tijeras 3", 311f, Y2, 1.5f, 1.0f, 0.7f, mostaza),
+                Tijeras("Tijeras 4", 318.5f, Y2, 1.2f, 1.4f, 0.15f, coral),
+            };
+
+            // =================================================================
             // META
             // =================================================================
-            Losa("Meta", -12f, 12f, 137f, 146f, 3.8f, tablaCorte);
-            Cuadricula(-12f, 12f, 137f, 146f, 3.8f);
-            Regla(-12f, 137f, 146f, 3.8f);
-            Barandillas(3.8f, (-11.85f, 137.2f, -11.85f, 145.85f), (11.85f, 137.2f, 11.85f, 145.85f), (-11.85f, 145.85f, 11.85f, 145.85f));
-            Guirnalda(new Vector3(-11.3f, 3.8f, 137.8f), new Vector3(-11.3f, 3.8f, 145.3f));
-            Guirnalda(new Vector3(11.3f, 3.8f, 137.8f), new Vector3(11.3f, 3.8f, 145.3f));
-            Arco("META", 141f, 3.8f, 18f);
-            var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, 3.8f + 1.5f, 143.5f), new Vector3(24f, 3f, 5f));
-            Dedal(new Vector3(15.5f, 3.8f, 143f));
+            Losa("Meta", -12f, 12f, 325f, 334f, Y2, tablaCorte);
+            Cuadricula(-12f, 12f, 325f, 334f, Y2);
+            Regla(-12f, 325f, 334f, Y2);
+            Barandillas(Y2, (-11.85f, 325.2f, -11.85f, 333.85f), (11.85f, 325.2f, 11.85f, 333.85f), (-11.85f, 333.85f, 11.85f, 333.85f));
+            Guirnalda(new Vector3(-11.3f, Y2, 325.8f), new Vector3(-11.3f, Y2, 333.3f));
+            Guirnalda(new Vector3(11.3f, Y2, 325.8f), new Vector3(11.3f, Y2, 333.3f));
+            Arco("META", 329f, Y2, 18f);
+            var meta = M.ZonaTrigger<MetaCarrera>("Meta", mapa, new Vector3(0f, Y2 + 1.5f, 331.5f), new Vector3(24f, 3f, 5f));
+            Dedal(new Vector3(15.5f, Y2, 331f));
 
             // =================================================================
             // Ruta de los bots ([difícil, fácil] en cada cruce)
@@ -279,7 +372,36 @@ namespace BichoShow.Herramientas
             var e4 = Ruta("Salto al lateral", 1.3f, 2.6f, 123f, 0.3f, saltar: true);
             var e5 = Ruta("Alfiletero 3", 3.25f, 3.8f, 130f, 0.5f);
             var e6 = Ruta("Cinta metrica", -4f, 3.8f, 136f, 1.2f);
-            var em = Ruta("Meta", 0f, 3.8f, 143.5f, 3f);
+            var d5 = Ruta("Descanso 5", 0f, Y2, 142f, 3f);
+            // Botones elásticos (difícil) o dedales (fácil)
+            var be0 = Ruta("Antes de los botones", -6.5f, Y2, 149.4f, 0.6f, saltar: true);
+            var be1 = Ruta("Boton elastico 1", -6.5f, Y2 + 0.8f, 154f, 0.4f);
+            var be2 = Ruta("Boton elastico 2", -6.5f, Y2 + 0.8f, 168f, 0.4f);
+            var be3 = Ruta("Boton elastico 3", -6.5f, Y2 + 0.8f, 182f, 0.4f);
+            var dd0 = Ruta("Entrada dedales", 7f, Y2, 147f, 0.3f);
+            var dd1 = Ruta("Salida dedales", 7f, Y2, 189.5f, 0.3f);
+            var d6 = Ruta("Descanso 6", 0f, Y2, 193.5f, 3f);
+            var al0 = Ruta("Alfileres 1", 0f, Y2, 205f, 4f);
+            var al1 = Ruta("Alfileres 2", 0f, Y2, 220f, 4f);
+            var al2 = Ruta("Alfileres 3", 0f, Y2, 235f, 4f);
+            var d7 = Ruta("Descanso 7", 0f, Y2, 240.5f, 3f);
+            // Carretes rodantes (difícil) o botones-tecla (fácil)
+            var rr = new List<PuntoRuta> { Ruta("Al primer carrete", -6f, Y2, 243.6f, 0.4f, saltar: true) };
+            for (int i = 0; i < rodantes.Count; i++)
+            {
+                float zFin = 245f + 9.6f * i + 8f;
+                rr.Add(Ruta($"Carrete rodante {i + 1}", -6f, Y2 + 0.6f, zFin - 0.6f, 0.2f, saltar: true));
+            }
+            var tt = new List<PuntoRuta> { Ruta("A la primera tecla", 7f, Y2, 245.2f, 0.4f, saltar: true) };
+            for (int i = 0; i < teclas.Count; i++)
+                tt.Add(Ruta($"Boton tecla {i + 1}", i % 2 == 0 ? 6.4f : 8.2f, Y2, 247.5f + 5f * i, 0.3f, saltar: true));
+            var d8 = Ruta("Descanso 8", 0f, Y2, 287.5f, 3f);
+            var tj = new List<PuntoRuta>();
+            for (int i = 0; i < tijeras.Length; i++)
+                tj.Add(Ruta($"Antes de las tijeras {i + 1}", 0f, Y2, tijeras[i].transform.position.z - 2.6f, 0.8f, esperar: tijeras[i]));
+            var tjFin = Ruta("Fin de las tijeras", 0f, Y2, 324f, 1.5f);
+            var em = Ruta("Meta", 0f, Y2, 331.5f, 3f);
+
             Unir(w0, w1); Unir(w1, f1);
             Unir(f1, s0, c0);                                     // botones (difícil) o carretes (fácil)
             Unir(s0, s1); Unir(s1, s2); Unir(s2, s3); Unir(s3, f2);
@@ -291,13 +413,27 @@ namespace BichoShow.Herramientas
             Unir(rc0, rc1); Unir(rc1, f4);
             Unir(lc0, lc1); Unir(lc1, lc2); Unir(lc2, f4);
             Unir(f4, p0, e1);                                     // escalera de carretes o alfileteros
-            Unir(p0, p1); Unir(p1, p2); Unir(p2, p3); Unir(p3, p4); Unir(p4, p5); Unir(p5, em);
-            Unir(e1, e2); Unir(e2, e3); Unir(e3, e4); Unir(e4, e5); Unir(e5, e6); Unir(e6, em);
+            Unir(p0, p1); Unir(p1, p2); Unir(p2, p3); Unir(p3, p4); Unir(p4, p5);
+            Unir(e1, e2); Unir(e2, e3); Unir(e3, e4); Unir(e4, e5); Unir(e5, e6);
+            Unir(p5, d5); Unir(e6, d5);
+            Unir(d5, be0, dd0);                                   // botones elásticos o dedales
+            Unir(be0, be1); Unir(be1, be2); Unir(be2, be3); Unir(be3, d6);
+            Unir(dd0, dd1); Unir(dd1, d6);
+            Unir(d6, al0); Unir(al0, al1); Unir(al1, al2); Unir(al2, d7);
+            Unir(d7, rr[0], tt[0]);                               // carretes rodantes o teclas
+            for (int i = 0; i < rr.Count - 1; i++) Unir(rr[i], rr[i + 1]);
+            Unir(rr[rr.Count - 1], d8);
+            for (int i = 0; i < tt.Count - 1; i++) Unir(tt[i], tt[i + 1]);
+            Unir(tt[tt.Count - 1], d8);
+            Unir(d8, tj[0]);
+            for (int i = 0; i < tj.Count - 1; i++) Unir(tj[i], tj[i + 1]);
+            Unir(tj[tj.Count - 1], tjFin); Unir(tjFin, em);
+
 
             // =================================================================
             // Caída, decorado, jugadores y ronda
             // =================================================================
-            var vacio = M.ZonaTrigger<ZonaMortal>("ZonaCaida", mapa, new Vector3(2f, -5f, 75f), new Vector3(140f, 3f, 260f));
+            var vacio = M.ZonaTrigger<ZonaMortal>("ZonaCaida", mapa, new Vector3(2f, -5f, 165f), new Vector3(140f, 3f, 440f));
             vacio.motivoObjeto = "se ha caído de la mesa";
             Fondo();
 
@@ -313,7 +449,9 @@ namespace BichoShow.Herramientas
             ronda.ruta = ruta.ToArray();
             ronda.inicioRuta = w0;
             ronda.zSalida = 2.5f;
-            ronda.zMeta = 141f;
+            ronda.zMeta = 329f;
+            ronda.duracionMinima = 240f;
+            new GameObject(EscenasAnticuadas.Marca + Version);
 
             Ambientes.Aplicar(Ambientes.Tema.Taller);
             EditorSceneManager.SaveScene(escena, RutaEscena);
@@ -550,7 +688,7 @@ namespace BichoShow.Herramientas
             }
             var cinta = go.AddComponent<CintaTransportadora>();
             cinta.direccion = Vector3.back;
-            cinta.velocidad = 2.2f;
+            cinta.velocidad = 2.8f;
             cinta.tamano = new Vector2(ancho, largo);
             cinta.marcas = marcas.ToArray();
             return cinta;
@@ -762,6 +900,229 @@ namespace BichoShow.Herramientas
         }
 
         // ---------------------------------------------------------------------
+        // La segunda mitad: descansos, botones elásticos, dedales, alfileres, carretes rodantes,
+        // botones-tecla y tijeras
+        // ---------------------------------------------------------------------
+
+        /// <summary>Descanso entre tramos: losa ancha con parches, guirnaldas y punto de control.</summary>
+        static void Descanso(string nombre, float x0, float x1, float z0, float z1, float arriba, int indice,
+                             List<PuntoControlCarrera> controles, Material tela)
+        {
+            Losa(nombre, x0, x1, z0, z1, arriba, tela);
+            Pespunte(x0, x1, z0, z1, arriba);
+            Parches(x0, x1, z0, z1, arriba, parcheLunares);
+            Guirnalda(new Vector3(x0 + 0.6f, arriba, z0 + 0.6f), new Vector3(x0 + 0.6f, arriba, z1 - 0.6f));
+            Guirnalda(new Vector3(x1 - 0.6f, arriba, z0 + 0.6f), new Vector3(x1 - 0.6f, arriba, z1 - 0.6f));
+            controles.Add(PuntoControl(indice, (z0 + z1) * 0.5f, x0, x1, arriba));
+        }
+
+        /// <summary>Botón gigante elástico: al botar en él te lanza ~14 m hacia delante. Va y viene un poco de lado.</summary>
+        static ColchonElastico BotonElastico(string nombre, Vector3 pie, float desfase, Material color)
+        {
+            const float lado = 4.8f, radio = 2.4f;
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = pie;
+            var salto = go.AddComponent<BoxCollider>();
+            salto.isTrigger = true;
+            salto.size = new Vector3(lado, 1.2f, lado);
+            salto.center = new Vector3(0f, 1.1f, 0f);
+            var superficie = new GameObject("Superficie");
+            superficie.transform.SetParent(go.transform, false);
+            var caja = superficie.AddComponent<BoxCollider>();
+            caja.size = new Vector3(lado, 0.8f, lado);
+            caja.center = new Vector3(0f, 0.4f, 0f);
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var visual = Kit("Boton", go.transform, new Vector3(0f, 0.8f - radio * 0.22f, 0f), 0f, color, radio, local: true);
+            var c = go.AddComponent<ColchonElastico>();
+            c.visual = visual.transform;
+            c.vaiven = new Vector3(1.6f, 0f, 0f);
+            c.periodoVaiven = 3.4f;
+            c.desfaseVaiven = desfase;
+            return c;
+        }
+
+        /// <summary>Dedal boxeador: sale de lado sobre la pasarela y empuja hacia el vacío ("lado": de dónde sale, +1 derecha).</summary>
+        static void DedalBoxeador(string nombre, float xPasarela, float arriba, float z, float lado, float desfase, Material color)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(xPasarela + lado * 2.6f, arriba + 0.75f, z);
+            Vector3 haciaDentro = new Vector3(-lado, 0f, 0f);
+            var caja = go.AddComponent<BoxCollider>();
+            caja.size = new Vector3(1.6f, 1.4f, 1.4f);
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var cuerpo = E.Pieza(PrimitiveType.Cylinder, "Dedal", go.transform, Vector3.zero, new Vector3(1.3f, 0.8f, 1.3f), dedal);
+            cuerpo.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            var punta = E.Pieza(PrimitiveType.Sphere, "Punta", go.transform, haciaDentro * 0.8f, new Vector3(0.9f, 1.25f, 1.25f), color);
+            E.Pieza(PrimitiveType.Cylinder, "Piston", go.transform, -haciaDentro * 1.2f, new Vector3(0.4f, 0.6f, 0.4f), dorado)
+             .transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            // El soporte, fijo, al lado de la pasarela.
+            E.Bloque("Soporte dedal", suelos, new Vector3(xPasarela + lado * 3.8f, arriba - 0.3f, z), new Vector3(1.6f, 0.6f, 1.6f), maderaVeta);
+            var empujador = go.AddComponent<Empujador>();
+            empujador.recorrido = haciaDentro * 3.2f;
+            empujador.periodo = 3.4f;
+            empujador.desfase = desfase;
+            empujador.cuerpoVisible = punta.GetComponent<Renderer>();
+            empujador.nombreTrampa = nombre;
+            empujador.enfriamiento = 4f;
+            empujador.radioEfecto = 3.5f;
+            empujador.alturaMarcador = 2.5f;
+        }
+
+        /// <summary>Botón-tecla: sube y baja a su ritmo (sin columna: flota sobre un hilo).</summary>
+        static PetaloPiano BotonTecla(string nombre, Vector2 centro, float arriba, float radio, float desfase, Material color)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(centro.x, arriba - 0.2f, centro.y);
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            SoloColision(A.Disco(go.transform, "Cara", new Vector3(centro.x, 0f, centro.y), arriba - 0.2f, radio, 0.44f, color));
+            Kit("Boton", go.transform, new Vector3(centro.x, arriba - 0.2f - radio * 0.22f, centro.y), 0f, color, radio);
+            E.Pieza(PrimitiveType.Cylinder, "Hilo", go.transform, new Vector3(0f, -6f, 0f), new Vector3(0.08f, 6f, 0.08f), crema);
+            var p = go.AddComponent<PetaloPiano>();
+            p.amplitud = 0.9f;
+            p.periodo = 2.8f;
+            p.desfase = desfase;
+            return p;
+        }
+
+        /// <summary>El acerico gigante con los alfileres que salen por oleadas.</summary>
+        static CampoAlfileres CampoDeAlfileres(float x0, float x1, float z0, float z1, float arriba)
+        {
+            var acerico = E.CrearMaterial("CosturaAcerico", new Color(0.92f, 0.36f, 0.34f), 0.15f);
+            Losa("Acerico", x0, x1, z0, z1, arriba, acerico);
+            Pespunte(x0, x1, z0, z1, arriba);
+            var go = new GameObject("Campo de alfileres");
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3((x0 + x1) * 0.5f, arriba, (z0 + z1) * 0.5f);
+            Material[] cabezas = { mostaza, turquesa, azul, crema };
+            var alfileres = new List<Rigidbody>();
+            var fases = new List<float>();
+            int fila = 0;
+            for (float z = z0 + 3f; z < z1 - 1.5f; z += 2.5f, fila++)
+            {
+                int col = 0;
+                for (float x = x0 + 1f; x < x1 - 0.5f; x += 2f, col++)
+                {
+                    float xx = x + (fila % 2 == 0 ? 0f : 1f);
+                    if (xx > x1 - 0.8f) continue;
+                    var pin = new GameObject($"Alfiler {fila}-{col}");
+                    pin.transform.SetParent(go.transform, false);
+                    pin.transform.position = new Vector3(xx, arriba - 1.9f, z);
+                    var rb = pin.AddComponent<Rigidbody>();
+                    rb.isKinematic = true;
+                    var capsula = pin.AddComponent<CapsuleCollider>();
+                    capsula.radius = 0.3f;
+                    capsula.height = 1.8f;
+                    capsula.center = new Vector3(0f, -0.6f, 0f);
+                    E.Pieza(PrimitiveType.Cylinder, "Aguja", pin.transform, new Vector3(0f, -0.75f, 0f), new Vector3(0.16f, 0.75f, 0.16f), dedal);
+                    E.Pieza(PrimitiveType.Sphere, "Cabeza", pin.transform, Vector3.zero, Vector3.one * 0.6f, cabezas[(fila + col) % cabezas.Length]);
+                    foreach (var c in pin.GetComponentsInChildren<Collider>()) if (c != capsula) Object.DestroyImmediate(c);
+                    // El agujero del alfiler en el acerico.
+                    Pegatina("Agujero", xx - 0.3f, xx + 0.3f, z - 0.3f, z + 0.3f, arriba, negro);
+                    alfileres.Add(rb);
+                    // Oleadas: en damero, y cada fila un poco después que la anterior.
+                    fases.Add(Mathf.Repeat(fila * 0.085f + ((fila + col) % 2) * 0.5f + col * 0.02f, 1f));
+                }
+            }
+            var campo = go.AddComponent<CampoAlfileres>();
+            campo.alfileres = alfileres.ToArray();
+            campo.fases = fases.ToArray();
+            campo.alturaFuera = 1.9f + 1.5f;      // la cabeza, 1,5 m por encima del acerico
+            campo.alturaAsomado = 1.9f - 0.25f;   // asoma la cabeza
+            campo.alturaDentro = 0f;              // escondido
+            return campo;
+        }
+
+        /// <summary>Carrete tumbado que rueda (eje a lo largo de la carrera): se corre por encima. "arriba" = lo alto del carrete.</summary>
+        static CarreteRodante CarreteRodando(string nombre, float x, float z0, float z1, float arriba, float arrastre, float desfase, Material hilo)
+        {
+            const float radio = 1.8f;
+            float largo = z1 - z0;
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(x, arriba - radio, (z0 + z1) * 0.5f);
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var giro = new GameObject("Giro").transform;
+            giro.SetParent(go.transform, false);
+            var tambor = E.Pieza(PrimitiveType.Cylinder, "Hilo", giro, Vector3.zero, new Vector3(radio * 2f, (largo - 0.8f) * 0.5f, radio * 2f), hilo);
+            tambor.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            foreach (float k in new[] { -1f, 1f })
+            {
+                var tapa = E.Pieza(PrimitiveType.Cylinder, "Tapa", giro, new Vector3(0f, 0f, k * (largo * 0.5f - 0.2f)), new Vector3(radio * 2.15f, 0.2f, radio * 2.15f), maderaVeta);
+                tapa.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            }
+            // La colisión: un cilindro de verdad (una cápsula tendría las puntas redondas), que no gira.
+            var colision = new GameObject("Colision");
+            colision.transform.SetParent(go.transform, false);
+            colision.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            colision.transform.localScale = new Vector3(radio * 2f, largo * 0.5f, radio * 2f);
+            var mallaCilindro = colision.AddComponent<MeshCollider>();
+            mallaCilindro.sharedMesh = tambor.GetComponent<MeshFilter>().sharedMesh;
+            mallaCilindro.convex = true;
+            // Una etiqueta a lo largo: así se ve hacia dónde gira.
+            E.Pieza(PrimitiveType.Cube, "Etiqueta", giro, new Vector3(0f, radio, 0f), new Vector3(0.7f, 0.06f, largo - 1.2f), crema);
+            foreach (var c in giro.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+            // Soportes de madera en los extremos (fijos).
+            foreach (float k in new[] { -1f, 1f })
+                M.Decorado(PrimitiveType.Cube, "Soporte", decorado, new Vector3(x, (arriba - radio + AlturaMesa) * 0.5f, (z0 + z1) * 0.5f + k * (largo * 0.5f - 0.2f)),
+                           new Vector3(0.8f, arriba - radio - AlturaMesa, 0.4f), maderaVeta);
+            var carrete = go.AddComponent<CarreteRodante>();
+            carrete.visual = giro;
+            carrete.radio = radio;
+            carrete.largo = largo;
+            carrete.arrastre = arrastre;
+            carrete.periodoCambio = 3.6f;
+            carrete.desfase = desfase;
+            return carrete;
+        }
+
+        /// <summary>Tijeras gigantes de pie sobre el puente, con el eje a 6,2 m de alto en el centro.</summary>
+        static TijerasGigantes Tijeras(string nombre, float z, float arriba, float pausaAbierta, float pausaCerrada, float desfase, Material mango)
+        {
+            const float altoEje = 6.2f, largoHoja = 7.6f;
+            var go = new GameObject(nombre);
+            go.transform.SetParent(obstaculos, false);
+            go.transform.position = new Vector3(0f, arriba + altoEje, z);
+            var hojas = new Rigidbody[2];
+            for (int k = 0; k < 2; k++)
+            {
+                var pivote = new GameObject(k == 0 ? "Hoja izquierda" : "Hoja derecha");
+                pivote.transform.SetParent(go.transform, false);
+                pivote.transform.localPosition = new Vector3(0f, 0f, k == 0 ? -0.5f : 0.5f);
+                var rb = pivote.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                pivote.AddComponent<HojaTijera>();
+                var caja = pivote.AddComponent<BoxCollider>();
+                caja.size = new Vector3(0.7f, largoHoja, 1f);
+                caja.center = new Vector3(0f, -largoHoja * 0.5f, 0f);
+                E.Pieza(PrimitiveType.Cube, "Hoja", pivote.transform, new Vector3(0f, -largoHoja * 0.5f, 0f), new Vector3(0.6f, largoHoja, 0.9f), dedal);
+                E.Pieza(PrimitiveType.Cube, "Filo", pivote.transform, new Vector3(k == 0 ? 0.32f : -0.32f, -largoHoja * 0.5f, 0f), new Vector3(0.06f, largoHoja - 0.3f, 0.92f), crema);
+                // El mango (arriba del eje): un aro de color.
+                var mangoGo = E.Pieza(PrimitiveType.Cylinder, "Mango", pivote.transform, new Vector3(0f, 1.3f, 0f), new Vector3(1.6f, 0.12f, 1.6f), mango);
+                mangoGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                hojas[k] = rb;
+            }
+            var tornillo = E.Pieza(PrimitiveType.Cylinder, "Tornillo", go.transform, Vector3.zero, new Vector3(0.6f, 0.4f, 0.6f), dorado);
+            tornillo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            // Un poste a cada lado sujeta el eje por arriba (decorado).
+            foreach (float lado in new[] { -1f, 1f })
+                M.Decorado(PrimitiveType.Cylinder, "Poste tijeras", decorado, new Vector3(lado * 6f, arriba + altoEje * 0.5f - 2f, z), new Vector3(0.35f, altoEje * 0.5f + 2f, 0.35f), maderaVeta);
+            M.Decorado(PrimitiveType.Cylinder, "Travesano", decorado, new Vector3(0f, arriba + altoEje + 0.2f, z), new Vector3(0.3f, 6f, 0.3f), maderaVeta)
+             .transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+            var t = go.AddComponent<TijerasGigantes>();
+            t.hojaIzq = hojas[0];
+            t.hojaDer = hojas[1];
+            t.anguloAbierto = 36f;
+            t.pausaAbierta = pausaAbierta;
+            t.pausaCerrada = pausaCerrada;
+            t.desfase = desfase;
+            t.tiempoCerrar = 0.32f;
+            return t;
+        }
+
+        // ---------------------------------------------------------------------
         // Ruta de los bots
         // ---------------------------------------------------------------------
 
@@ -811,18 +1172,23 @@ namespace BichoShow.Herramientas
         {
             var f = M.Grupo(decorado, "Taller");
             // La mesa de costura, abajo, con su veta.
-            M.Decorado(PrimitiveType.Cube, "Mesa", f, new Vector3(0f, AlturaMesa - 0.5f, 75f), new Vector3(130f, 1f, 250f), mesaVeta);
+            M.Decorado(PrimitiveType.Cube, "Mesa", f, new Vector3(0f, AlturaMesa - 0.5f, 165f), new Vector3(130f, 1f, 440f), mesaVeta);
 
             // El público: bichos en gradas encima de carretes gigantes, a los lados del recorrido.
             Grada(f, new Vector3(-20f, 0f, 8f), new Vector3(0f, 0f, 10f), fondoCoral);
             Grada(f, new Vector3(26f, 0f, 46f), new Vector3(8f, 0f, 46f), fondoAzul);
             Grada(f, new Vector3(-21f, 0f, 96f), new Vector3(-4f, 0f, 96f), fondoMostaza);
             Grada(f, new Vector3(-21f, 3.8f, 141f), new Vector3(0f, 3.8f, 141f), fondoTurquesa);
+            Grada(f, new Vector3(22f, 3.8f, 217f), new Vector3(0f, 3.8f, 217f), fondoCoral);
+            Grada(f, new Vector3(-22f, 3.8f, 266f), new Vector3(-6f, 3.8f, 266f), fondoAzul);
+            Grada(f, new Vector3(20f, 3.8f, 308f), new Vector3(0f, 3.8f, 308f), fondoMostaza);
+            Grada(f, new Vector3(-21f, 3.8f, 329f), new Vector3(0f, 3.8f, 329f), fondoTurquesa);
             // Focos del plató (esto sigue siendo un concurso de la tele).
             foreach (var (pie, mirar) in new[]
                      {
                          (new Vector3(-15f, AlturaMesa, -6f), new Vector3(0f, 0f, 10f)), (new Vector3(15f, AlturaMesa, -6f), new Vector3(0f, 0f, 10f)),
-                         (new Vector3(-17f, AlturaMesa, 155f), new Vector3(0f, 0f, 140f)), (new Vector3(17f, AlturaMesa, 155f), new Vector3(0f, 0f, 140f)),
+                         (new Vector3(-17f, AlturaMesa, 343f), new Vector3(0f, 0f, 328f)), (new Vector3(17f, AlturaMesa, 343f), new Vector3(0f, 0f, 328f)),
+                         (new Vector3(-24f, AlturaMesa, 210f), new Vector3(0f, 0f, 217f)), (new Vector3(24f, AlturaMesa, 290f), new Vector3(0f, 0f, 300f)),
                      })
                 KitObjetos.Poner("TorreFocos", f, pie, KitObjetos.GiroMirando(pie, mirar), null, 2.4f, false, KitObjetos.KitPlato);
 
@@ -844,16 +1210,25 @@ namespace BichoShow.Herramientas
             Kit("Tijeras", f, new Vector3(-26f, AlturaMesa, 150f), 30f, fondoCoral, 3f);
             Kit("CintaRollo", f, new Vector3(-15f, AlturaMesa, -14f), -20f, null, 3f);
             M.Decorado(PrimitiveType.Cube, "Cinta metrica", f, new Vector3(-15f, AlturaMesa + 0.05f, 70f), new Vector3(2.5f, 0.1f, 170f), fondoMostaza);
+            // La segunda mitad: otra máquina de coser, más rollos, carretes y botones.
+            Kit("MaquinaCoser", f, new Vector3(-42f, AlturaMesa, 300f), 90f, null, 3.4f);
+            Kit("Acerico", f, new Vector3(36f, AlturaMesa, 240f), -30f, null, 4f);
+            Kit("RolloTela", f, new Vector3(-33f, AlturaMesa, 205f), 40f, fondoAzul, 3f);
+            Kit("RolloTela", f, new Vector3(35f, AlturaMesa, 330f), -10f, fondoTurquesa, 3f);
+            CarreteFondo(f, new Vector3(30f, AlturaMesa, 270f), 3.5f, 8f, fondoTurquesa);
+            CarreteFondo(f, new Vector3(-30f, AlturaMesa, 360f), 4f, 7f, fondoCoral);
+            BotonFondo(f, new Vector3(-26f, AlturaMesa, 250f), 4f, fondoMostaza);
+            Kit("Tijeras", f, new Vector3(28f, AlturaMesa, 352f), -40f, fondoAzul, 3f);
 
             // Pared del taller con papel pintado y una estantería con rollos de tela.
-            M.Decorado(PrimitiveType.Cube, "Pared", f, new Vector3(0f, AlturaMesa + 18f, 205f), new Vector3(160f, 40f, 2f), papelPintado);
+            M.Decorado(PrimitiveType.Cube, "Pared", f, new Vector3(0f, AlturaMesa + 18f, 395f), new Vector3(160f, 40f, 2f), papelPintado);
             Material[] rollos = { fondoCoral, fondoTurquesa, fondoMostaza, fondoAzul };
             for (int i = 0; i < 3; i++)
             {
                 float y = AlturaMesa + 8f + i * 7f;
-                M.Decorado(PrimitiveType.Cube, "Balda", f, new Vector3(0f, y, 202f), new Vector3(70f, 0.6f, 4f), mesaVeta);
+                M.Decorado(PrimitiveType.Cube, "Balda", f, new Vector3(0f, y, 392f), new Vector3(70f, 0.6f, 4f), mesaVeta);
                 for (int k = 0; k < 6; k++)
-                    Kit("RolloTela", f, new Vector3(-28f + k * 11f + (i % 2) * 4f, y + 0.3f, 202f), 0f, rollos[(k + i) % rollos.Length], 2.2f);
+                    Kit("RolloTela", f, new Vector3(-28f + k * 11f + (i % 2) * 4f, y + 0.3f, 392f), 0f, rollos[(k + i) % rollos.Length], 2.2f);
             }
         }
 

@@ -6,7 +6,7 @@ Esta es la **versión de prueba**: bloques redondeados y colores planos, con la 
 
 ## Crearla
 
-En Unity: **BichoShow → Crear escena: Costura a la fuga**.
+En Unity: **BichoShow → Crear escena: Costura a la fuga**. Si ya la tenías creada, al darle a Play sale un aviso para rehacerla con el recorrido nuevo.
 
 - Se crea `Escenas/Costura.unity`, se añade al build y entra sola en el sorteo del show; no hace falta rehacer el menú.
 - Para jugarla suelta, abre la escena, dale a Play, únete y pulsa START.
@@ -24,7 +24,7 @@ Con eso, los huecos que hay que saltar miden entre 1,5 y 2,5 m y los escalones s
 
 ## El recorrido (a lo largo del eje Z)
 
-Después de la salida hay **cuatro cruces**. En cada uno se elige entre dos caminos con pruebas distintas, y los dos se juntan en un descanso. Los descansos están desplazados a un lado u otro, así que la carrera va zigzagueando.
+La carrera mide unos **335 m** (la primera versión, 146). Después de la salida hay **cruces**: en cada uno se elige entre dos caminos con pruebas distintas, y los dos se juntan en un descanso. Dos tramos (el campo de alfileres y las tijeras) son de un solo camino. Los descansos están desplazados a un lado u otro, así que la carrera va zigzagueando.
 
 En cada descanso hay una bandera coral a los dos lados. Es un **punto de control**: si te caes de la mesa, vuelves a la última que cruzaste.
 
@@ -35,9 +35,21 @@ En cada descanso hay una bandera coral a los dos lados. Es un **punto de control
 | 2 | 53–72 | **Puente acordeón** (izquierda): seis paneles que se inclinan en ola | **Cinta métrica rodante** (derecha): va hacia atrás y la barren dos agujas de tejer que hay que saltar | 3, Descanso 2 (z 74,5) |
 | 3 | 78–100 | **Cremallera estrecha** (derecha): de una tirada, tirador rápido | **Cremallera ancha** (izquierda): lenta, con descansillo | 4, Destino (z 103,5) |
 | 4 | 107–137 | **Escalera de carretes** (derecha): carretes de pie, cada uno más alto; dos giran | **Alfileteros** (izquierda): el del medio se hunde; escalón y rampa del lado | 5: en el alfiletero 1 o en el carrete del medio |
-| Meta | 137–146 | Plataforma ancha con el arco de META y el dedal gigante | | |
+| 5 | 137–197 | **Botones elásticos** (izquierda): tres botones que te lanzan ~14 m y van de lado a lado | **Pasarela de los dedales** (derecha): 3 m de ancho; siete dedales boxeadores empujan al vacío | 6, Descanso 5 (z 141,5) y 7, Descanso 6 (z 193,5) |
+| 6 | 197–237 | **El campo de alfileres** (un solo camino): un acerico de 16 m de ancho del que salen alfileres por oleadas | | 8, Descanso 7 (z 240,5) |
+| 7 | 244–284 | **Carretes rodantes** (izquierda): cuatro carretes tumbados que giran; se corre por encima | **Botones-tecla** (derecha): siete botones que suben y bajan a destiempo | 9, Descanso 8 (z 287,5) |
+| 8 | 291–325 | **Las tijeras gigantes** (un solo camino): cuatro tijeras sobre un puente de 10 m, cada una a su ritmo | | |
+| Meta | 325–334 | Plataforma ancha con el arco de META y el dedal gigante | | |
 
 Cómo funcionan los obstáculos:
+
+- **Las pruebas de la primera mitad van más rápidas que en la primera versión:** carretes viajeros, botones giratorios, agujas de tejer y cinta.
+- **Botones elásticos:** al caer en uno, te lanza en parábola hasta el siguiente. Van y vienen de lado: si saltas tarde, caes al vacío.
+- **Dedales boxeadores:** salen de lado y cruzan toda la pasarela. Antes de salir parpadean.
+- **Campo de alfileres:** antes de salir, la cabeza del alfiler asoma y tiembla (y suena un clic). Luego sale de golpe y lanza por los aires a quien esté encima. Arriba son postes que estorban. Salen en damero y por oleadas, fila a fila: hay que ir por donde acaban de esconderse.
+- **Carretes rodantes:** giran sobre su eje y te arrastran de lado. Además son redondos: si te vas al borde, resbalas. Cada pocos segundos frenan, tiemblan y cambian de sentido. Cada carrete gira más rápido que el anterior.
+- **Botones-tecla:** suben y bajan como teclas de piano. Hay que saltar al siguiente cuando está a tu altura.
+- **Tijeras gigantes:** abiertas, las hojas bajan en diagonal hacia los lados y se pasa por el **centro**. Cerradas, las hojas cuelgan juntas en el centro y se pasa por los **lados**. Antes de cerrarse tiemblan y hacen clic. El tijeretazo lanza hacia fuera del puente a quien pilla en medio.
 
 - **Botones giratorios y carretes de la escalera:** giran y te arrastran mientras vas encima. Hay que saltar al siguiente antes de que el giro te saque por el borde.
 - **Carretes viajeros:** empujan a quien tocan hacia el lado al que van, y lo tumban un momento.
@@ -50,7 +62,7 @@ Cómo se gana:
 
 - El 1º se lleva 200 puntos, el 2º 170, el 3º 140 y el 4º 110.
 - Quien no llega se lleva su porcentaje de carrera, que siempre es menos.
-- Cuando llega el primero, a los demás les quedan 30 s.
+- La carrera dura como mínimo 4 minutos. Cuando llega el primero, a los demás les quedan 30 s.
 - Al llegar, el bicho celebra y deja el circuito, para que la cámara siga a los que aún corren.
 
 ## Probarla zona por zona
