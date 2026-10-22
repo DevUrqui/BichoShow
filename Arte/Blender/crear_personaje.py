@@ -352,7 +352,7 @@ if ESPECIE == "abeja":
     # aguijón). Va con la cadera y no se tiñe: es lo que la hace abeja aunque el cuerpo sea del
     # color del jugador. ---
     ABD_EJE = Vector((0, math.cos(math.radians(-22)), math.sin(math.radians(-22))))   # hacia atrás y un poco abajo
-    ABD_LARGO, ABD_ANCHO, ABD_ALTO = 0.58, 0.47, 0.44
+    ABD_LARGO, ABD_ANCHO, ABD_ALTO = 0.6, 0.64, 0.5   # más ancho que el cuerpo: las rayas asoman también de frente
     ABD_CENTRO = Vector((0, RADIOS.y * 0.55, altura(-0.1))) + ABD_EJE * ABD_LARGO * 0.95
     _arriba = (Vector((0, 0, 1)) - ABD_EJE * ABD_EJE.z).normalized()
     # Los polos de la esfera, en las puntas del abdomen: los anillos quedan de través y las rayas, rectas.
@@ -375,10 +375,10 @@ if ESPECIE == "abeja":
     bm = bmesh.new()
     base_abd = ABD_CENTRO - ABD_EJE * ABD_LARGO * 0.78
     _lado = Vector((1, 0, 0))
-    for i in range(12):
-        a = 2 * math.pi * i / 12
-        p = base_abd + (_lado * math.cos(a) * 0.36 + _arriba * math.sin(a) * 0.33)
-        r = 0.12 + 0.02 * math.sin(3 * a)
+    for i in range(14):
+        a = 2 * math.pi * i / 14
+        p = base_abd + (_lado * math.cos(a) * 0.5 + _arriba * math.sin(a) * 0.4)
+        r = 0.14 + 0.025 * math.sin(3 * a)
         esfera(bm, p, (r, r, r), 0, 14, 8)
     collar = nuevo("CollarPelusa", bm, ["Pelo"])
     pesar_todo(collar, "Cadera")

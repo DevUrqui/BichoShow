@@ -197,6 +197,10 @@ namespace BichoShow
         readonly Dictionary<PlayerInput, int> filaVestuario = new Dictionary<PlayerInput, int>();
         readonly HashSet<PlayerInput> listos = new HashSet<PlayerInput>();
         float salirVestuarioEn = -1f;
+        // Para enseñar el bicho por todos lados: lo que lo ha girado cada jugador (stick derecho)
+        // y la vuelta entera que da al cambiar de bicho.
+        readonly Dictionary<PlayerInput, float> giroVestuario = new Dictionary<PlayerInput, float>();
+        readonly Dictionary<PlayerInput, float> vueltaPendiente = new Dictionary<PlayerInput, float>();
 
         void EntrarVestuario()
         {
@@ -204,10 +208,14 @@ namespace BichoShow
             filaVestuario.Clear();
             listos.Clear();
             salirVestuarioEn = -1f;
+            giroVestuario.Clear();
+            vueltaPendiente.Clear();
         }
 
         void SalirVestuario()
         {
+            foreach (var entrada in PlayerInput.all)
+                if (entrada.TryGetComponent(out AnimadorBicho a)) a.giroExhibicion = 0f;
             pantalla = Pantalla.Principal;
             seleccion = 2;
             Sonidos.Reproducir(Sonido.MenuAceptar);
@@ -230,6 +238,7 @@ namespace BichoShow
                 stickAnterior[entrada] = stick;
                 filaVestuario.TryGetValue(entrada, out int fila);
                 bool listo = listos.Contains(entrada);
+                GirarEnVestuario(entrada);
 
                 if (!listo)
                 {
@@ -260,6 +269,32 @@ namespace BichoShow
                 salirVestuarioEn = Time.unscaledTime + 0.8f; // un momento para ver el "¡listo!" de todos
         }
 
+        /// <summary>
+        /// El bicho se balancea un poco a los lados, da una vuelta entera al cambiar de bicho y se
+        /// puede girar con el stick derecho (o el ratón): así se ve también la espalda (la concha,
+        /// el abdomen de la abeja, la capa…).
+        /// </summary>
+        void GirarEnVestuario(PlayerInput entrada)
+        {
+            if (!entrada.TryGetComponent(out AnimadorBicho a)) return;
+            float dt = Time.unscaledDeltaTime;
+            giroVestuario.TryGetValue(entrada, out float giro);
+            vueltaPendiente.TryGetValue(entrada, out float vuelta);
+            var mirar = entrada.actions.FindAction("Mirar");
+            float x = mirar != null ? Mathf.Clamp(mirar.ReadValue<Vector2>().x, -1f, 1f) : 0f;
+            if (Mathf.Abs(x) > 0.2f) giro += x * 220f * dt;
+            if (vuelta > 0f)
+            {
+                float paso = Mathf.Min(vuelta, 540f * dt);
+                vuelta -= paso;
+                giro += paso;
+            }
+            giro = Mathf.Repeat(giro, 360f);
+            giroVestuario[entrada] = giro;
+            vueltaPendiente[entrada] = vuelta;
+            a.giroExhibicion = giro + Mathf.Sin(Time.unscaledTime * 0.9f + entrada.playerIndex * 1.7f) * 35f;
+        }
+
         void CambiarPrenda(PlayerInput entrada, int fila, int sentido)
         {
             if (!entrada.TryGetComponent(out Vestuario v)) return;
@@ -270,6 +305,7 @@ namespace BichoShow
                 int especie = (v.Especie + sentido + n) % n;
                 v.PonerEspecie(especie);
                 Vestuario.GuardarEspecie(entrada.playerIndex, especie);
+                vueltaPendiente[entrada] = 360f; // una vuelta para enseñarlo entero
                 Sonidos.Reproducir(Sonido.Aparecer, entrada.transform.position, 0.9f, 1f);
                 return;
             }
@@ -333,7 +369,7 @@ namespace BichoShow
             }
 
             EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
-                ("Stick", EstiloShow.GlifoTecla, "elegir y cambiar"), ("A", EstiloShow.GlifoA, "listo"), ("START", EstiloShow.GlifoTecla, "volver"));
+                ("Stick", EstiloShow.GlifoTecla, "elegir y cambiar"), ("Stick der.", EstiloShow.GlifoTecla, "girar"), ("A", EstiloShow.GlifoA, "listo"), ("START", EstiloShow.GlifoTecla, "volver"));
         }
 
         static void FilaPrenda(Rect r, string etiqueta, string valor, bool elegida)

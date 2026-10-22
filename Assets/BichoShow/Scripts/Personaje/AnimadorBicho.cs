@@ -57,6 +57,8 @@ namespace BichoShow
 
         ControladorBicho bicho;
         Quaternion rotacionVisual;
+        /// <summary>Giro extra del dibujo (grados alrededor de la vertical) para enseñarlo por todos lados en el vestuario.</summary>
+        [System.NonSerialized] public float giroExhibicion;
         Vector3 ultimoAdelante = Vector3.forward;
         float ultimoEnSuelo;
         float finCelebrar = -10f;
@@ -272,6 +274,7 @@ namespace BichoShow
                 inclinacionCurva = Mathf.Lerp(inclinacionCurva, objetivoCurva, 1f - Mathf.Exp(-8f * dt));
 
                 objetivo = Quaternion.AngleAxis(anguloVisual, eje) * rumbo * Quaternion.AngleAxis(inclinacionCurva, Vector3.forward);
+                if (giroExhibicion != 0f) objetivo = Quaternion.AngleAxis(giroExhibicion, Vector3.up) * objetivo;
             }
 
             rotacionVisual = Quaternion.Slerp(rotacionVisual, objetivo, 1f - Mathf.Exp(-suavizadoGiro * dt));
