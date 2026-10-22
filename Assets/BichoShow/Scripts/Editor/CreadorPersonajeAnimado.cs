@@ -25,7 +25,7 @@ namespace BichoShow.Herramientas
         const string CarpetaAnimaciones = E.Raiz + "/Animaciones";
         const string CarpetaPersonajes = E.Raiz + "/Resources/Personajes";
         /// <summary>Sube cuando cambia cómo se montan los personajes: el aviso de Play pide rehacerlos.</summary>
-        public const int VersionPersonajes = 3;
+        public const int VersionPersonajes = 4;
         static readonly string[] Animaciones = { "Quieto", "Andar", "Correr", "Saltar", "Caer", "Tumbado", "Celebrar" };
 
         // El personaje que se está preparando
@@ -133,8 +133,8 @@ namespace BichoShow.Herramientas
                     c["Mancha"] = (new Color(0.1f, 0.07f, 0.06f), 0.6f);
                     c["Bota"] = (new Color(0.98f, 0.48f, 0.2f), 0.45f);
                     break;
-                case "Concha": // caracol: verde lechuga y concha de galleta
-                    c["Piel"] = (new Color(0.55f, 0.82f, 0.42f), 0.6f);
+                case "Concha": // caracol: aguamarina y concha de galleta
+                    c["Piel"] = (new Color(0.45f, 0.8f, 0.78f), 0.6f);
                     c["Caparazon"] = (new Color(0.85f, 0.55f, 0.35f), 0.7f);
                     c["Barriga"] = (new Color(0.95f, 0.97f, 0.8f), 0.4f);
                     c["Mancha"] = (new Color(0.5f, 0.3f, 0.18f), 0.4f); // la espiral de la concha
@@ -150,6 +150,29 @@ namespace BichoShow.Herramientas
                     c["Piel"] = (new Color(0.62f, 0.52f, 0.92f), 0.45f);
                     c["Mancha"] = (new Color(0.24f, 0.18f, 0.34f), 0.6f);
                     c["Bota"] = (new Color(0.32f, 0.8f, 0.5f), 0.45f);
+                    break;
+                case "Gusi": // oruga: rosa, lunares y cresta amarillos, patitas moradas
+                    c["Piel"] = (new Color(0.98f, 0.55f, 0.75f), 0.5f);
+                    c["Concha"] = (new Color(1f, 0.85f, 0.3f), 0.5f);
+                    c["Mancha"] = (new Color(0.55f, 0.25f, 0.6f), 0.5f);
+                    break;
+                case "Ocho": // araña: morada, culete con manchas naranjas, patas casi negras
+                    c["Piel"] = (new Color(0.42f, 0.3f, 0.58f), 0.4f);
+                    c["Caparazon"] = (new Color(0.3f, 0.2f, 0.42f), 0.5f);
+                    c["Mancha"] = (new Color(0.14f, 0.1f, 0.18f), 0.5f);
+                    c["Concha"] = (new Color(1f, 0.6f, 0.15f), 0.6f);
+                    c["Pelo"] = (new Color(0.22f, 0.16f, 0.3f), 0.1f);
+                    break;
+                case "Migas": // hormiga: naranja rojizo, culete granate, patas y antenas marrón oscuro
+                    c["Piel"] = (new Color(0.9f, 0.38f, 0.2f), 0.5f);
+                    c["Caparazon"] = (new Color(0.62f, 0.2f, 0.12f), 0.75f);
+                    c["Mancha"] = (new Color(0.22f, 0.1f, 0.08f), 0.6f);
+                    break;
+                case "Brinco": // saltamontes: verde lima, alas plegadas verde oscuro, barriga clarita
+                    c["Piel"] = (new Color(0.6f, 0.86f, 0.2f), 0.5f);
+                    c["Caparazon"] = (new Color(0.3f, 0.56f, 0.16f), 0.6f);
+                    c["Barriga"] = (new Color(0.95f, 0.95f, 0.6f), 0.4f);
+                    c["Mancha"] = (new Color(0.2f, 0.35f, 0.12f), 0.5f);
                     break;
             }
 
@@ -214,7 +237,11 @@ namespace BichoShow.Herramientas
                 try
                 {
                     // Talla de la ropa: lo ancho que es cada uno respecto a Bichete (ver FORMAS en crear_personaje.py).
-                    modelo.tallaRopa = bicho switch { "Zumbi" => 1.12f, "Concha" => 0.85f, "Cornelio" => 1.18f, "Chispa" => 0.88f, _ => 1f };
+                    modelo.tallaRopa = bicho switch
+                    {
+                        "Zumbi" => 0.88f, "Concha" => 0.85f, "Cornelio" => 1.18f, "Chispa" => 0.88f,
+                        "Gusi" => 0.88f, "Ocho" => 0.92f, "Migas" => 0.9f, "Brinco" => 0.72f, _ => 1f,
+                    };
                     modelo.version = VersionPersonajes;
                     if (bicho == "Chispa") LuzFarol(modelo);
                     PrefabUtility.SaveAsPrefabAsset(modelo.gameObject, $"{CarpetaPersonajes}/{bicho}.prefab");

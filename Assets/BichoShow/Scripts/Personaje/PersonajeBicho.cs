@@ -4,7 +4,8 @@ namespace BichoShow
 {
     /// <summary>
     /// Qué bicho es este concursante: Bichete (mariquita), Zumbi (abeja), Concha (caracol),
-    /// Cornelio (escarabajo) o Chispa (luciérnaga). Todos comparten esqueleto, animaciones y
+    /// Cornelio (escarabajo), Chispa (luciérnaga), Gusi (oruga), Ocho (araña), Migas (hormiga) o
+    /// Brinco (saltamontes). Todos comparten los nombres de los huesos, animaciones y
     /// anclajes, así que cambiar de uno a otro es cambiar el modelo que cuelga de "Aspecto" y
     /// reconectar el animador, el vestuario, el color del jugador y la silueta. Los modelos son
     /// prefabs en Resources/Personajes (los crea "BichoShow > Personaje: preparar los personajes").
@@ -12,8 +13,12 @@ namespace BichoShow
     /// </summary>
     public class PersonajeBicho : MonoBehaviour
     {
-        public static readonly string[] Especies = { "Bichete", "Zumbi", "Concha", "Cornelio", "Chispa" };
-        public static readonly string[] Nombres = { "Bichete (mariquita)", "Zumbi (abeja)", "Concha (caracol)", "Cornelio (escarabajo)", "Chispa (luciérnaga)" };
+        public static readonly string[] Especies = { "Bichete", "Zumbi", "Concha", "Cornelio", "Chispa", "Gusi", "Ocho", "Migas", "Brinco" };
+        public static readonly string[] Nombres =
+        {
+            "Bichete (mariquita)", "Zumbi (abeja)", "Concha (caracol)", "Cornelio (escarabajo)", "Chispa (luciérnaga)",
+            "Gusi (oruga)", "Ocho (araña)", "Migas (hormiga)", "Brinco (saltamontes)",
+        };
 
         public int Especie { get; private set; }
 
