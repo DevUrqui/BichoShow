@@ -5,12 +5,12 @@ Cada jugador elige su bicho en **Vestuario**, en la primera fila ("Bicho"). La r
 | Bicho | Qué es | Lo suyo |
 |---|---|---|
 | **Bichete** | Mariquita | Huevo redondo con caparazón de lunares y raya |
-| **Zumbi** | Abeja | Cabeza redonda y, detrás, un abdomen grande a rayas amarillas y negras con aguijón; collar y moño de pelusa y dos pares de alas grandes que aletean (más rápido en el aire) |
+| **Zumbi** | Abeja | Amarilla, con brazos y patas negros de insecto; detrás, un abdomen grande a rayas con aguijón; collar y moño de pelusa y dos pares de alas grandes que aletean (más rápido en el aire) |
 | **Concha** | Caracol | Alto y estrecho, con los ojos en lo alto de las antenas y una concha enorme en espiral a la espalda |
 | **Cornelio** | Escarabajo | Bajito, ancho y forzudo: brazos y patas gordos, élitros grandes, cejo de gruñón y un cuerno de rinoceronte |
 | **Chispa** | Luciérnaga | Flaca y de ojos grandes, con capucha oscura, alas, lucecitas en las antenas y un farolillo enorme en el culete que alumbra de verdad |
 
-Cada uno tiene su propia silueta, pero los mismos huesos y animaciones, así que juegan exactamente igual: el bicho solo cambia el aspecto. La piel y el caparazón se tiñen del color del jugador; la concha del caracol, las rayas de la abeja y el farol de la luciérnaga guardan su color. La ropa se ajusta a la talla de cada uno.
+Cada uno tiene su propia silueta, pero los mismos huesos y animaciones, así que juegan exactamente igual: el bicho solo cambia el aspecto. **El color del jugador:** Bichete se tiñe entero, como siempre. Los demás llevan siempre sus colores (abeja amarilla, caracol verde, escarabajo azul con caparazón verde metalizado, luciérnaga lila) y el color del jugador va en las manoplas y las zapatillas. La ropa se ajusta a la talla de cada uno.
 
 ## Prepararlos en Unity (una vez)
 

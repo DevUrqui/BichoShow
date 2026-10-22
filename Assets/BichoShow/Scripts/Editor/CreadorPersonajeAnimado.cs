@@ -25,7 +25,7 @@ namespace BichoShow.Herramientas
         const string CarpetaAnimaciones = E.Raiz + "/Animaciones";
         const string CarpetaPersonajes = E.Raiz + "/Resources/Personajes";
         /// <summary>Sube cuando cambia cómo se montan los personajes: el aviso de Play pide rehacerlos.</summary>
-        public const int VersionPersonajes = 2;
+        public const int VersionPersonajes = 3;
         static readonly string[] Animaciones = { "Quieto", "Andar", "Correr", "Saltar", "Caer", "Tumbado", "Celebrar" };
 
         // El personaje que se está preparando
@@ -119,31 +119,35 @@ namespace BichoShow.Herramientas
                 // Estos dos no se tiñen con el color del jugador: son de cada bicho.
                 { "Concha", (new Color(0.93f, 0.72f, 0.45f), 0.55f) },
                 { "Pelo", (new Color(1f, 0.95f, 0.8f), 0.1f) },
+                { "Guante", (new Color(1f, 0.42f, 0.36f), 0.35f) },
             };
+            // Lo que se tiñe con el color del jugador: Bichete entero (y el caparazón, más oscuro);
+            // los demás bichos llevan sus colores de siempre y el del jugador va en manoplas y zapatillas.
+            var tenidos = bicho == "Bichete" ? new[] { "Piel", "Guante" } : new[] { "Guante", "Bota" };
             switch (bicho)
             {
-                case "Zumbi": // abeja: abdomen a rayas amarillas y casi negras (no se tiñe), pelusa y zapatillas naranjas
-                    c["Piel"] = (new Color(1f, 0.62f, 0.25f), 0.4f);
+                case "Zumbi": // abeja: amarilla, abdomen a rayas, brazos y patas negros, pelusa
+                    c["Piel"] = (new Color(1f, 0.8f, 0.15f), 0.45f);
                     c["Barriga"] = (new Color(1f, 0.93f, 0.68f), 0.3f);
                     c["Concha"] = (new Color(1f, 0.8f, 0.12f), 0.5f);
                     c["Mancha"] = (new Color(0.1f, 0.07f, 0.06f), 0.6f);
                     c["Bota"] = (new Color(0.98f, 0.48f, 0.2f), 0.45f);
                     break;
-                case "Concha": // caracol: verde lechuga, concha de galleta y zapatillas rosas
-                    c["Piel"] = (new Color(0.62f, 0.85f, 0.5f), 0.55f);
+                case "Concha": // caracol: verde lechuga y concha de galleta
+                    c["Piel"] = (new Color(0.55f, 0.82f, 0.42f), 0.6f);
                     c["Caparazon"] = (new Color(0.85f, 0.55f, 0.35f), 0.7f);
                     c["Barriga"] = (new Color(0.95f, 0.97f, 0.8f), 0.4f);
                     c["Mancha"] = (new Color(0.5f, 0.3f, 0.18f), 0.4f); // la espiral de la concha
                     c["Bota"] = (new Color(0.9f, 0.42f, 0.62f), 0.45f);
                     break;
-                case "Cornelio": // escarabajo: azul brillante, cuerno oscuro, zapatillas amarillas
-                    c["Piel"] = (new Color(0.38f, 0.56f, 0.95f), 0.45f);
-                    c["Caparazon"] = (new Color(0.22f, 0.3f, 0.75f), 0.9f);
+                case "Cornelio": // escarabajo: azul, caparazón verde metalizado, cuerno oscuro
+                    c["Piel"] = (new Color(0.36f, 0.5f, 0.95f), 0.45f);
+                    c["Caparazon"] = (new Color(0.12f, 0.6f, 0.45f), 0.92f);
                     c["Mancha"] = (new Color(0.12f, 0.1f, 0.2f), 0.8f);
                     c["Bota"] = (new Color(0.98f, 0.78f, 0.22f), 0.45f);
                     break;
-                case "Chispa": // luciérnaga: lila con capucha oscura, farolillo y zapatillas verdes
-                    c["Piel"] = (new Color(0.62f, 0.52f, 0.92f), 0.4f);
+                case "Chispa": // luciérnaga: lila con capucha oscura y farolillo
+                    c["Piel"] = (new Color(0.62f, 0.52f, 0.92f), 0.45f);
                     c["Mancha"] = (new Color(0.24f, 0.18f, 0.34f), 0.6f);
                     c["Bota"] = (new Color(0.32f, 0.8f, 0.5f), 0.45f);
                     break;
@@ -152,9 +156,15 @@ namespace BichoShow.Herramientas
             var materiales = new Dictionary<string, Material>();
             foreach (var par in c)
             {
-                // Los de Bichete se llaman como siempre (PielBichete, ZapatillaBichete…).
+                // El nombre dice si se tiñe (ControladorBicho.AsignarColor): "Piel…" y "Tinte…" sí,
+                // "Caparazon…" más oscuro. Los de Bichete se llaman como siempre (PielBichete,
+                // CaparazonBichete, ZapatillaBichete…).
+                bool tenido = System.Array.IndexOf(tenidos, par.Key) >= 0;
                 string nombre = par.Key == "Brillo" ? "Brillo"
                               : bicho == "Bichete" && par.Key == "Bota" ? "ZapatillaBichete"
+                              : tenido ? (par.Key == "Piel" ? "Piel" : "Tinte" + par.Key) + bicho
+                              : par.Key == "Piel" ? "Cuerpo" + bicho
+                              : par.Key == "Caparazon" && bicho != "Bichete" ? "Coraza" + bicho
                               : par.Key + bicho;
                 var m = E.CrearMaterial(nombre, par.Value.color, par.Value.brillo);
                 if (par.Key == "Luz") Emisivo(m, par.Value.color * 2.5f);

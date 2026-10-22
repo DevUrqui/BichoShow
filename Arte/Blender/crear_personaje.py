@@ -29,9 +29,10 @@ Una sola malla con pesos y un esqueleto:
     Raiz > Cadera > Cuerpo > (OjoIzq/Der, AntenaIzq1 > AntenaIzq2, Brazo > Antebrazo > Mano)
                  > Muslo > Espinilla > Pie
 El cuerpo se reparte entre Cadera y Cuerpo según la altura: se dobla como una gominola.
-Materiales (orden fijo): Piel (se tiñe con el color del jugador), Caparazon (se tiñe más
-oscuro), Barriga, Mancha, Ojo, Pupila, Brillo, Boca, Lengua, Rubor, Bota, Suela, Luz, Ala,
-Concha, Pelo.
+Materiales (orden fijo): Piel (Bichete: se tiñe con el color del jugador), Caparazon (Bichete:
+se tiñe más oscuro), Barriga, Mancha, Ojo, Pupila, Brillo, Boca, Lengua, Rubor, Bota, Suela, Luz, Ala,
+Concha, Pelo, Guante (manoplas: siempre del color del jugador; en los demás bichos, también
+las zapatillas).
 Animaciones (en bucle): Quieto, Andar, Correr, Saltar, Caer, Tumbado, Celebrar.
 
 Convenciones: Z arriba, mira hacia -Y, pies en Z = 0, metros. "Izq" = lado de X negativa.
@@ -67,7 +68,7 @@ LADOS = ((-1, "Izq"), (1, "Der"))
 FORMAS = {
     #              centro  radios                 pera   grosor ojos  antena medio          antena punta
     "bichete":    (0.88, (0.50, 0.46, 0.58),  0.10, 1.00, 1.00, (0.08, -0.04, 0.20), (0.18, -0.11, 0.34)),
-    "abeja":      (0.86, (0.50, 0.47, 0.52),  0.06, 1.00, 1.05, (0.12, -0.02, 0.14), (0.22, -0.16, 0.20)),  # cabeza-tronco + abdomen a rayas
+    "abeja":      (0.86, (0.50, 0.47, 0.52),  0.06, 0.80, 1.05, (0.12, -0.02, 0.14), (0.22, -0.16, 0.20)),  # cabeza-tronco + abdomen a rayas
     "caracol":    (0.95, (0.40, 0.40, 0.69),  0.26, 0.90, 1.00, (0.04, -0.03, 0.20), (0.10, -0.08, 0.36)),  # alto, base ancha, ojos en antenas
     "escarabajo": (0.80, (0.62, 0.50, 0.50), -0.12, 1.30, 0.85, (0.10, 0.00, 0.10), (0.20, -0.05, 0.15)),  # bajito y ancho de hombros
     "luciernaga": (0.95, (0.42, 0.40, 0.55),  0.04, 0.85, 1.15, (0.10, -0.10, 0.24), (0.14, -0.32, 0.30)),  # flaca, culete-farol enorme
@@ -163,11 +164,19 @@ COLORES = {
     "Rubor": ((1.0, 0.55, 0.6), 0.7), "Bota": ((0.2, 0.75, 0.75), 0.5), "Suela": ((0.95, 0.95, 0.92), 0.7),
     "Luz": ((1.0, 0.95, 0.4), 0.3), "Ala": ((0.85, 0.95, 1.0), 0.15),
     "Concha": ((0.93, 0.72, 0.45), 0.35), "Pelo": ((1.0, 0.95, 0.8), 0.9),   # estos dos no se tiñen
+    "Guante": ((1.0, 0.42, 0.36), 0.55),   # las manoplas: siempre del color del jugador
 }
+# Bichete se tiñe entero del color del jugador; los demás llevan sus colores de siempre y el
+# color del jugador va en las manoplas y las zapatillas (en las vistas, un rojo de ejemplo).
+if ESPECIE != "bichete":
+    COLORES["Guante"] = COLORES["Bota"] = ((0.92, 0.25, 0.3), 0.5)
+    COLORES["Piel"] = {"abeja": ((1.0, 0.8, 0.15), 0.5), "caracol": ((0.55, 0.82, 0.42), 0.55),
+                       "escarabajo": ((0.36, 0.5, 0.95), 0.45), "luciernaga": ((0.62, 0.52, 0.92), 0.5)}[ESPECIE]
+if ESPECIE == "escarabajo":
+    COLORES["Caparazon"] = ((0.12, 0.6, 0.45), 0.15)   # verde metalizado
 if ESPECIE == "caracol":
     COLORES["Mancha"] = ((0.5, 0.3, 0.18), 0.4)
 if ESPECIE == "abeja":
-    COLORES["Piel"] = ((1.0, 0.62, 0.25), 0.55)
     COLORES["Concha"] = ((1.0, 0.8, 0.12), 0.45)     # el amarillo del abdomen (no se tiñe)
     COLORES["Mancha"] = ((0.1, 0.07, 0.06), 0.4)
 ORDEN_MATERIALES = list(COLORES.keys())
@@ -469,7 +478,7 @@ for lado, s in LADOS:
     g = 1.0 + (GROSOR - 1.0) * 0.6
     esfera(bm, c, (0.11 * g, 0.1 * g, 0.115 * g), 0)
     esfera(bm, c + Vector((-0.05 * lado, -0.07, 0.045)) * g, (0.045 * g, 0.04 * g, 0.05 * g), 0, 16, 8)
-    mano = nuevo(f"Mano{s}", bm, ["Piel"])
+    mano = nuevo(f"Mano{s}", bm, ["Guante"])
     pesar_todo(mano, f"Mano{s}")
 
     bm = bmesh.new()
@@ -547,16 +556,19 @@ def mezcla(t, t0, ancho, a, b):
 for lado, s in LADOS:
     pts = [espejo(HOMBRO + Vector((-0.08, 0.0, 0.02)), lado), espejo(HOMBRO, lado), espejo(CODO, lado), espejo(MUNECA, lado),
            espejo(HOMBRO + Vector((0.21, -0.1, -0.34)), lado)]
+    # La abeja, con brazos y patas negros de insecto.
+    extremidad = "Mancha" if ESPECIE == "abeja" else "Piel"
     tubo(f"Brazo{s}", pts, 0.062 * GROSOR,
          lambda t, s=s: mezcla(t, 0.15, 0.08, "Cuerpo", f"Brazo{s}") if t < 0.3 else
          (mezcla(t, 0.52, 0.09, f"Brazo{s}", f"Antebrazo{s}") if t < 0.85 else mezcla(t, 0.9, 0.05, f"Antebrazo{s}", f"Mano{s}")),
-         radio_final=0.055 * GROSOR)
+         radio_final=0.055 * GROSOR, mat=extremidad)
 
     pts = [espejo(Vector((0.16 * ANCHO, 0.0, 0.50)), lado), espejo(CADERA, lado), espejo(RODILLA, lado), espejo(TOBILLO, lado),
            espejo(Vector((TOBILLO.x, 0.0, 0.08)), lado)]
     tubo(f"Pata{s}", pts, 0.075 * GROSOR,
          lambda t, s=s: mezcla(t, 0.15, 0.08, "Cadera", f"Muslo{s}") if t < 0.3 else
-         (mezcla(t, 0.5, 0.08, f"Muslo{s}", f"Espinilla{s}") if t < 0.85 else mezcla(t, 0.88, 0.05, f"Espinilla{s}", f"Pie{s}")))
+         (mezcla(t, 0.5, 0.08, f"Muslo{s}", f"Espinilla{s}") if t < 0.85 else mezcla(t, 0.88, 0.05, f"Espinilla{s}", f"Pie{s}")),
+         mat=extremidad)
 
     pts = [espejo(ANTENA_BASE + Vector((0, 0.02, -0.08)), lado), espejo(ANTENA_BASE, lado), espejo(ANTENA_MEDIO, lado),
            espejo(ANTENA_PUNTA, lado)]

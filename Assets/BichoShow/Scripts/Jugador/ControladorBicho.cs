@@ -883,13 +883,15 @@ namespace BichoShow
             foreach (var r in renderersColor)
             {
                 if (r == null) continue;
-                // Instancias propias para este bicho. Se tiñe el primer material (la piel) y,
-                // si el modelo tiene caparazón, ese también, un poco más oscuro.
+                // Instancias propias para este bicho. Se tiñe lo que se llama "Piel…" o "Tinte…"
+                // (Bichete entero; los demás bichos, las manoplas y las zapatillas) y el
+                // "Caparazon…", un poco más oscuro. Un renderer de un solo material (el bicho de
+                // cápsulas) se tiñe entero.
                 var mats = r.materials;
                 for (int i = 0; i < mats.Length; i++)
                 {
                     string nombre = mats[i].name;
-                    if (i == 0 || nombre.StartsWith("Piel")) Pintar(mats[i], color);
+                    if (mats.Length == 1 || nombre.StartsWith("Piel") || nombre.StartsWith("Tinte")) Pintar(mats[i], color);
                     else if (nombre.StartsWith("Caparazon")) Pintar(mats[i], Color.Lerp(color, Color.black, 0.3f));
                 }
                 r.materials = mats;
