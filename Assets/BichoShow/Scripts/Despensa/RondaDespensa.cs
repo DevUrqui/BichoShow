@@ -16,6 +16,8 @@ namespace BichoShow
     /// </summary>
     public class RondaDespensa : RondaCarrera
     {
+        public override string IdRanking => "despensa";
+
         [Header("Despensa")]
         public FrutaRodante[] frutas;
         [Tooltip("Sitios del podio: 1º, 2º, 3º y el del 4º (al lado).")]

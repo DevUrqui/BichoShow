@@ -14,6 +14,32 @@ namespace BichoShow
         [Tooltip("Por dónde empiezan los bots.")]
         public PuntoRuta inicioRuta;
 
+        /// <summary>Id de esta carrera en el ranking de tiempos (RankingTiempos.Carreras); null = sin ranking.</summary>
+        public virtual string IdRanking => null;
+
+        /// <summary>
+        /// Al cruzar la meta: el tiempo desde la salida va al ranking (los bots no cuentan). Si es un
+        /// jugador de fuera (online), se le manda a su ordenador, que lo apunta con su nombre.
+        /// </summary>
+        protected void ApuntarTiempo(ControladorBicho b)
+        {
+            if (IdRanking == null || b == null || b.EsBot) return;
+            float segundos = Time.time - InicioJugando;
+            string nombre = NombreJugador(b);
+            string bicho = b.TryGetComponent(out PersonajeBicho p) ? PersonajeBicho.Especies[p.Especie] : PersonajeBicho.Especies[0];
+            Color color = gestor != null ? gestor.ColorDe(b.IndiceJugador) : Color.white;
+            if (b.TryGetComponent(out EntradaRemota remota))
+            {
+                RedShow.EnviarTiempo(remota.Cliente, remota.Local, IdRanking, segundos, bicho);
+                Mensaje($"{nombre}: {RankingTiempos.Formato(segundos)}", color, 2.5f);
+                return;
+            }
+            int puesto = RankingTiempos.Apuntar(IdRanking, nombre, segundos, bicho);
+            if (puesto == 1) Mensaje($"¡NUEVO RÉCORD! {nombre}: {RankingTiempos.Formato(segundos)}", EstiloShow.Oro, 3.5f);
+            else if (puesto > 0) Mensaje($"{nombre}: {RankingTiempos.Formato(segundos)}  ·  {puesto}º del ranking", color, 3f);
+            else Mensaje($"{nombre}: {RankingTiempos.Formato(segundos)}", color, 2.5f);
+        }
+
         /// <summary>Este bicho ya ha terminado la carrera (los bots dejan de correr).</summary>
         public abstract bool HaLlegado(ControladorBicho b);
 

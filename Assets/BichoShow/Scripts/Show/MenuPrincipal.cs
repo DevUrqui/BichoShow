@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace BichoShow
 {
     /// <summary>
-    /// Menú del juego: Empezar el show · Jugar online · Vestuario · Opciones · Salir.
+    /// Menú del juego: Empezar el show · Jugar online · Vestuario · Ranking · Opciones · Salir.
     /// Online: partida rápida (te junta con quien esté buscando, sin código), crear una sala o
     /// unirse con código.
     /// Cualquier jugador unido lo maneja con el stick (arriba/abajo para elegir, izquierda/
@@ -15,7 +15,7 @@ namespace BichoShow
     /// </summary>
     public class MenuPrincipal : MonoBehaviour
     {
-        enum Pantalla { Principal, Opciones, Vestuario, Online, Codigo, Sala, SalaMenu }
+        enum Pantalla { Principal, Opciones, Vestuario, Online, Codigo, Sala, SalaMenu, Ranking }
 
         static readonly string[] NombresHabilidad = { "Torpes", "Normales", "Hábiles" };
         static readonly float[] ValoresHabilidad = { 0.25f, 0.55f, 0.85f };
@@ -57,7 +57,7 @@ namespace BichoShow
 
         int NumeroOpciones => pantalla switch
         {
-            Pantalla.Principal => 5,
+            Pantalla.Principal => 6,
             Pantalla.Online => 4,
             Pantalla.SalaMenu => RedShow.EsAnfitrion ? 3 : 2,
             _ => 6,
@@ -100,6 +100,7 @@ namespace BichoShow
             }
             if (Time.unscaledTime < ignorarHasta || PlayerInput.all.Count == 0) return;
             if (pantalla == Pantalla.Vestuario) { ActualizarVestuario(); return; }
+            if (pantalla == Pantalla.Ranking) { ActualizarRanking(); return; }
             if (pantalla == Pantalla.Codigo) { ActualizarCodigo(); return; }
             if (pantalla == Pantalla.Sala) { ActualizarSala(); return; }
             if (RedShow.Ocupado) return; // conectando: esperar
@@ -162,8 +163,9 @@ namespace BichoShow
                     case 0: EmpezarShow(); break;
                     case 1: pantalla = Pantalla.Online; seleccion = 0; RedShow.LimpiarAviso(); break;
                     case 2: EntrarVestuario(); break;
-                    case 3: pantalla = Pantalla.Opciones; seleccion = 0; break;
-                    case 4: Salir(); break;
+                    case 3: EntrarRanking(); break;
+                    case 4: pantalla = Pantalla.Opciones; seleccion = 0; break;
+                    case 5: Salir(); break;
                 }
             }
             else if (pantalla == Pantalla.Online)
@@ -185,7 +187,7 @@ namespace BichoShow
             }
             else
             {
-                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 3; }
+                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 4; }
                 else CambiarValor(+1);
             }
         }
@@ -208,12 +210,14 @@ namespace BichoShow
             filaVestuario.Clear();
             listos.Clear();
             salirVestuarioEn = -1f;
+            editandoNombre.Clear();
             giroVestuario.Clear();
             vueltaPendiente.Clear();
         }
 
         void SalirVestuario()
         {
+            foreach (var e in new List<PlayerInput>(editandoNombre.Keys)) TerminarNombre(e);
             foreach (var entrada in PlayerInput.all)
                 if (entrada.TryGetComponent(out AnimadorBicho a)) a.giroExhibicion = 0f;
             pantalla = Pantalla.Principal;
@@ -240,10 +244,17 @@ namespace BichoShow
                 bool listo = listos.Contains(entrada);
                 GirarEnVestuario(entrada);
 
+                // Escribiendo el nombre: el mando (o el teclado) es para eso.
+                if (editandoNombre.TryGetValue(entrada, out var edicion))
+                {
+                    ActualizarNombre(entrada, edicion, stick, antes);
+                    continue;
+                }
+
                 if (!listo)
                 {
-                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + 3) % 4; Sonidos.Reproducir(Sonido.MenuMover); }
-                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % 4; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + 4) % 5; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % 5; Sonidos.Reproducir(Sonido.MenuMover); }
                     if (stick.x > 0.6f && antes.x <= 0.6f) CambiarPrenda(entrada, fila, +1);
                     if (stick.x < -0.6f && antes.x >= -0.6f) CambiarPrenda(entrada, fila, -1);
                     filaVestuario[entrada] = fila;
@@ -251,6 +262,11 @@ namespace BichoShow
 
                 var saltar = entrada.actions.FindAction("Saltar");
                 var empezar = entrada.actions.FindAction("Empezar");
+                if (!listo && fila == 0 && saltar != null && saltar.WasPressedThisFrame())
+                {
+                    EmpezarNombre(entrada); // A en "Nombre": a escribirlo
+                    continue;
+                }
                 if (saltar != null && saltar.WasPressedThisFrame())
                 {
                     // A: "¡listo!" (o volver a cambiar algo).
@@ -297,6 +313,12 @@ namespace BichoShow
 
         void CambiarPrenda(PlayerInput entrada, int fila, int sentido)
         {
+            if (fila == 0)
+            {
+                EmpezarNombre(entrada); // el nombre se escribe aparte
+                return;
+            }
+            fila--;
             if (!entrada.TryGetComponent(out Vestuario v)) return;
             if (fila == 0)
             {
@@ -329,7 +351,7 @@ namespace BichoShow
             jugadores.Sort((a, b) => a.playerIndex.CompareTo(b.playerIndex));
             float hueco = px(20f);
             float ancho = Mathf.Min(px(430f), (w * 0.94f - hueco * (jugadores.Count - 1)) / Mathf.Max(1, jugadores.Count));
-            float alto = px(374f);
+            float alto = px(436f);
             float x = w * 0.5f - (jugadores.Count * ancho + (jugadores.Count - 1) * hueco) * 0.5f;
             float y = h - alto - px(120f);
 
@@ -353,18 +375,33 @@ namespace BichoShow
                 }
                 else
                 {
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(68f), panel.width - px(28f), px(56f)), "Bicho",
-                               PersonajeBicho.Nombres[Mathf.Clamp(v.Especie, 0, PersonajeBicho.Nombres.Length - 1)], !listo && fila == 0);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(130f), panel.width - px(28f), px(56f)), "Gorro",
-                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 1);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(192f), panel.width - px(28f), px(56f)), "Cara",
-                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 2);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(254f), panel.width - px(28f), px(56f)), "Cuerpo",
-                               Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 3);
+                    var filaNombre = new Rect(panel.x + px(14f), panel.y + px(68f), panel.width - px(28f), px(56f));
+                    if (editandoNombre.TryGetValue(j, out var edicion))
+                    {
+                        EstiloShow.Panel(filaNombre, EstiloShow.Rosa, filaNombre.height * 0.5f, -1f, false);
+                        EstiloShow.Texto(filaNombre, NombreConCursor(edicion), tam(28f), Color.white);
+                    }
+                    else
+                    {
+                        string guardado = NombresJugadores.Guardado(i);
+                        FilaPrenda(filaNombre, "Nombre", guardado.Length > 0 ? guardado : "(escríbelo)", !listo && fila == 0);
+                    }
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(130f), panel.width - px(28f), px(56f)), "Bicho",
+                               PersonajeBicho.Nombres[Mathf.Clamp(v.Especie, 0, PersonajeBicho.Nombres.Length - 1)], !listo && fila == 1);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(192f), panel.width - px(28f), px(56f)), "Gorro",
+                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 2);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(254f), panel.width - px(28f), px(56f)), "Cara",
+                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 3);
+                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(316f), panel.width - px(28f), px(56f)), "Cuerpo",
+                               Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 4);
                 }
                 var boton = new Rect(panel.x + panel.width * 0.2f, panel.yMax - px(56f), panel.width * 0.6f, px(46f));
                 EstiloShow.Panel(boton, listo ? EstiloShow.Verde : EstiloShow.Morado.WithAlpha(0.9f), boton.height * 0.5f, -1f, false);
-                EstiloShow.Texto(boton, listo ? "¡LISTO!" : "A = listo", tam(26f), Color.white);
+                bool escribiendo = editandoNombre.ContainsKey(j);
+                string textoBoton = listo ? "¡LISTO!"
+                                  : escribiendo ? (j.currentControlScheme == "Teclado" ? "Escribe · Enter = ok" : "↑↓ letra · X borra · A ok")
+                                  : fila == 0 ? "A = escribir" : "A = listo";
+                EstiloShow.Texto(boton, textoBoton, tam(escribiendo ? 20f : 26f), Color.white);
                 x += ancho + hueco;
             }
 
@@ -381,6 +418,214 @@ namespace BichoShow
                              TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
             string texto = elegida ? $"<  {valor}  >" : valor;
             EstiloShow.Texto(new Rect(r.x + r.width * 0.3f, r.y, r.width * 0.7f - m * 0.5f, r.height), texto, tamano, Color.white);
+        }
+
+        // ---------------------------------------------------------------------
+        // Vestuario: el nombre (como en las recreativas, o con el teclado)
+        // ---------------------------------------------------------------------
+
+        const string LetrasNombre = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZabcdefghijklmnñopqrstuvwxyz0123456789 -";
+
+        class EdicionNombre
+        {
+            public readonly char[] letras = new char[NombresJugadores.Largo];
+            public int cursor;
+            public string Texto
+            {
+                get
+                {
+                    var sb = new System.Text.StringBuilder();
+                    foreach (char c in letras) { if (c == '\0') break; sb.Append(c); }
+                    return sb.ToString();
+                }
+            }
+        }
+
+        readonly Dictionary<PlayerInput, EdicionNombre> editandoNombre = new Dictionary<PlayerInput, EdicionNombre>();
+
+        void EmpezarNombre(PlayerInput entrada)
+        {
+            var e = new EdicionNombre();
+            string actual = NombresJugadores.Guardado(entrada.playerIndex);
+            for (int i = 0; i < actual.Length && i < e.letras.Length; i++) e.letras[i] = actual[i];
+            e.cursor = Mathf.Min(actual.Length, e.letras.Length - 1);
+            editandoNombre[entrada] = e;
+            // Mientras se escribe, una tecla no debe unir a un jugador nuevo.
+            if (GestorJugadores.Instancia != null) GestorJugadores.Instancia.PermitirUnirse(false);
+            Sonidos.Reproducir(Sonido.MenuAceptar);
+        }
+
+        void TerminarNombre(PlayerInput entrada)
+        {
+            if (!editandoNombre.TryGetValue(entrada, out var e)) return;
+            NombresJugadores.Guardar(entrada.playerIndex, e.Texto);
+            editandoNombre.Remove(entrada);
+            if (editandoNombre.Count == 0 && GestorJugadores.Instancia != null && !RedShow.EsAnfitrion)
+                GestorJugadores.Instancia.PermitirUnirse(true);
+            Sonidos.Reproducir(Sonido.MenuAceptar);
+            if (entrada.TryGetComponent(out AnimadorBicho a)) a.Celebrar(1.2f);
+        }
+
+        static void PonerLetraNombre(EdicionNombre e, char c)
+        {
+            if (e.letras[e.cursor] != '\0' && e.letras[e.letras.Length - 1] == '\0')
+            {
+                // Escribiendo en medio: lo de detrás se corre.
+                for (int i = e.letras.Length - 1; i > e.cursor; i--) e.letras[i] = e.letras[i - 1];
+            }
+            e.letras[e.cursor] = c;
+            if (e.cursor < e.letras.Length - 1) e.cursor++;
+            Sonidos.Reproducir(Sonido.MenuMover, null, 0.8f, 1.2f, 0f);
+        }
+
+        static void BorrarLetraNombre(EdicionNombre e)
+        {
+            if (e.letras[e.cursor] == '\0' && e.cursor > 0) e.cursor--;
+            for (int i = e.cursor; i < e.letras.Length - 1; i++) e.letras[i] = e.letras[i + 1];
+            e.letras[e.letras.Length - 1] = '\0';
+            Sonidos.Reproducir(Sonido.MenuMover, null, 0.8f, 0.8f, 0f);
+        }
+
+        /// <summary>Con el mando: arriba/abajo cambia la letra, izquierda/derecha se mueve, X borra, A guarda.</summary>
+        void ActualizarNombre(PlayerInput entrada, EdicionNombre e, Vector2 stick, Vector2 antes)
+        {
+            if (entrada.currentControlScheme == "Teclado")
+            {
+                // El teclado escribe (AlEscribir); aquí, borrar, moverse y terminar.
+                var teclado = Keyboard.current;
+                if (teclado == null) return;
+                if (teclado.enterKey.wasPressedThisFrame || teclado.numpadEnterKey.wasPressedThisFrame || teclado.escapeKey.wasPressedThisFrame) { TerminarNombre(entrada); return; }
+                if (teclado.backspaceKey.wasPressedThisFrame) BorrarLetraNombre(e);
+                if (teclado.leftArrowKey.wasPressedThisFrame && e.cursor > 0) e.cursor--;
+                if (teclado.rightArrowKey.wasPressedThisFrame && e.cursor < e.letras.Length - 1 && e.letras[e.cursor] != '\0') e.cursor++;
+                return;
+            }
+            int letra = e.letras[e.cursor] == '\0' ? -1 : LetrasNombre.IndexOf(e.letras[e.cursor]);
+            if (stick.y > 0.6f && antes.y <= 0.6f) { e.letras[e.cursor] = LetrasNombre[(letra + 1) % LetrasNombre.Length]; Sonidos.Reproducir(Sonido.MenuMover); }
+            if (stick.y < -0.6f && antes.y >= -0.6f) { e.letras[e.cursor] = LetrasNombre[(letra <= 0 ? LetrasNombre.Length : letra) - 1]; Sonidos.Reproducir(Sonido.MenuMover); }
+            if (stick.x > 0.6f && antes.x <= 0.6f && e.cursor < e.letras.Length - 1 && e.letras[e.cursor] != '\0') { e.cursor++; Sonidos.Reproducir(Sonido.MenuMover); }
+            if (stick.x < -0.6f && antes.x >= -0.6f && e.cursor > 0) { e.cursor--; Sonidos.Reproducir(Sonido.MenuMover); }
+            var saltar = entrada.actions.FindAction("Saltar");
+            var lanzarse = entrada.actions.FindAction("Lanzarse");
+            var empezar = entrada.actions.FindAction("Empezar");
+            if ((saltar != null && saltar.WasPressedThisFrame()) || (empezar != null && empezar.WasPressedThisFrame())) { TerminarNombre(entrada); return; }
+            if (lanzarse != null && lanzarse.WasPressedThisFrame()) BorrarLetraNombre(e);
+        }
+
+        /// <summary>El nombre mientras se escribe: la letra del cursor, entre corchetes.</summary>
+        static string NombreConCursor(EdicionNombre e)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < e.letras.Length; i++)
+            {
+                char c = e.letras[i];
+                if (i == e.cursor) { sb.Append('[').Append(c == '\0' ? '_' : c).Append(']'); if (c == '\0') break; continue; }
+                if (c == '\0') break;
+                sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
+        // ---------------------------------------------------------------------
+        // Ranking de tiempos: el de este ordenador y el mundial, carrera a carrera
+        // ---------------------------------------------------------------------
+
+        int carreraRanking;
+
+        void EntrarRanking()
+        {
+            pantalla = Pantalla.Ranking;
+            RankingOnline.Pedir(RankingTiempos.Carreras[carreraRanking].id);
+        }
+
+        void ActualizarRanking()
+        {
+            foreach (var entrada in PlayerInput.all)
+            {
+                if (entrada.actions == null) continue;
+                var mover = entrada.actions.FindAction("Mover");
+                Vector2 stick = mover != null ? mover.ReadValue<Vector2>() : Vector2.zero;
+                stickAnterior.TryGetValue(entrada, out Vector2 antes);
+                stickAnterior[entrada] = stick;
+                int n = RankingTiempos.Carreras.Length;
+                int sentido = stick.x > 0.6f && antes.x <= 0.6f ? 1 : stick.x < -0.6f && antes.x >= -0.6f ? -1 : 0;
+                if (sentido != 0)
+                {
+                    carreraRanking = (carreraRanking + sentido + n) % n;
+                    RankingOnline.Pedir(RankingTiempos.Carreras[carreraRanking].id);
+                    Sonidos.Reproducir(Sonido.MenuMover);
+                }
+                foreach (var nombre in new[] { "Saltar", "Empezar", "Lanzarse" })
+                {
+                    var accion = entrada.actions.FindAction(nombre);
+                    if (accion != null && accion.WasPressedThisFrame())
+                    {
+                        pantalla = Pantalla.Principal;
+                        seleccion = 3;
+                        Sonidos.Reproducir(Sonido.MenuAceptar);
+                        return;
+                    }
+                }
+            }
+        }
+
+        void DibujarRanking(float w, float h)
+        {
+            System.Func<float, float> px = EstiloShow.Px;
+            System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
+            var (id, nombreCarrera) = RankingTiempos.Carreras[carreraRanking];
+
+            float y = h * 0.33f;
+            var cabecera = new Rect(w * 0.5f - px(520f), y, px(1040f), px(76f));
+            EstiloShow.Panel(cabecera, EstiloShow.Morado.WithAlpha(0.95f), cabecera.height * 0.5f);
+            EstiloShow.Texto(cabecera, $"<   RANKING · {nombreCarrera}   >", tam(40f), EstiloShow.Oro);
+            y += px(96f);
+
+            float anchoTabla = px(560f), hueco = px(30f);
+            float x0 = w * 0.5f - anchoTabla - hueco * 0.5f;
+            var locales = RankingTiempos.Locales(id);
+            var filasLocales = new List<(int, string, float, string)>();
+            for (int i = 0; i < locales.Count; i++) filasLocales.Add((i + 1, locales[i].nombre, locales[i].segundos, locales[i].bicho));
+            Tabla(new Rect(x0, y, anchoTabla, h - y - px(110f)), "En este ordenador", filasLocales, filasLocales.Count == 0 ? "Aún no hay tiempos. ¡Corre esta carrera!" : "");
+
+            var mundiales = RankingOnline.Filas(id);
+            var filasMundiales = new List<(int, string, float, string)>();
+            foreach (var f in mundiales) filasMundiales.Add((f.puesto, f.nombre, f.segundos, f.bicho));
+            Tabla(new Rect(x0 + anchoTabla + hueco, y, anchoTabla, h - y - px(110f)), "Mundial", filasMundiales, RankingOnline.Estado(id));
+
+            EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+                ("Stick", EstiloShow.GlifoTecla, "otra carrera"), ("A", EstiloShow.GlifoA, "volver"));
+        }
+
+        static void Tabla(Rect r, string titulo, List<(int puesto, string nombre, float segundos, string bicho)> filas, string aviso)
+        {
+            System.Func<float, float> px = EstiloShow.Px;
+            System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
+            float altoFila = Mathf.Min(px(46f), (r.height - px(70f)) / RankingTiempos.Puestos);
+            float alto = px(66f) + altoFila * Mathf.Max(1, Mathf.Min(filas.Count, RankingTiempos.Puestos)) + px(16f);
+            var panel = new Rect(r.x, r.y, r.width, alto);
+            EstiloShow.Panel(panel, EstiloShow.MoradoOscuro.WithAlpha(0.92f), px(26f));
+            EstiloShow.Texto(new Rect(r.x, r.y + px(8f), r.width, px(50f)), titulo, tam(34f), Color.white);
+            float y = r.y + px(66f);
+            if (filas.Count == 0)
+            {
+                EstiloShow.Texto(new Rect(r.x + px(16f), y, r.width - px(32f), altoFila), aviso, tam(24f), new Color(1f, 1f, 1f, 0.85f),
+                                 TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+                return;
+            }
+            Color[] medallas = { EstiloShow.Oro, new Color(0.82f, 0.85f, 0.9f), new Color(0.95f, 0.6f, 0.35f) };
+            foreach (var (puesto, nombre, segundos, bicho) in filas)
+            {
+                if (puesto > RankingTiempos.Puestos) break;
+                var fila = new Rect(r.x + px(14f), y, r.width - px(28f), altoFila - px(4f));
+                if (puesto <= 3) EstiloShow.Panel(fila, medallas[puesto - 1].WithAlpha(0.35f), fila.height * 0.5f, -1f, false);
+                int t = tam(26f);
+                EstiloShow.Texto(new Rect(fila.x + px(10f), fila.y, px(56f), fila.height), $"{puesto}º", t, puesto <= 3 ? medallas[puesto - 1] : Color.white, TextAnchor.MiddleLeft);
+                EstiloShow.Texto(new Rect(fila.x + px(70f), fila.y, fila.width * 0.42f, fila.height), nombre, t, Color.white, TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
+                EstiloShow.Texto(new Rect(fila.x + fila.width * 0.52f, fila.y, fila.width * 0.24f, fila.height), bicho, tam(20f), new Color(1f, 1f, 1f, 0.75f), TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
+                EstiloShow.Texto(new Rect(fila.x + fila.width * 0.72f, fila.y, fila.width * 0.26f, fila.height), RankingTiempos.Formato(segundos), t, EstiloShow.Oro, TextAnchor.MiddleRight);
+                y += altoFila;
+            }
         }
 
         // ---------------------------------------------------------------------
@@ -453,6 +698,12 @@ namespace BichoShow
         /// <summary>Lo que se teclea en el teclado (cualquier distribución) va al código.</summary>
         void AlEscribir(char c)
         {
+            if (pantalla == Pantalla.Vestuario)
+            {
+                foreach (var par in editandoNombre)
+                    if (par.Key.currentControlScheme == "Teclado" && NombresJugadores.Valido(c)) { PonerLetraNombre(par.Value, c); break; }
+                return;
+            }
             if (pantalla != Pantalla.Codigo || RedShow.Ocupado) return;
             c = char.ToUpperInvariant(c);
             if (Letras.IndexOf(c) >= 0) PonerLetra(c);
@@ -804,6 +1055,11 @@ namespace BichoShow
                 DibujarVestuario(w, h);
                 return;
             }
+            if (pantalla == Pantalla.Ranking)
+            {
+                DibujarRanking(w, h);
+                return;
+            }
             if (pantalla == Pantalla.Online || pantalla == Pantalla.Codigo || pantalla == Pantalla.Sala || pantalla == Pantalla.SalaMenu)
             {
                 DibujarOnline(w, h);
@@ -816,7 +1072,7 @@ namespace BichoShow
             float y = h * 0.36f;
             if (pantalla == Pantalla.Principal)
             {
-                string[] opciones = { "¡Empezar el show!", "Jugar online", "Vestuario", "Opciones", "Salir" };
+                string[] opciones = { "¡Empezar el show!", "Jugar online", "Vestuario", "Ranking", "Opciones", "Salir" };
                 for (int i = 0; i < opciones.Length; i++)
                 {
                     EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(42f));
@@ -847,7 +1103,7 @@ namespace BichoShow
                 var ficha = new Rect(fx, fy + Mathf.Sin(Time.unscaledTime * 3f + i) * px(4f), anchoFicha, altoFicha);
                 EstiloShow.Panel(ficha, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.25f).WithAlpha(0.95f), altoFicha * 0.5f);
                 string mando = j.currentControlScheme == "Teclado" ? "Teclado" : "Mando";
-                EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), $"J{i + 1}", tam(44f), Color.white);
+                EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), NombresJugadores.DeLocal(i), tam(40f), Color.white);
                 EstiloShow.Texto(new Rect(ficha.x, ficha.y + ficha.height * 0.48f, ficha.width, ficha.height * 0.45f),
                                  $"{mando} · equipo {(i % 2 == 0 ? "Rojo" : "Azul")}", tam(22f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
                 fx += anchoFicha + hueco;

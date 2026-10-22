@@ -184,6 +184,7 @@ namespace BichoShow
             if (meta != null) b.FijarPuntoReaparicion(meta.transform.position, meta.transform.rotation);
             Estadisticas.Evento("meta", b, $"{llegados}º");
             porRetirar.Add((b, Time.time + celebracionMeta));
+            ApuntarTiempo(b);
 
             if (llegados == 1) AlLlegarPrimero(b);
         }

@@ -48,6 +48,8 @@ namespace BichoShow
 
         public Estado EstadoActual { get; private set; } = Estado.Esperando;
         public float TiempoRestante { get; protected set; }
+        /// <summary>Cuándo empezó a jugarse la ronda (Time.time): para el cronómetro de las carreras.</summary>
+        public float InicioJugando { get; private set; }
         /// <summary>La controla el Show: no espera a START ni ofrece repetir.</summary>
         public bool ControladaPorShow { get; private set; }
         public IReadOnlyList<Saboteador> Saboteadores => saboteadores;
@@ -81,7 +83,7 @@ namespace BichoShow
         protected virtual string EtiquetaJugador(int indice) => null;
 
         /// <summary>Nombre corto de un jugador para los carteles: J1… o Bot 2…</summary>
-        public static string NombreJugador(ControladorBicho b) => b.EsBot ? $"Bot {b.IndiceJugador + 1}" : $"J{b.IndiceJugador + 1}";
+        public static string NombreJugador(ControladorBicho b) => NombresJugadores.De(b);
 
         /// <summary>Los jugadores (no retirados) con más puntos en una prueba individual.</summary>
         protected List<ControladorBicho> LideresIndividuales()
@@ -246,6 +248,7 @@ namespace BichoShow
         void EmpezarRonda()
         {
             EstadoActual = Estado.Jugando;
+            InicioJugando = Time.time;
             TiempoRestante = duracionRonda;
             Sonidos.Reproducir(Sonido.PitidoSalida);
             Sonidos.Reproducir(Sonido.Silbato);

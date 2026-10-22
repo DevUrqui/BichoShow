@@ -26,6 +26,8 @@ namespace BichoShow
 
         /// <summary>Ordenador del jugador (id de cliente de Netcode).</summary>
         public ulong Cliente;
+        /// <summary>El nombre que se puso en su ordenador (llega con el mando).</summary>
+        public string Nombre = "";
         /// <summary>Número del mando dentro de ese ordenador (puede haber varios jugadores en uno).</summary>
         public byte Local;
 

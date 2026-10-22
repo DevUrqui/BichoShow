@@ -8,6 +8,7 @@ namespace BichoShow
     public class RondaCostura : RondaCarrera
     {
         public override string Titulo => "COSTURA A LA FUGA";
+        public override string IdRanking => "costura";
         protected override string Descripcion => "¡Carrera por la mesa de costura! Esquiva los carretes, cruza el acordeón y las cremalleras y sube al dedal.";
         protected override string ConsejoInicio => "¡A la meta! Si te caes, vuelves a la última bandera que cruzaste";
     }

@@ -15,6 +15,8 @@ namespace BichoShow
     /// </summary>
     public class RondaCumbre : RondaRuta
     {
+        public override string IdRanking => "cumbre";
+
         [Header("La Cumbre")]
         public Savia savia;
         public BolasPolen bolas;
@@ -227,6 +229,7 @@ namespace BichoShow
             if (b.TryGetComponent(out AnimadorBicho animador)) animador.Celebrar(celebracionMeta + 1f);
             Estadisticas.Evento("meta", b, $"{llegados}º");
             porRetirar.Add((b, Time.time + celebracionMeta));
+            ApuntarTiempo(b);
 
             if (llegados == 1)
             {

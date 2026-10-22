@@ -21,6 +21,7 @@ namespace BichoShow
     ///   invitado → anfitrión  "BS.Mando"   stick, botones y ropa de cada jugador de ese ordenador
     ///   anfitrión → invitados "BS.Estado"  posición y pose de cada bicho (unas 30 veces por segundo)
     ///   anfitrión → invitados "BS.Evento"  saltos, golpes, reapariciones (para sonidos y efectos)
+    ///   anfitrión → un invitado "BS.Tiempo" el tiempo de uno de sus jugadores al cruzar la meta (para su ranking)
     ///
     /// No usa NetworkObjects ni prefabs de red: el juego local no cambia y cada escena se monta
     /// igual en todos los ordenadores.
@@ -38,7 +39,7 @@ namespace BichoShow
         const string MensajeMando = "BS.Mando", MensajeEstado = "BS.Estado", MensajeEvento = "BS.Evento";
         const string MensajeEscena = "BS.Escena", MensajeListo = "BS.Listo", MensajeCambios = "BS.Cambios",
                      MensajeMovimientos = "BS.Mov", MensajePantalla = "BS.Pantalla", MensajeAvisos = "BS.Avisos",
-                     MensajeHola = "BS.Hola";
+                     MensajeHola = "BS.Hola", MensajeTiempo = "BS.Tiempo";
         const byte EventoAccion = 0, EventoGolpe = 1, EventoReaparecer = 2;
 
         public static Modo ModoActual { get; private set; }
@@ -321,7 +322,8 @@ namespace BichoShow
             return instancia;
         }
 
-        static async Task IniciarServicios()
+        /// <summary>Unity Services y la sesión anónima (para salas y para el ranking mundial).</summary>
+        public static async Task IniciarServicios()
         {
             if (UnityServices.State == ServicesInitializationState.Uninitialized)
             {
@@ -460,6 +462,7 @@ namespace BichoShow
             mensajes.RegisterNamedMessageHandler(MensajePantalla, RecibirPantalla);
             mensajes.RegisterNamedMessageHandler(MensajeAvisos, RecibirAvisos);
             mensajes.RegisterNamedMessageHandler(MensajeHola, RecibirHola);
+            mensajes.RegisterNamedMessageHandler(MensajeTiempo, RecibirTiempo);
             manejadores = true;
         }
 
@@ -508,6 +511,7 @@ namespace BichoShow
                 w.WriteValueSafe((byte)m.Complemento);
                 w.WriteValueSafe((byte)m.Cuerpo);
                 w.WriteValueSafe((byte)m.Especie);
+                w.WriteValueSafe(new FixedString32Bytes(NombresJugadores.Guardado(m.Local)));
             }
             red.CustomMessagingManager.SendNamedMessage(MensajeMando, NetworkManager.ServerClientId, w, NetworkDelivery.UnreliableSequenced);
         }
@@ -537,6 +541,7 @@ namespace BichoShow
                 r.ReadValueSafe(out byte complemento);
                 r.ReadValueSafe(out byte cuerpo);
                 r.ReadValueSafe(out byte especie);
+                r.ReadValueSafe(out FixedString32Bytes nombre);
 
                 var clave = (cliente, local);
                 entradas.TryGetValue(clave, out var entrada);
@@ -550,6 +555,7 @@ namespace BichoShow
                     entradas[clave] = entrada;
                 }
                 entrada.Recibir(new Vector2(dx, dz), (botones & 1) != 0, saltos, lanzamientos, empezar);
+                entrada.Nombre = NombresJugadores.Limpiar(nombre.ToString());
                 if (entrada.TryGetComponent(out Vestuario v))
                 {
                     if (v.Especie != especie) v.PonerEspecie(especie);
@@ -559,6 +565,29 @@ namespace BichoShow
         }
 
         // --- Anfitrión → invitados ---
+
+        /// <summary>En el anfitrión: a ese ordenador, el tiempo que ha hecho uno de sus jugadores.</summary>
+        public static void EnviarTiempo(ulong cliente, byte local, string carrera, float segundos, string bicho)
+        {
+            var red = instancia != null ? instancia.red : null;
+            if (!EsAnfitrion || red == null || !red.IsListening) return;
+            using var w = new FastBufferWriter(96, Allocator.Temp);
+            w.WriteValueSafe(local);
+            w.WriteValueSafe(new FixedString32Bytes(carrera));
+            w.WriteValueSafe(segundos);
+            w.WriteValueSafe(new FixedString32Bytes(bicho));
+            red.CustomMessagingManager.SendNamedMessage(MensajeTiempo, cliente, w, NetworkDelivery.ReliableSequenced);
+        }
+
+        void RecibirTiempo(ulong de, FastBufferReader r)
+        {
+            if (!EsInvitado) return;
+            r.ReadValueSafe(out byte local);
+            r.ReadValueSafe(out FixedString32Bytes carrera);
+            r.ReadValueSafe(out float segundos);
+            r.ReadValueSafe(out FixedString32Bytes bicho);
+            RankingTiempos.Apuntar(carrera.ToString(), NombresJugadores.DeLocal(local), segundos, bicho.ToString());
+        }
 
         bool PrepararDestinos()
         {
