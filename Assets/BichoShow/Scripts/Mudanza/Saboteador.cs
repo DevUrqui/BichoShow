@@ -9,22 +9,50 @@ namespace BichoShow
     ///    gatillo la activa.
     ///  - Máquina (sin PlayerInput): activa la trampa lista que tenga más víctimas cerca.
     /// Un rombo de su color flota sobre la trampa elegida: los demás ven lo que va a hacer.
+    ///
+    /// Villano (Villano = true): en las pruebas con un "malo" (el robot del Cortacésped), no hay
+    /// trampas: la prueba lee su mando (StickCrudo, StickMundo, PulsoAccion) y le suma los puntos.
     /// </summary>
     public class Saboteador : MonoBehaviour
     {
         public int Puntos { get; private set; }
-        public string Etiqueta { get; private set; } = "Saboteador";
+        public string Etiqueta { get; set; } = "Saboteador";
         public Color ColorSaboteador { get; private set; } = new Color(0.75f, 0.4f, 1f);
         /// <summary>La máquina elige (también si es un jugador de fuera al que no le llega la conexión).</summary>
         public bool EsMaquina => entrada == null && (remota == null || !remota.Activo);
         /// <summary>Número del jugador que sabotea (-1 si es la máquina).</summary>
         public int IndiceJugador { get; private set; } = -1;
         public TrampaSaboteable Seleccionada => seleccionada;
+        /// <summary>Hace de villano de la prueba (no usa trampas).</summary>
+        public bool Villano { get; set; }
+        /// <summary>Lo que puede hacer ahora el villano (lo pone la prueba; sale en su panel).</summary>
+        public string AyudaVillano { get; set; } = "";
+
+        /// <summary>Su stick tal cual (cero si es la máquina).</summary>
+        public Vector2 StickCrudo => EsMaquina ? Vector2.zero : remota != null ? remota.MoverPropio : accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
+        /// <summary>Hacia dónde apunta su stick en el suelo (cero si está suelto).</summary>
+        public Vector3 StickMundo
+        {
+            get
+            {
+                Vector2 s = StickCrudo;
+                return s.magnitude < 0.35f ? Vector3.zero : StickAMundo(s);
+            }
+        }
+        /// <summary>¿Ha pulsado A (o agarrar) en este frame?</summary>
+        public bool PulsoAccion => !EsMaquina &&
+            ((accionSaltar != null && accionSaltar.WasPressedThisFrame()) ||
+             (accionAgarrar != null && accionAgarrar.WasPressedThisFrame()) ||
+             (remota != null && (remota.PulsadoEsteFrame(EntradaRemota.Boton.Saltar) || remota.PulsadoEsteFrame(EntradaRemota.Boton.Agarrar))));
+        /// <summary>¿Ha pulsado X (lanzarse) en este frame?</summary>
+        public bool PulsoCambiar => !EsMaquina &&
+            ((accionLanzarse != null && accionLanzarse.WasPressedThisFrame()) ||
+             (remota != null && remota.PulsadoEsteFrame(EntradaRemota.Boton.Lanzarse)));
 
         RondaBase ronda;
         PlayerInput entrada;
         EntradaRemota remota; // jugador de una partida online que sabotea desde su casa
-        InputAction accionMover, accionSaltar, accionAgarrar;
+        InputAction accionMover, accionSaltar, accionAgarrar, accionLanzarse;
         float agresividad = 0.5f;
         int filaHud;
 
@@ -63,6 +91,7 @@ namespace BichoShow
                 accionMover = entrada.actions.FindAction("Mover");
                 accionSaltar = entrada.actions.FindAction("Saltar");
                 accionAgarrar = entrada.actions.FindAction("Agarrar");
+                accionLanzarse = entrada.actions.FindAction("Lanzarse");
             }
 
             CrearMarcador();
@@ -97,7 +126,7 @@ namespace BichoShow
             bool visible = Jugando && seleccionada != null;
             if (marcador != null) marcador.gameObject.SetActive(visible);
             if (rayo != null) rayo.gameObject.SetActive(visible);
-            if (!Jugando) return;
+            if (!Jugando || Villano) return;
 
             if (seleccionada == null || !seleccionada.isActiveAndEnabled) seleccionada = TrampaInicial();
             if (seleccionada == null) return;
@@ -114,7 +143,7 @@ namespace BichoShow
 
         void LeerMando()
         {
-            Vector2 stick = remota != null ? remota.MoverPropio : accionMover != null ? accionMover.ReadValue<Vector2>() : Vector2.zero;
+            Vector2 stick = StickCrudo;
             if (stick.magnitude < 0.3f)
             {
                 stickCentrado = true;
@@ -125,10 +154,7 @@ namespace BichoShow
                 SaltarHacia(StickAMundo(stick));
             }
 
-            bool activar = (accionSaltar != null && accionSaltar.WasPressedThisFrame()) ||
-                           (accionAgarrar != null && accionAgarrar.WasPressedThisFrame()) ||
-                           (remota != null && (remota.PulsadoEsteFrame(EntradaRemota.Boton.Saltar) || remota.PulsadoEsteFrame(EntradaRemota.Boton.Agarrar)));
-            if (activar) Activar(seleccionada);
+            if (PulsoAccion) Activar(seleccionada);
         }
 
         /// <summary>Elige la trampa más cercana en esa dirección (en el suelo).</summary>
@@ -307,9 +333,11 @@ namespace BichoShow
             float y = h * 0.93f - filaHud * (alto * 1.1f);
 
             string trampa = "";
-            if (seleccionada != null && ronda.EstadoActual == RondaBase.Estado.Jugando)
+            if (Villano)
+                trampa = ronda.EstadoActual == RondaBase.Estado.Jugando && !EsMaquina ? AyudaVillano : "";
+            else if (seleccionada != null && ronda.EstadoActual == RondaBase.Estado.Jugando)
                 trampa = seleccionada.Lista ? $"{seleccionada.Nombre}: ¡LISTA!" : $"{seleccionada.Nombre}: {seleccionada.TiempoParaLista:0.0}s";
-            string ayuda = EsMaquina || ronda.EstadoActual != RondaBase.Estado.Jugando ? "" : "   ·   Stick: elegir   ·   A: ¡activar!";
+            string ayuda = Villano || EsMaquina || ronda.EstadoActual != RondaBase.Estado.Jugando ? "" : "   ·   Stick: elegir   ·   A: ¡activar!";
             string texto = $"{Etiqueta.ToUpper()}  {Puntos} pts   ·   {trampa}{ayuda}";
             if (Time.time < finMensaje) texto += $"   {mensaje}";
 

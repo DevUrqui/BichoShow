@@ -12,6 +12,8 @@ namespace BichoShow
     {
         public float vida = 7f;
         public float empujon = 6f;
+        /// <summary>El robot que la escupió (para los puntos del villano).</summary>
+        [System.NonSerialized] public CortacespedMecha robot;
 
         readonly Dictionary<ControladorBicho, float> ultimo = new Dictionary<ControladorBicho, float>();
         Rigidbody rb;
@@ -36,6 +38,7 @@ namespace BichoShow
             ultimo[bicho] = Time.time;
             bicho.Cuerpo.linearVelocity = v.normalized * empujon + Vector3.up * 3f;
             bicho.Tropezar(0.6f);
+            if (robot != null) robot.Derribado(bicho);
             Vector3 punto = c.contactCount > 0 ? c.GetContact(0).point : bicho.transform.position;
             Sonidos.Reproducir(Sonido.Golpe, punto, bicho.EsBot ? 0.6f : 1f, 1.1f);
             Efectos.Impacto(punto, new Color(1f, 0.75f, 0.3f), 0.5f);

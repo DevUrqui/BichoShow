@@ -58,6 +58,28 @@ Al acabar la ronda el robot se marea (cara de espirales), se para y el césped v
 - Gana quien más aguante. Con placajes (X) se puede echar a los demás al foso.
 - Los bots se quedan por el medio del césped. Saltan los aros bajos y las cuchillas (los hábiles, más justos) y no saltan con un aro alto cerca. Además, corren hacia fuera al aspirar y hacia dentro al soplar, se apartan de las tuercas y salen del césped que se pone rojo.
 
+## El villano
+
+En el show, el humano que va último no juega esta ronda: **maneja el robot**. Jugando la prueba suelta, es villano quien esté en la cabina del saboteador al pulsar START.
+
+- **Elige el siguiente ataque** entre tres cartas que salen abajo en la pantalla. **X** cambia de carta y **A** lo lanza ya, sin esperar al final del descanso. Si no pulsa nada, sale la carta elegida cuando acaba el descanso. En la furia, las cartas traen combos; en el último asalto, también tríos.
+- **Tres poderes por ataque**, con **A** (con un respiro de 1,2 s entre uno y otro):
+
+| Ataque | Poder con A | Con el stick |
+|---|---|---|
+| Onda láser | el siguiente aro sale **alto** (azul) | |
+| Aspiración | **sopla** o **vuelve a aspirar** | |
+| Lluvia de tuercas | **ráfaga** de tres tuercas | **apunta** hacia dónde las escupe |
+| Barrido de cuchillas | la cuchilla **gira al revés** | |
+| Corte de césped | **otro corte** en las porciones de al lado | **elige dónde corta** (mientras lo anuncia) |
+
+- Con el villano, el robot no hace nada de esto solo: los aros altos, los soplidos, los cambios de sentido y el segundo corte los decide él.
+- **Puntos del villano:** 1 por cada bicho que tumba (aros, cuchillas o tuercas) y 3 por cada uno que se cae al foso o fuera. En el show: 25 puntos dan 2 estrellas y 60, 3.
+- Los demás lo ven todo: la cara del robot avisa del ataque y las cartas del villano salen en pantalla.
+- Si al villano se le corta la conexión, el robot vuelve a ir solo hasta que vuelva.
+
+En el show, solo se anuncia saboteador o villano si la siguiente prueba lo admite. Ahora lo admiten Mudanza, Costura y "Juntos o nada" (con trampas) y el Cortacésped (con villano). En las demás pruebas, el último juega normal.
+
 ## Si hay que ajustarla
 
 Todo está en el componente **CortacespedMecha** del robot:

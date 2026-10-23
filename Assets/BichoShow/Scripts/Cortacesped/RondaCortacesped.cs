@@ -10,6 +10,9 @@ namespace BichoShow
     /// (combos de dos ataques), con un último asalto de hasta tres a la vez. Cada tanda de ataques
     /// que aguantas sin caerte (al foso de chatarra o fuera del jardín), +1; en el modo furia, +2;
     /// en el último asalto, +3. Quien se cae vuelve a su sitio, sin el punto.
+    ///
+    /// Villano: el saboteador de la ronda (en el show, el que va último) maneja el robot. Gana
+    /// 1 punto por cada bicho que tumba y 3 por cada uno que se cae.
     /// </summary>
     public class RondaCortacesped : RondaBase
     {
@@ -46,6 +49,7 @@ namespace BichoShow
                 robot.AlAnunciar += AlAnunciar;
                 robot.AlTerminar += AlTerminarAtaque;
                 robot.AlAviso += (texto, color) => { if (EstadoActual == Estado.Jugando) Mensaje(texto, color, 2f); };
+                robot.AlDerribar += b => { if (EstadoActual == Estado.Jugando && robot.villano != null) robot.villano.SumarPuntos(1, "¡golpe!"); };
             }
         }
 
@@ -76,7 +80,7 @@ namespace BichoShow
             reaparicionPuesta.Clear();
             fase = 1;
             ultimoAsalto = false;
-            if (robot != null) robot.fase = 1;
+            if (robot != null) { robot.fase = 1; robot.villano = null; }
         }
 
         protected override void AlEmpezarRonda()
@@ -88,6 +92,8 @@ namespace BichoShow
                 robot.PonerCara(CortacespedMecha.Cara.Enfadado);
             }
             Mensaje("FASE 1: ¡QUE EMPIECE EL CORTE!", new Color(1f, 0.35f, 0.75f), 2f);
+            if (robot != null && robot.villano != null)
+                Mensaje($"¡{robot.villano.Etiqueta} maneja el robot!", robot.villano.ColorSaboteador, 3f);
         }
 
         protected override void ActualizarJugando()
@@ -137,6 +143,7 @@ namespace BichoShow
                     Color color = gestor != null ? gestor.ColorDe(b.IndiceJugador) : Color.white;
                     Mensaje(foso ? $"¡{NombreJugador(b)} al foso de chatarra!" : $"¡{NombreJugador(b)} se ha caído del jardín!", color, 2f);
                     Estadisticas.Evento("caida", b, foso ? "foso" : "borde");
+                    if (robot.villano != null) robot.villano.SumarPuntos(3, foso ? "¡al foso!" : "¡fuera!");
                 }
                 else if (!estaAbajo) abajo.Remove(b);
             }
@@ -176,6 +183,55 @@ namespace BichoShow
                 }
             return sitio;
         }
+
+        // ---------------------------------------------------------------------
+        // El villano
+        // ---------------------------------------------------------------------
+
+        protected override bool AdmiteSaboteador => robot != null;
+
+        protected override void AlCrearSaboteador(Saboteador s)
+        {
+            // El que sabotea maneja el robot: elige los ataques y usa sus poderes.
+            s.Villano = true;
+            var b = s.GetComponent<ControladorBicho>();
+            s.Etiqueta = b != null ? $"Villano {NombreJugador(b)}" : "Villano";
+            if (robot != null) robot.villano = s;
+        }
+
+        /// <summary>Las tres cartas del villano (el siguiente ataque), encima de su panel.</summary>
+        protected override void OnGUI()
+        {
+            base.OnGUI();
+            if (robot == null || !robot.Pilotado || EstadoActual != Estado.Jugando || robot.Opciones.Count == 0) return;
+            if (ControladaPorShow && ShowBicho.Instancia != null && ShowBicho.Instancia.TapaLaPantalla) return;
+            float w = Screen.width, h = Screen.height;
+            Color color = robot.villano.ColorSaboteador;
+            float ancho = EstiloShow.Px(360f), alto = EstiloShow.Px(78f), hueco = EstiloShow.Px(22f);
+            float x0 = w * 0.5f - (ancho * 3f + hueco * 2f) * 0.5f;
+            float y = h * 0.93f - EstiloShow.Px(140f);
+            EstiloShow.Texto(new Rect(0, y - EstiloShow.Px(46f), w, EstiloShow.Px(40f)), "PRÓXIMO ATAQUE DEL VILLANO", Mathf.RoundToInt(EstiloShow.Px(28f)), color);
+            for (int i = 0; i < robot.Opciones.Count; i++)
+            {
+                var o = robot.Opciones[i];
+                bool elegida = i == robot.Elegida;
+                var r = new Rect(x0 + i * (ancho + hueco), y, ancho, alto);
+                if (elegida) r = EstiloShow.Escalar(r, 1.08f + Mathf.Sin(Time.time * 6f) * 0.02f);
+                EstiloShow.Panel(r, elegida ? color : new Color(0.12f, 0.06f, 0.2f, 0.85f), r.height * 0.35f);
+                string texto = Corto(o.a) + (o.b.HasValue ? $" + {Corto(o.b.Value)}" : "") + (o.c.HasValue ? $" + {Corto(o.c.Value)}" : "");
+                int tam = Mathf.RoundToInt(EstiloShow.Px(o.c.HasValue ? 22f : o.b.HasValue ? 26f : 32f));
+                EstiloShow.Texto(r, texto, tam, elegida ? Color.white : new Color(1f, 1f, 1f, 0.7f));
+            }
+        }
+
+        static string Corto(CortacespedMecha.Ataque a) => a switch
+        {
+            CortacespedMecha.Ataque.OndaLaser => "LÁSER",
+            CortacespedMecha.Ataque.Aspiracion => "ASPIRADORA",
+            CortacespedMecha.Ataque.LluviaTuercas => "TUERCAS",
+            CortacespedMecha.Ataque.Barrido => "CUCHILLAS",
+            _ => "CORTE",
+        };
 
         static string Nombre(CortacespedMecha.Ataque a) => a switch
         {

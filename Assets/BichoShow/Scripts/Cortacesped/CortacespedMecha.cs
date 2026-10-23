@@ -18,12 +18,25 @@ namespace BichoShow
     ///  3. Modo furia: descansos mínimos, casi siempre dos ataques a la vez, la aspiración que
     ///     sopla y vuelve a aspirar, un segundo corte de césped en las otras porciones y tuercas
     ///     de dos en dos. En el último asalto (el final de la ronda), hasta tres ataques a la vez.
+    ///
+    /// Villano: si el que va último maneja el robot (villano), elige entre tres cartas el
+    /// siguiente ataque (X cambia de carta, A lo lanza ya) y en cada ataque tiene tres poderes
+    /// con A (girar la cuchilla al revés, soplar o aspirar, soltar un aro alto, ráfaga de tuercas,
+    /// otro corte) y apunta con el stick las tuercas y el corte de césped. Sin villano (o si se le
+    /// corta la conexión), el robot va solo.
     /// El pivote está en el centro, a la altura del césped.
     /// </summary>
     public class CortacespedMecha : MonoBehaviour
     {
         public enum Ataque { OndaLaser, Aspiracion, LluviaTuercas, Barrido, CorteCesped }
         public enum Cara { Normal, Enfadado, Risa, Mareado, Laser, Furia, Corte }
+
+        /// <summary>Un ataque que se puede anunciar (con su combo, si lo lleva).</summary>
+        public struct Opcion
+        {
+            public Ataque a;
+            public Ataque? b, c;
+        }
 
         [Header("Piezas")]
         [Tooltip("Lo que gira (el robot entero).")]
@@ -79,6 +92,17 @@ namespace BichoShow
         public event Action AlTerminar;
         /// <summary>Algo que contar a mitad de un ataque ("¡AHORA SOPLA!").</summary>
         public event Action<string, Color> AlAviso;
+        /// <summary>Un ataque ha tumbado a un bicho (aros, cuchillas o tuercas): puntos del villano.</summary>
+        public event Action<ControladorBicho> AlDerribar;
+
+        /// <summary>El jugador que maneja el robot (lo pone la ronda), si lo hay.</summary>
+        [NonSerialized] public Saboteador villano;
+        /// <summary>Lo maneja un jugador (si se le corta la conexión, vuelve a ir solo).</summary>
+        public bool Pilotado => villano != null && !villano.EsMaquina;
+        /// <summary>Las cartas entre las que elige el villano el siguiente ataque.</summary>
+        public IReadOnlyList<Opcion> Opciones => opciones;
+        /// <summary>La carta que tiene elegida el villano.</summary>
+        public int Elegida => elegida;
 
         /// <summary>Lo enciende la ronda mientras se juega.</summary>
         [NonSerialized] public bool activo;
@@ -174,6 +198,13 @@ namespace BichoShow
         bool cortando;
         int salidaCorte;
         float otraOleada; // cuándo empieza el segundo corte (0 = no hay)
+        float finPrimeraOleada;
+
+        // El villano.
+        readonly List<Opcion> opciones = new List<Opcion>();
+        int elegida, poderes;
+        float siguientePoder, inicioDescanso;
+        bool proximoAroAlto, otroCorteUsado;
 
         void Awake()
         {
@@ -241,6 +272,7 @@ namespace BichoShow
             aspirando = tuercas = barriendo = cortando = false;
             otraOleada = 0f;
             segundo = tercero = null;
+            opciones.Clear();
             Apagar(cuchillas);
             foreach (var p in sueltos) if (p != null) Destroy(p.gameObject);
             sueltos.Clear();
@@ -268,15 +300,28 @@ namespace BichoShow
             ActualizarViento(dt);
             if (!activo) return;
 
+            if (Pilotado)
+            {
+                if (opciones.Count == 0 && estado != Estado.Anuncio) PrepararCartas();
+                if (villano.PulsoCambiar && opciones.Count > 0)
+                {
+                    elegida = (elegida + 1) % opciones.Count;
+                    Sonidos.Reproducir(Sonido.Click, Centro, 0.6f, 1.2f);
+                }
+                villano.AyudaVillano = Ayuda();
+            }
+
             switch (estado)
             {
                 case Estado.Descanso:
-                    if (Time.time >= finEstado) Anunciar();
+                    // El villano puede lanzar el ataque antes (A), tras un respiro mínimo.
+                    if (Time.time >= finEstado || (Pilotado && villano.PulsoAccion && Time.time - inicioDescanso > 0.4f)) Anunciar();
                     break;
                 case Estado.Anuncio:
                     if (Time.time >= finEstado) Empezar();
                     break;
                 case Estado.Ataque:
+                    if (Pilotado) Poderes();
                     ActualizarAtaques();
                     if (!(arosPorSalir > 0 || arosVivos.Count > 0 || aspirando || tuercas || barriendo || cortando)) Terminar();
                     break;
@@ -407,25 +452,40 @@ namespace BichoShow
 
         void Anunciar()
         {
-            var posibles = new List<Ataque> { Ataque.OndaLaser, Ataque.Aspiracion, Ataque.LluviaTuercas };
-            if (fase >= 2) { posibles.Add(Ataque.Barrido); posibles.Add(Ataque.CorteCesped); }
-            // Los nuevos, más a menudo al llegar a su fase (y nunca el mismo que el anterior).
-            if (fase == 2) { posibles.Add(Ataque.Barrido); posibles.Add(Ataque.CorteCesped); }
-            principal = Elegir(posibles);
-            segundo = tercero = null;
-            // Combos (dos a la vez, de los que se pueden juntar): a veces en la fase 2, casi siempre
-            // en la furia; en el último asalto, a menudo un tercero.
-            float combo = fase >= 3 ? 0.8f : fase == 2 ? 0.25f : 0f;
-            if (UnityEngine.Random.value < combo)
-            {
-                segundo = Compatible(principal, null);
-                if (segundo.HasValue && UltimoAsalto && UnityEngine.Random.value < 0.55f) tercero = Compatible(principal, segundo);
-            }
+            // El villano lanza la carta que tiene elegida; si no, el robot sortea.
+            var o = Pilotado && opciones.Count > 0 ? opciones[Mathf.Clamp(elegida, 0, opciones.Count - 1)] : Sortear(null);
+            opciones.Clear();
+            principal = o.a;
+            segundo = o.b;
+            tercero = o.c;
+            ultimo = principal;
             estado = Estado.Anuncio;
             finEstado = Time.time + anuncio * (fase >= 3 ? 0.85f : 1f) * (tercero.HasValue ? 1.45f : segundo.HasValue ? 1.25f : 1f);
             PonerCara(CaraDe(principal));
             Sonidos.Reproducir(Sonido.Alarma, Centro, 0.7f, principal == Ataque.OndaLaser ? 1.3f : principal == Ataque.Aspiracion ? 0.8f : 1f);
             AlAnunciar?.Invoke(principal, segundo);
+        }
+
+        /// <summary>
+        /// Un ataque al azar de los de esta fase (nunca el mismo que el anterior ni, si se puede, uno
+        /// de "yaSalen"), con su combo: a veces en la fase 2, casi siempre en la furia; en el último
+        /// asalto, a menudo un tercero.
+        /// </summary>
+        Opcion Sortear(List<Ataque> yaSalen)
+        {
+            var posibles = new List<Ataque> { Ataque.OndaLaser, Ataque.Aspiracion, Ataque.LluviaTuercas };
+            if (fase >= 2) { posibles.Add(Ataque.Barrido); posibles.Add(Ataque.CorteCesped); }
+            // Los nuevos, más a menudo al llegar a su fase.
+            if (fase == 2) { posibles.Add(Ataque.Barrido); posibles.Add(Ataque.CorteCesped); }
+            if (yaSalen != null && posibles.Exists(p => !yaSalen.Contains(p) && p != ultimo)) posibles.RemoveAll(p => yaSalen.Contains(p));
+            var o = new Opcion { a = Elegir(posibles) };
+            float combo = fase >= 3 ? 0.8f : fase == 2 ? 0.25f : 0f;
+            if (UnityEngine.Random.value < combo)
+            {
+                o.b = Compatible(o.a, null);
+                if (o.b.HasValue && UltimoAsalto && UnityEngine.Random.value < 0.55f) o.c = Compatible(o.a, o.b);
+            }
+            return o;
         }
 
         Ataque ultimo = (Ataque)(-1);
@@ -436,7 +496,6 @@ namespace BichoShow
             int intentos = 0;
             do elegido = posibles[UnityEngine.Random.Range(0, posibles.Count)];
             while (elegido == ultimo && ++intentos < 10);
-            ultimo = elegido;
             return elegido;
         }
 
@@ -470,6 +529,9 @@ namespace BichoShow
         void Empezar()
         {
             estado = Estado.Ataque;
+            poderes = 3;
+            proximoAroAlto = otroCorteUsado = false;
+            if (Pilotado) PrepararCartas(); // las del siguiente, para ir eligiendo
             Empezar(principal);
             if (segundo.HasValue) Empezar(segundo.Value);
             if (tercero.HasValue) Empezar(tercero.Value);
@@ -489,7 +551,7 @@ namespace BichoShow
                     finAspiracion = Time.time + Mathf.Lerp(5.5f, 8f, progreso);
                     // Desde la fase 2, a mitad de camino puede darse la vuelta y soplar hacia fuera
                     // (en la furia, casi siempre; y luego, a veces, vuelve a aspirar).
-                    cambioSoplido = UnityEngine.Random.value < (fase >= 3 ? 0.85f : fase == 2 ? 0.6f : 0f) ? Time.time + UnityEngine.Random.Range(2f, 3.2f) : float.MaxValue;
+                    cambioSoplido = !Pilotado && UnityEngine.Random.value < (fase >= 3 ? 0.85f : fase == 2 ? 0.6f : 0f) ? Time.time + UnityEngine.Random.Range(2f, 3.2f) : float.MaxValue;
                     vueltaAspirar = float.MaxValue;
                     Sonidos.Reproducir(Sonido.Viento, Centro, 1f, 0.7f);
                     break;
@@ -506,7 +568,7 @@ namespace BichoShow
                     giradoCuchilla = 0f;
                     vueltasCuchilla = fase >= 3 ? 1.5f : 1.75f;
                     // Desde la fase 2, a veces se para un momento y gira al revés.
-                    invertirEn = fase >= 2 && UnityEngine.Random.value < (fase >= 3 ? 0.6f : 0.4f) ? UnityEngine.Random.Range(140f, 260f) : float.MaxValue;
+                    invertirEn = !Pilotado && fase >= 2 && UnityEngine.Random.value < (fase >= 3 ? 0.6f : 0.4f) ? UnityEngine.Random.Range(140f, 260f) : float.MaxValue;
                     pausaCuchilla = 0f;
                     for (int i = 0; i < cuchillas.Length; i++) if (cuchillas[i] != null) cuchillas[i].gameObject.SetActive(i < cuchillasEnUso);
                     tocadosCuchilla.Clear();
@@ -523,16 +585,97 @@ namespace BichoShow
             estado = Estado.Descanso;
             float descanso = fase >= 3 ? 0.5f : fase == 2 ? 1.1f : 1.8f;
             finEstado = Time.time + descanso;
+            inicioDescanso = Time.time;
             PonerCara(fase >= 3 ? Cara.Furia : Cara.Normal);
             AlTerminar?.Invoke();
         }
+
+        // ---------------------------------------------------------------------
+        // El villano: cartas del siguiente ataque y poderes
+        // ---------------------------------------------------------------------
+
+        /// <summary>Tres cartas distintas para el siguiente ataque (elige la del medio, para empezar).</summary>
+        void PrepararCartas()
+        {
+            opciones.Clear();
+            var salen = new List<Ataque>();
+            for (int i = 0; i < 3; i++)
+            {
+                var o = Sortear(salen);
+                opciones.Add(o);
+                salen.Add(o.a);
+            }
+            elegida = 1;
+        }
+
+        /// <summary>A: el poder de lo que esté pasando (tres por ataque, con un respiro entre ellos).</summary>
+        void Poderes()
+        {
+            if (poderes <= 0 || Time.time < siguientePoder || !villano.PulsoAccion) return;
+            bool usado = false;
+            if (barriendo && Time.time >= pausaCuchilla) { InvertirCuchilla(); usado = true; }
+            if (aspirando) { CambiarViento(); usado = true; }
+            if (arosPorSalir > 0 && !proximoAroAlto && arosAltos != null && arosAltos.Length > 0) { proximoAroAlto = true; usado = true; }
+            if (tuercas) { for (int i = 0; i < 3; i++) Escupir(); usado = true; }
+            if (cortando && !otroCorteUsado && otraOleada <= 0f)
+            {
+                // Otro corte en las porciones de al lado, en cuanto se empiecen a cerrar las primeras.
+                otroCorteUsado = true;
+                otraOleada = Mathf.Max(Time.time + 0.2f, finPrimeraOleada);
+                usado = true;
+            }
+            if (!usado) return;
+            poderes--;
+            siguientePoder = Time.time + 1.2f;
+            Sonidos.Reproducir(Sonido.Pitido, Centro, 0.7f, 0.6f);
+        }
+
+        /// <summary>Lo que puede hacer ahora el villano (sale en su panel).</summary>
+        string Ayuda()
+        {
+            var partes = new List<string> { "X: cambiar carta" };
+            if (estado == Estado.Descanso) partes.Add("A: ¡lánzalo ya!");
+            else if (estado == Estado.Anuncio && Anunciado(Ataque.CorteCesped)) partes.Add("Stick: elige dónde corta");
+            else if (estado == Estado.Ataque)
+            {
+                if (tuercas) partes.Add("Stick: apuntar");
+                string poder = barriendo ? "girar al revés" : aspirando ? (soplando ? "aspirar" : "soplar")
+                             : arosPorSalir > 0 ? "aro alto" : tuercas ? "ráfaga" : cortando && !otroCorteUsado ? "otro corte" : null;
+                if (poder != null && poderes > 0) partes.Add($"A: {poder} (quedan {poderes})");
+            }
+            return string.Join("  ·  ", partes);
+        }
+
+        /// <summary>La aspiración se da la vuelta: sopla hacia fuera o vuelve a aspirar.</summary>
+        void CambiarViento()
+        {
+            soplando = !soplando;
+            AlAviso?.Invoke(soplando ? "¡AHORA SOPLA! ¡HACIA DENTRO!" : "¡Y VUELVE A ASPIRAR! ¡HACIA FUERA!",
+                            soplando ? new Color(0.45f, 0.85f, 1f) : new Color(1f, 0.75f, 0.3f));
+            Sonidos.Reproducir(Sonido.Viento, Centro, 1f, soplando ? 1.1f : 0.7f);
+        }
+
+        /// <summary>La cuchilla frena en seco, avisa y vuelve hacia atrás.</summary>
+        void InvertirCuchilla()
+        {
+            velocidadCuchillaActual = -velocidadCuchillaActual;
+            pausaCuchilla = Time.time + 0.4f;
+            AlAviso?.Invoke("¡LA CUCHILLA CAMBIA DE SENTIDO!", new Color(1f, 0.5f, 0.3f));
+            Sonidos.Reproducir(Sonido.Mecanismo, Centro, 1f, 1.5f);
+        }
+
+        /// <summary>Un ataque (o una tuerca) ha tumbado a ese bicho.</summary>
+        public void Derribado(ControladorBicho b) => AlDerribar?.Invoke(b);
 
         void ActualizarAtaques()
         {
             if (arosPorSalir > 0 && Time.time >= siguienteAro)
             {
                 // Desde la fase 2, algunos aros van altos (hay que NO saltar).
-                bool alto = fase >= 2 && arosAltos != null && arosAltos.Length > 0 && UnityEngine.Random.value < (fase >= 3 ? 0.5f : 0.4f);
+                // El villano decide cuál va alto (A); si no, al azar desde la fase 2.
+                bool alto = arosAltos != null && arosAltos.Length > 0 &&
+                            (Pilotado ? proximoAroAlto : fase >= 2 && UnityEngine.Random.value < (fase >= 3 ? 0.5f : 0.4f));
+                proximoAroAlto = false;
                 SoltarAro(alto);
                 arosPorSalir--;
                 siguienteAro = Time.time + Mathf.Lerp(0.95f, 0.6f, progreso);
@@ -541,18 +684,14 @@ namespace BichoShow
             {
                 if (!soplando && Time.time >= cambioSoplido)
                 {
-                    soplando = true;
                     cambioSoplido = float.MaxValue;
                     if (fase >= 3 && UnityEngine.Random.value < 0.5f) vueltaAspirar = Time.time + UnityEngine.Random.Range(1.6f, 2.4f);
-                    AlAviso?.Invoke("¡AHORA SOPLA! ¡HACIA DENTRO!", new Color(0.45f, 0.85f, 1f));
-                    Sonidos.Reproducir(Sonido.Viento, Centro, 1f, 1.1f);
+                    CambiarViento();
                 }
                 if (soplando && Time.time >= vueltaAspirar)
                 {
-                    soplando = false;
                     vueltaAspirar = float.MaxValue;
-                    AlAviso?.Invoke("¡Y VUELVE A ASPIRAR! ¡HACIA FUERA!", new Color(1f, 0.75f, 0.3f));
-                    Sonidos.Reproducir(Sonido.Viento, Centro, 1f, 0.7f);
+                    CambiarViento();
                 }
                 if (Time.time >= siguientePolvo)
                 {
@@ -643,12 +782,8 @@ namespace BichoShow
             {
                 if (giradoCuchilla >= invertirEn)
                 {
-                    // Frena en seco, avisa y vuelve hacia atrás.
                     invertirEn = float.MaxValue;
-                    velocidadCuchillaActual = -velocidadCuchillaActual;
-                    pausaCuchilla = Time.time + 0.4f;
-                    AlAviso?.Invoke("¡LA CUCHILLA CAMBIA DE SENTIDO!", new Color(1f, 0.5f, 0.3f));
-                    Sonidos.Reproducir(Sonido.Mecanismo, Centro, 1f, 1.5f);
+                    InvertirCuchilla();
                 }
                 float paso = Time.time < pausaCuchilla ? 0f : velocidadCuchillaActual * dt;
                 anguloCuchilla = Mathf.Repeat(anguloCuchilla + paso, 360f);
@@ -690,6 +825,7 @@ namespace BichoShow
             b.Tropezar(0.9f);
             Sonidos.Reproducir(Sonido.Derribo, b.transform.position, b.EsBot ? 0.6f : 1f, 1.2f);
             Efectos.Impacto(b.transform.position + Vector3.up * 0.5f, color, 0.6f);
+            AlDerribar?.Invoke(b);
         }
 
         // ---------------------------------------------------------------------
@@ -700,12 +836,15 @@ namespace BichoShow
         {
             if (trozos == null || trozos.Length == 0) return;
             cortando = true;
-            salidaCorte = UnityEngine.Random.Range(0, trozos.Length);
+            // El villano elige dónde corta (apuntando con el stick); si no, al azar.
+            Vector3 apunta = Pilotado ? villano.StickMundo : Vector3.zero;
+            salidaCorte = apunta != Vector3.zero ? Sector(apunta) : UnityEngine.Random.Range(0, trozos.Length);
             float aviso = fase >= 3 ? 1.15f : 1.5f;
-            Oleada(salidaCorte, fase >= 3 ? 6 : 5, aviso, true);
+            Oleada(salidaCorte, fase >= 3 ? 6 : 5, aviso, apunta == Vector3.zero);
+            finPrimeraOleada = Time.time + aviso + 2.4f;
             // En la furia, a veces otro corte en las porciones de al lado, justo cuando las primeras
             // empiezan a cerrarse (hay que cambiar de porción otra vez).
-            otraOleada = fase >= 3 && UnityEngine.Random.value < 0.6f ? Time.time + aviso + 2.4f : 0f;
+            otraOleada = !Pilotado && fase >= 3 && UnityEngine.Random.value < 0.6f ? finPrimeraOleada : 0f;
             Sonidos.Reproducir(Sonido.Mecanismo, Centro, 0.9f, 1.3f);
         }
 
@@ -791,10 +930,15 @@ namespace BichoShow
         public bool PorcionEnPeligro(Vector3 punto)
         {
             if (trozos == null || trozos.Length == 0) return false;
-            Vector3 rel = punto - Centro;
-            float angulo = Mathf.Repeat(Mathf.Atan2(rel.z, rel.x) * Mathf.Rad2Deg, 360f);
-            int i = Mathf.Clamp(Mathf.FloorToInt(angulo / (360f / trozos.Length)), 0, trozos.Length - 1);
+            int i = Sector(punto - Centro);
             return trozos[i] != null && trozos[i].aviso > 0f;
+        }
+
+        /// <summary>La porción del césped que hay en esa dirección (desde el centro).</summary>
+        int Sector(Vector3 rel)
+        {
+            float angulo = Mathf.Repeat(Mathf.Atan2(rel.z, rel.x) * Mathf.Rad2Deg, 360f);
+            return Mathf.Clamp(Mathf.FloorToInt(angulo / (360f / trozos.Length)), 0, trozos.Length - 1);
         }
 
         // ---------------------------------------------------------------------
@@ -804,23 +948,37 @@ namespace BichoShow
         void Escupir()
         {
             if (proyectiles == null || proyectiles.Length == 0 || boca == null) return;
+
+            // Hacia delante de la boca (más o menos), a un punto del césped. Si el villano apunta,
+            // hacia donde apunta (y sale por ese lado del robot, para no chocar con él).
+            Vector3 delante = boca.forward;
+            delante.y = 0f;
+            delante.Normalize();
+            float abre = 65f;
+            Vector3 desde = boca.position;
+            Vector3 apunta = Pilotado ? villano.StickMundo : Vector3.zero;
+            if (apunta != Vector3.zero)
+            {
+                delante = apunta;
+                abre = 20f;
+                desde = Centro + apunta * (radioRobot + 0.8f) + Vector3.up * (boca.position.y - Centro.y);
+            }
+            desde += UnityEngine.Random.insideUnitSphere * 0.35f; // las de una ráfaga, sin salir una dentro de otra
+
             var plantilla = proyectiles[UnityEngine.Random.Range(0, proyectiles.Length)];
-            var go = Instantiate(plantilla, boca.position, UnityEngine.Random.rotation);
+            var go = Instantiate(plantilla, desde, UnityEngine.Random.rotation);
             go.name = plantilla.name;
             go.SetActive(true);
             var rb = go.GetComponent<Rigidbody>();
             sueltos.Add(rb);
+            if (go.TryGetComponent(out ProyectilChatarra chatarra)) chatarra.robot = this;
 
-            // Hacia delante de la boca (más o menos), a un punto del césped.
-            Vector3 delante = boca.forward;
-            delante.y = 0f;
-            float angulo = UnityEngine.Random.Range(-65f, 65f);
-            Vector3 dir = Quaternion.Euler(0f, angulo, 0f) * delante.normalized;
+            float angulo = UnityEngine.Random.Range(-abre, abre);
+            Vector3 dir = Quaternion.Euler(0f, angulo, 0f) * delante;
             float distancia = UnityEngine.Random.Range(radioFoso + 1.5f, radioPista - 2f);
             Vector3 destino = Centro + dir * distancia;
             float tiempo = 1.05f;
             float g = -Physics.gravity.y;
-            Vector3 desde = boca.position;
             Vector3 horizontal = new Vector3(destino.x - desde.x, 0f, destino.z - desde.z) / tiempo;
             float vertical = (destino.y - desde.y + 0.5f * g * tiempo * tiempo) / tiempo;
             rb.linearVelocity = horizontal + Vector3.up * vertical;

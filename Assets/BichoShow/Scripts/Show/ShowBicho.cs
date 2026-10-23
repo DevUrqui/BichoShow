@@ -362,10 +362,24 @@ namespace BichoShow
         int ElegirSaboteadorSiguiente()
         {
             if (RondaActual + 1 >= programa.Count) return -1;
+            if (RolSabotaje(programa[RondaActual + 1].escena) == null) return -1; // esa prueba no se puede sabotear
             var humanos = Enumerable.Range(0, 4).Where(i => esHumano[i]).ToList();
             if (humanos.Count < 2) return -1;
             return humanos.OrderBy(i => estrellas[i]).ThenBy(i => estrellasRonda[i]).ThenBy(_ => Random.value).First();
         }
+
+        /// <summary>
+        /// Qué hace el que va último en esa prueba: "SABOTEADOR" (activa trampas), "VILLANO" (maneja
+        /// al malo de la prueba) o null si no se puede sabotear (entonces juega normal).
+        /// </summary>
+        public static string RolSabotaje(string escena) => escena switch
+        {
+            "Mudanza" or "Costura" or "Final" or "Arena" => "SABOTEADOR",
+            "Cortacesped" => "VILLANO",
+            _ => null,
+        };
+
+        string RolSiguiente => RondaActual + 1 < programa.Count ? RolSabotaje(programa[RondaActual + 1].escena) ?? "SABOTEADOR" : "SABOTEADOR";
 
         string NombreDe(int i) => esHumano[i] ? $"J{i + 1}" : $"Bot {i + 1}";
 
@@ -399,7 +413,7 @@ namespace BichoShow
                     EstiloShow.Panel(cartel, EstiloShow.Morado.WithAlpha(0.92f), cartel.height * 0.5f);
                     EstiloShow.Texto(cartel, $"Siguiente: {siguiente.nombre}" + (siguiente.multiplicador > 1 ? $"  ·  ¡estrellas x{siguiente.multiplicador}!" : ""), Tam(40f), Color.white);
                     if (saboteadorSiguiente >= 0)
-                        EstiloShow.Texto(new Rect(0, h - Px(168f), w, Px(46f)), $"{NombreDe(saboteadorSiguiente)} va último y será SABOTEADOR", Tam(32f), EstiloShow.Lila);
+                        EstiloShow.Texto(new Rect(0, h - Px(168f), w, Px(46f)), $"{NombreDe(saboteadorSiguiente)} va último y será {RolSiguiente}", Tam(32f), EstiloShow.Lila);
                     if (Time.time - inicioEstado > 1f)
                         EstiloShow.Ayuda(new Rect(0, h - Px(98f), w, Px(54f)), ("A", EstiloShow.GlifoA, "seguir"));
                     break;
@@ -463,7 +477,10 @@ namespace BichoShow
             {
                 var r = new Rect(w * 0.5f - Px(560f), y, Px(1120f), Px(78f));
                 EstiloShow.Panel(r, new Color(0.45f, 0.2f, 0.7f, 0.95f), r.height * 0.5f);
-                EstiloShow.Texto(r, $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda SABOTEA!", Tam(42f), EstiloShow.Lila);
+                string texto = RolSabotaje(prueba.escena) == "VILLANO"
+                    ? $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda es el VILLANO!"
+                    : $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda SABOTEA!";
+                EstiloShow.Texto(r, texto, Tam(42f), EstiloShow.Lila);
             }
 
             // Barra que se llena hasta que empieza la prueba

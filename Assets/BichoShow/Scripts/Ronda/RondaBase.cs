@@ -351,7 +351,7 @@ namespace BichoShow
                 }
             }
             saboteadores.Clear();
-            if (TrampaSaboteable.Todas.Count == 0) return; // esta prueba no tiene trampas
+            if (!AdmiteSaboteador) return; // esta prueba no tiene trampas ni villano
 
             var elegidos = new List<ControladorBicho>();
             foreach (var b in ControladorBicho.Todos)
@@ -368,8 +368,15 @@ namespace BichoShow
                              agresividadMaquina, saboteadores.Count, b.IndiceJugador, b.GetComponent<EntradaRemota>());
                 b.Retirar(true);
                 saboteadores.Add(s);
+                AlCrearSaboteador(s);
             }
         }
+
+        /// <summary>¿Se puede sabotear esta prueba? Con trampas, sí; las que tienen villano lo dicen ellas.</summary>
+        protected virtual bool AdmiteSaboteador => TrampaSaboteable.Todas.Count > 0;
+
+        /// <summary>Un jugador acaba de pasar a saboteador (para convertirlo en villano, por ejemplo).</summary>
+        protected virtual void AlCrearSaboteador(Saboteador s) { }
 
         void CrearSaboteadorMaquina()
         {
