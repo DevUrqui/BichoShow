@@ -43,7 +43,7 @@ El robot anuncia cada ataque con la cara de su pantalla (y un aviso en grande), 
 | Ojos de risa y boca abierta | **Aspiración invertida:** la turbina tira de todos hacia el robot, más fuerte cuanto más cerca. Desde la fase 2, a mitad puede dar la vuelta y **soplar** hacia fuera ("¡AHORA SOPLA!"). Se ve de dónde viene el aire: rachas blancoazuladas que van en espiral hacia el robot (o hacia fuera al soplar) y flechas en el césped. Ya se ven, más flojas, durante el aviso. | Correr hacia fuera; si sopla, hacia dentro. |
 | Ojos enfadados con cejas en V | **Lluvia de tuercas:** escupe tuercas y pilas de goma que rebotan mientras el robot gira. Cada vez escupe más deprisa. | Esquivarlas: te tumban y te empujan hacia donde iban. |
 | Ojos en raya, dientes y humo | **Barrido de cuchillas** (fase 2): una cuchilla a rayas a ras de suelo gira por todo el césped (vuelta y media; en la fase 3, dos cuchillas opuestas). | Saltarla justo cuando llega. |
-| Ojos mirando abajo y boca de sierra | **Corte de césped** (fase 2): cuatro o cinco porciones del suelo parpadean, cada vez más deprisa, y se caen un rato. Nunca son todas seguidas. | Salir de las que parpadean antes de que caigan. |
+| Ojos mirando abajo y boca de sierra | **Corte de césped** (fase 2): cuatro o cinco porciones del suelo crujen, se ponen rojas (latiendo cada vez más), tiemblan y se hunden un poco; luego se abren de golpe como una trampilla (la bisagra, en el borde del foso) y al rato se vuelven a cerrar. Nunca son todas seguidas. | Salir de las rojas antes de que se abran: si te pilla, resbalas al vacío. |
 
 En el modo furia los combos posibles son: láser + tuercas, cuchillas + tuercas, corte + láser, corte + aspiración y cuchillas + corte.
 
@@ -53,7 +53,7 @@ Al acabar la ronda el robot se marea (cara de espirales), se para y el césped v
 
 - Cada tanda de ataques que termina da **+1** (**+2** en el modo furia) a cada bicho que no se ha caído durante esa tanda.
 - Gana quien más aguante. Con placajes (X) se puede echar a los demás al foso.
-- Los bots se quedan por el medio del césped. Saltan los aros bajos y las cuchillas (los hábiles, más justos) y no saltan con un aro alto cerca. Además, corren hacia fuera al aspirar y hacia dentro al soplar, se apartan de las tuercas y salen del césped que parpadea.
+- Los bots se quedan por el medio del césped. Saltan los aros bajos y las cuchillas (los hábiles, más justos) y no saltan con un aro alto cerca. Además, corren hacia fuera al aspirar y hacia dentro al soplar, se apartan de las tuercas y salen del césped que se pone rojo.
 
 ## Si hay que ajustarla
 

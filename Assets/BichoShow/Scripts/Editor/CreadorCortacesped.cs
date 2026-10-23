@@ -23,7 +23,7 @@ namespace BichoShow.Herramientas
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cortacesped.unity";
         /// <summary>Sube al cambiar el mapa: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
-        public const int Version = 3;
+        public const int Version = 4;
         const string CarpetaMallas = E.Raiz + "/Modelos/Cortacesped";
         const float RadioRobot = 4.2f, RadioFoso = 7f, RadioPista = 22f, FondoFoso = -5f, Grosor = 0.8f;
 
@@ -86,10 +86,11 @@ namespace BichoShow.Herramientas
                 rb.isKinematic = true;
                 rb.interpolation = RigidbodyInterpolation.Interpolate;
                 porciones.Add(rb); // el robot las tira en el corte de césped
+                // Su trozo del borde de neón exterior (se mueve con ella).
+                Pieza("Borde exterior", porcion.transform, Anillo($"BordeExterior{i}", RadioPista - 0.35f, RadioPista, i * 30f, (i + 1) * 30f, 0.03f, 0.01f), Neon("NeonCian", new Color(0.3f, 0.9f, 1f)), false);
             }
             // Las rayas del cortacésped (más claras) y los bordes de neón.
             Pieza("Borde del foso", decorado, Anillo("BordeFoso", RadioFoso, RadioFoso + 0.35f, 0f, 360f, 0.03f, 0.01f), Neon("NeonRosa", new Color(1f, 0.3f, 0.75f)), false);
-            Pieza("Borde exterior", decorado, Anillo("BordeExterior", RadioPista - 0.35f, RadioPista, 0f, 360f, 0.03f, 0.01f), Neon("NeonCian", new Color(0.3f, 0.9f, 1f)), false);
             var raya = Mat("Raya", new Color(1f, 1f, 1f), 0.2f);
             for (int i = 0; i < 12; i++)
                 Pieza("Raya", decorado, Anillo($"Raya{i}", RadioFoso + 0.5f, RadioPista - 0.5f, i * 30f - 0.4f, i * 30f + 0.4f, 0.02f, 0.01f), raya, false);

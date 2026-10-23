@@ -11,7 +11,8 @@ namespace BichoShow
     ///  1. Calentamiento: onda láser (aros a ras de suelo que hay que saltar), aspiración (tira
     ///     hacia el foso: hay que correr hacia fuera) y lluvia de tuercas y pilas que rebotan.
     ///  2. Cuchillas: además, el barrido de cuchillas (una cuchilla a ras de suelo que gira; hay
-    ///     que saltarla) y el corte de césped (porciones del suelo que parpadean y se caen). Y
+    ///     que saltarla) y el corte de césped (porciones del suelo que se ponen rojas, tiemblan y se
+    ///     abren como una trampilla). Y
     ///     variantes: aros láser altos (te dan si saltas) y la aspiración que de golpe sopla.
     ///  3. Modo furia: descansos mínimos y, a menudo, dos ataques a la vez.
     /// El pivote está en el centro, a la altura del césped.
@@ -114,10 +115,17 @@ namespace BichoShow
         class Porcion
         {
             public Rigidbody rb;
-            public Renderer[] renders;
+            public Renderer render;
+            public Material material;     // su copia (para ponerla roja)
+            public Color color;
             public Vector3 inicio;
+            public Quaternion giroInicio;
+            public Vector3 bisagra, eje;  // la trampilla se abre por el borde del foso
             public float aviso, cae, sube; // momentos (Time.time); 0 = tranquila
         }
+
+        static readonly int IdColor = Shader.PropertyToID("_BaseColor");
+        static readonly Color ColorAviso = new Color(1f, 0.22f, 0.15f);
 
         class Racha
         {
@@ -156,7 +164,19 @@ namespace BichoShow
                 {
                     if (porciones[i] == null) continue;
                     porciones[i].isKinematic = true;
-                    trozos[i] = new Porcion { rb = porciones[i], renders = porciones[i].GetComponentsInChildren<Renderer>(), inicio = porciones[i].position };
+                    var p = new Porcion { rb = porciones[i], render = porciones[i].GetComponentInChildren<Renderer>(), inicio = porciones[i].position, giroInicio = porciones[i].rotation };
+                    if (p.render != null)
+                    {
+                        p.material = p.render.material; // copia propia: se puede poner roja sola
+                        p.color = p.material.HasProperty(IdColor) ? p.material.GetColor(IdColor) : Color.white;
+                        // La bisagra, en el borde del foso, en medio de la porción; el eje, de través.
+                        Vector3 medio = p.render.bounds.center - Centro;
+                        medio.y = 0f;
+                        Vector3 radial = medio.sqrMagnitude > 0.01f ? medio.normalized : Vector3.forward;
+                        p.bisagra = Centro + radial * radioFoso;
+                        p.eje = Vector3.Cross(Vector3.up, radial); // con ángulo positivo, lo de fuera baja
+                    }
+                    trozos[i] = p;
                 }
             }
         }
@@ -204,8 +224,8 @@ namespace BichoShow
                 {
                     if (t == null) continue;
                     t.aviso = t.cae = t.sube = 0f;
-                    t.rb.MovePosition(t.inicio);
-                    foreach (var r in t.renders) r.enabled = true;
+                    Colocar(t, 0f, 0f, 0f);
+                    Pintar(t, 0f);
                 }
             PonerCara(Cara.Mareado);
         }
@@ -589,7 +609,8 @@ namespace BichoShow
                 if (t == null || t.aviso > 0f) continue;
                 t.aviso = ahora;
                 t.cae = ahora + aviso;
-                t.sube = t.cae + 2.6f;
+                t.sube = t.cae + 2.4f;
+                Sonidos.Reproducir(Sonido.Grieta, t.bisagra, 0.7f, 0.8f);
             }
             Sonidos.Reproducir(Sonido.Mecanismo, Centro, 0.9f, 1.3f);
         }
@@ -604,25 +625,47 @@ namespace BichoShow
                 float ahora = Time.time;
                 if (ahora < t.cae)
                 {
-                    // Parpadea, cada vez más deprisa.
+                    // Aviso: se pone roja (latiendo, cada vez más), tiembla y se hunde un poco.
                     float k = (ahora - t.aviso) / Mathf.Max(0.1f, t.cae - t.aviso);
-                    bool visible = Mathf.Repeat(ahora * Mathf.Lerp(5f, 12f, k), 1f) < 0.6f;
-                    foreach (var r in t.renders) if (r.enabled != visible) r.enabled = visible;
+                    float latido = 0.5f + 0.5f * Mathf.Sin((ahora - t.aviso) * Mathf.Lerp(8f, 22f, k));
+                    Pintar(t, Mathf.Lerp(0.25f, 0.9f, k) * Mathf.Lerp(0.6f, 1f, latido));
+                    float temblor = Mathf.Sin(ahora * 47f) * 0.04f * k;
+                    Colocar(t, 0f, -0.18f * k * k, temblor);
                 }
                 else if (ahora < t.sube)
                 {
-                    foreach (var r in t.renders) if (!r.enabled) r.enabled = true;
-                    float baja = Mathf.Clamp01((ahora - t.cae) / 0.35f);
-                    t.rb.MovePosition(t.inicio + Vector3.down * 9f * baja);
+                    // Se abre como una trampilla (de golpe, cada vez más deprisa) y se queda abierta.
+                    if (t.material != null && t.material.GetColor(IdColor) != ColorAviso) { Pintar(t, 1f); Efectos.Polvo(t.bisagra + (t.render.bounds.center - t.bisagra) * 0.5f, 1.2f); Sonidos.Reproducir(Sonido.Rotura, t.bisagra, 0.8f, 0.7f); }
+                    float abre = Mathf.Clamp01((ahora - t.cae) / 0.45f);
+                    Colocar(t, 75f * abre * abre, -0.18f, 0f);
                 }
                 else
                 {
-                    float sube = Mathf.Clamp01((ahora - t.sube) / 0.8f);
-                    t.rb.MovePosition(t.inicio + Vector3.down * 9f * (1f - sube));
-                    if (sube >= 1f) { t.aviso = t.cae = t.sube = 0f; }
+                    // Vuelve a cerrarse despacio y recupera su color.
+                    float cierra = Mathf.Clamp01((ahora - t.sube) / 0.9f);
+                    float suave = cierra * cierra * (3f - 2f * cierra);
+                    Colocar(t, 75f * (1f - suave), -0.18f * (1f - suave), 0f);
+                    Pintar(t, 1f - suave);
+                    if (cierra >= 1f) { t.aviso = t.cae = t.sube = 0f; Pintar(t, 0f); }
                 }
             }
             cortando = queda;
+        }
+
+        /// <summary>Coloca la porción: abierta "angulo" grados por su bisagra, hundida "baja" y movida de lado "temblor".</summary>
+        void Colocar(Porcion t, float angulo, float baja, float temblor)
+        {
+            Quaternion giro = Quaternion.AngleAxis(angulo, t.eje);
+            Vector3 lado = t.eje * temblor;
+            t.rb.MovePosition(t.bisagra + giro * (t.inicio - t.bisagra) + Vector3.up * baja + lado);
+            t.rb.MoveRotation(giro * t.giroInicio);
+        }
+
+        /// <summary>De su color (0) a rojo de aviso (1).</summary>
+        static void Pintar(Porcion t, float rojo)
+        {
+            if (t.material == null || !t.material.HasProperty(IdColor)) return;
+            t.material.SetColor(IdColor, Color.Lerp(t.color, ColorAviso, Mathf.Clamp01(rojo)));
         }
 
         /// <summary>¿Esa porción del césped se va a caer (o está caída)? Para los bots.</summary>
