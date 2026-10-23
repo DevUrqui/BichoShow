@@ -735,6 +735,7 @@ namespace BichoShow.Herramientas
 
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = material;
+            RecursosEfectos.AplicarA(ps); // confeti, espuma, gotas, sal o polen: su textura de Blender
             return ps;
         }
     }
