@@ -40,6 +40,12 @@ namespace BichoShow
         [Tooltip("Plantillas de tuercas y pilas (apagadas): se copian al escupirlas.")]
         public GameObject[] proyectiles;
 
+        [Header("Viento (se ve de dónde viene el aire)")]
+        [Tooltip("Rachas de aire (líneas finas, apagadas): van en espiral hacia el robot al aspirar y hacia fuera al soplar.")]
+        public Transform[] rafagas;
+        [Tooltip("Flechas en el césped (la punta hacia +Z), apagadas: se mueven con el aire.")]
+        public Transform[] flechasViento;
+
         [Header("Arena")]
         public float radioRobot = 4.2f;
         public float radioFoso = 7f;
@@ -113,6 +119,13 @@ namespace BichoShow
             public float aviso, cae, sube; // momentos (Time.time); 0 = tranquila
         }
 
+        class Racha
+        {
+            public float angulo, radio, altura, velocidad;
+        }
+
+        Racha[] rachas, flechas;
+        float intensidadViento;
         readonly List<AroVivo> arosVivos = new List<AroVivo>();
         readonly List<Rigidbody> sueltos = new List<Rigidbody>();
         readonly Dictionary<ControladorBicho, float> tocadosCuchilla = new Dictionary<ControladorBicho, float>();
@@ -150,6 +163,8 @@ namespace BichoShow
 
         void Start()
         {
+            rachas = NuevasRachas(rafagas);
+            flechas = NuevasRachas(flechasViento);
             PonerCara(Cara.Normal);
             Apagar(aros);
             Apagar(arosAltos);
@@ -205,6 +220,7 @@ namespace BichoShow
                 giroTurbina = Mathf.MoveTowards(giroTurbina, aspirando ? (soplando ? -1400f : 1400f) : 180f, 1200f * dt);
                 turbina.Rotate(0f, giroTurbina * dt, 0f, Space.Self);
             }
+            ActualizarViento(dt);
             if (!activo) return;
 
             switch (estado)
@@ -219,6 +235,78 @@ namespace BichoShow
                     ActualizarAtaques();
                     if (!(arosPorSalir > 0 || arosVivos.Count > 0 || aspirando || tuercas || barriendo || cortando)) Terminar();
                     break;
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Viento: rachas y flechas que enseñan hacia dónde tira (o sopla) el robot
+        // ---------------------------------------------------------------------
+
+        Racha[] NuevasRachas(Transform[] lista)
+        {
+            if (lista == null) return new Racha[0];
+            var r = new Racha[lista.Length];
+            for (int i = 0; i < r.Length; i++)
+            {
+                r[i] = new Racha();
+                Recolocar(r[i], true, false);
+                if (lista[i] != null) lista[i].gameObject.SetActive(false);
+            }
+            return r;
+        }
+
+        /// <summary>Una racha nueva: al aspirar nace fuera; al soplar, junto al robot (o en cualquier sitio, al principio).</summary>
+        void Recolocar(Racha r, bool enCualquierSitio, bool sopla)
+        {
+            r.angulo = UnityEngine.Random.value * Mathf.PI * 2f;
+            r.radio = enCualquierSitio ? UnityEngine.Random.Range(radioRobot + 1f, radioPista + 3f)
+                    : sopla ? radioRobot + UnityEngine.Random.Range(0.5f, 2f) : radioPista + UnityEngine.Random.Range(1f, 5f);
+            r.altura = UnityEngine.Random.Range(0.25f, 2.6f);
+            r.velocidad = UnityEngine.Random.Range(9f, 14f);
+        }
+
+        void ActualizarViento(float dt)
+        {
+            // Fuerte mientras aspira o sopla; flojito durante el aviso (para que se vea de dónde viene).
+            float objetivo = aspirando ? 1f : estado == Estado.Anuncio && (principal == Ataque.Aspiracion || segundo == Ataque.Aspiracion) ? 0.45f : 0f;
+            intensidadViento = Mathf.MoveTowards(intensidadViento, objetivo, dt * 1.5f);
+            bool sopla = aspirando && soplando;
+            float sentido = sopla ? 1f : -1f;
+            MoverRachas(rafagas, rachas, dt, sentido, sopla, true);
+            MoverRachas(flechasViento, flechas, dt, sentido, sopla, false);
+        }
+
+        void MoverRachas(Transform[] lista, Racha[] datos, float dt, float sentido, bool sopla, bool enElAire)
+        {
+            if (lista == null || datos == null) return;
+            int visibles = Mathf.RoundToInt(lista.Length * intensidadViento);
+            for (int i = 0; i < lista.Length; i++)
+            {
+                var t = lista[i];
+                if (t == null) continue;
+                bool ver = i < visibles;
+                if (t.gameObject.activeSelf != ver) t.gameObject.SetActive(ver);
+                if (!ver) continue;
+                var r = datos[i];
+                if (enElAire)
+                {
+                    // En espiral: se cierran (o se abren) dando vueltas, más deprisa cerca del robot.
+                    r.radio += sentido * r.velocidad * dt * Mathf.Lerp(0.5f, 1f, intensidadViento);
+                    r.angulo += -sentido * dt * 6f / Mathf.Max(3f, r.radio);
+                    if (!sopla && r.radio < radioRobot + 0.3f) Recolocar(r, false, false);
+                    if (sopla && r.radio > radioPista + 6f) Recolocar(r, false, true);
+                }
+                else
+                {
+                    // Las flechas del suelo se quedan en el césped: van y, al salir, vuelven por el otro lado.
+                    r.radio += sentido * 4f * dt;
+                    if (r.radio < radioFoso + 1f) r.radio = radioPista - 1f;
+                    if (r.radio > radioPista - 1f) r.radio = radioFoso + 1f;
+                }
+                Vector3 radial = new Vector3(Mathf.Cos(r.angulo), 0f, Mathf.Sin(r.angulo));
+                Vector3 tangente = Vector3.Cross(Vector3.up, radial) * -sentido;
+                Vector3 hacia = enElAire ? (radial * sentido + tangente * 0.35f).normalized : radial * sentido;
+                t.SetPositionAndRotation(Centro + radial * r.radio + Vector3.up * (enElAire ? r.altura : 0.04f), Quaternion.LookRotation(hacia, Vector3.up));
             }
         }
 

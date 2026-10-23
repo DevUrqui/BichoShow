@@ -23,7 +23,7 @@ namespace BichoShow.Herramientas
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cortacesped.unity";
         /// <summary>Sube al cambiar el mapa: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
-        public const int Version = 2;
+        public const int Version = 3;
         const string CarpetaMallas = E.Raiz + "/Modelos/Cortacesped";
         const float RadioRobot = 4.2f, RadioFoso = 7f, RadioPista = 22f, FondoFoso = -5f, Grosor = 0.8f;
 
@@ -263,6 +263,35 @@ namespace BichoShow.Herramientas
                 cuchillas[i] = pivote;
             }
             mecha.cuchillas = cuchillas;
+
+            // El viento de la aspiración: rachas en el aire y flechas en el suelo (apagadas).
+            var viento = M.Grupo(raiz.transform, "Viento");
+            var aire = Neon("Viento", new Color(0.8f, 0.95f, 1f), 1.6f);
+            var rafagas = new Transform[32];
+            for (int i = 0; i < rafagas.Length; i++)
+            {
+                var r = E.Pieza(PrimitiveType.Cube, "Racha", viento, Vector3.zero, new Vector3(0.07f, 0.07f, 1.8f), aire);
+                r.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.SetActive(false);
+                rafagas[i] = r.transform;
+            }
+            mecha.rafagas = rafagas;
+            var flechaMat = Neon("FlechaViento", new Color(0.45f, 0.9f, 1f), 1.2f);
+            var flechas = new Transform[12];
+            for (int i = 0; i < flechas.Length; i++)
+            {
+                var flecha = new GameObject("Flecha viento").transform;
+                flecha.SetParent(viento, false);
+                foreach (float lado in new[] { -1f, 1f })
+                {
+                    var brazo = E.Pieza(PrimitiveType.Cube, "Brazo", flecha, new Vector3(lado * 0.42f, 0f, -0.42f), new Vector3(0.28f, 0.04f, 1.3f), flechaMat);
+                    brazo.transform.localRotation = Quaternion.Euler(0f, -lado * 40f, 0f);
+                    brazo.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                flecha.gameObject.SetActive(false);
+                flechas[i] = flecha;
+            }
+            mecha.flechasViento = flechas;
             mecha.porciones = porciones.ToArray();
 
             mecha.proyectiles = Proyectiles();
