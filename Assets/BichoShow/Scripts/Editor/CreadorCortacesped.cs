@@ -16,16 +16,19 @@ namespace BichoShow.Herramientas
     ///  - Alrededor de la isla, el foso de chatarra (r 4,2-7): quien cae, vuelve y pierde el punto.
     ///  - El césped donde se juega: un anillo de colores (r 7-22) sin barandillas.
     ///  - Fuera: gradas con público, focos, dientes de león y hierba gigante, y el letrero de neón.
+    /// Las porciones del césped son cinemáticas (el robot las tira en el "corte de césped"); los
+    /// aros del láser (bajos y altos) y las cuchillas del barrido están apagados hasta que atacan.
     /// </summary>
     public static class CreadorCortacesped
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cortacesped.unity";
         /// <summary>Sube al cambiar el mapa: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
-        public const int Version = 1;
+        public const int Version = 2;
         const string CarpetaMallas = E.Raiz + "/Modelos/Cortacesped";
         const float RadioRobot = 4.2f, RadioFoso = 7f, RadioPista = 22f, FondoFoso = -5f, Grosor = 0.8f;
 
         static Transform mapa, decorado;
+        static readonly List<Rigidbody> porciones = new List<Rigidbody>();
         static readonly Dictionary<string, Material> materiales = new Dictionary<string, Material>();
 
         [MenuItem("BichoShow/Crear escena: El Cortacésped Mecha")]
@@ -58,6 +61,7 @@ namespace BichoShow.Herramientas
         static void CrearEscena(GameObject prefabBicho)
         {
             materiales.Clear();
+            porciones.Clear();
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var camara = A.Camara(22f, 46f);
             camara.centroSinJugadores = Vector3.zero;
@@ -78,7 +82,10 @@ namespace BichoShow.Herramientas
             {
                 var m = Mat($"Cesped{i % 6}", colores[i % 6], 0.25f);
                 var porcion = Pieza($"Cesped {i + 1}", suelos, Anillo($"Porcion{i}", RadioFoso, RadioPista, i * 30f, (i + 1) * 30f, 0f, -Grosor), m, true);
-                porcion.isStatic = true;
+                var rb = porcion.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+                porciones.Add(rb); // el robot las tira en el corte de césped
             }
             // Las rayas del cortacésped (más claras) y los bordes de neón.
             Pieza("Borde del foso", decorado, Anillo("BordeFoso", RadioFoso, RadioFoso + 0.35f, 0f, 360f, 0.03f, 0.01f), Neon("NeonRosa", new Color(1f, 0.3f, 0.75f)), false);
@@ -174,7 +181,7 @@ namespace BichoShow.Herramientas
 
             // La pantalla LED de la cara (una por expresión; solo se ve la que toca).
             Bloque("Marco pantalla", cuerpo, new Vector3(0f, 3.5f, -2.55f), new Vector3(4.4f, 2.8f, 0.5f), goma);
-            string[] nombres = { "Normal", "Enfadado", "Risa", "Mareado", "Laser" };
+            string[] nombres = { "Normal", "Enfadado", "Risa", "Mareado", "Laser", "Furia", "Corte" }; // en el orden de CortacespedMecha.Cara
             var caras = new GameObject[nombres.Length];
             for (int i = 0; i < nombres.Length; i++)
             {
@@ -224,6 +231,39 @@ namespace BichoShow.Herramientas
                 aros[i] = aro.transform;
             }
             mecha.aros = aros;
+            // Los altos (azules): te dan si saltas.
+            var arosAltos = new Transform[3];
+            var mallaAlta = Tubo("AroLaserAlto", 1f, 1.35f, 1.75f);
+            for (int i = 0; i < arosAltos.Length; i++)
+            {
+                var aro = Pieza($"Aro laser alto {i + 1}", raiz.transform, mallaAlta, Neon("LaserAlto", new Color(0.3f, 0.85f, 1f), 3f), false);
+                aro.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                aro.SetActive(false);
+                arosAltos[i] = aro.transform;
+            }
+            mecha.arosAltos = arosAltos;
+
+            // Las cuchillas del barrido: hojas largas a ras de suelo (pivote en el centro, hacia +X).
+            var hojaRoja = Mat("Cuchilla", new Color(0.85f, 0.2f, 0.2f), 0.6f);
+            var hojaBlanca = Mat("CuchillaBlanca", new Color(0.95f, 0.95f, 0.95f), 0.6f);
+            var filo = Neon("Filo", new Color(1f, 0.55f, 0.25f), 2.5f);
+            var cuchillas = new Transform[2];
+            float largo = RadioPista + 0.6f - (RadioRobot - 0.2f);
+            for (int i = 0; i < cuchillas.Length; i++)
+            {
+                var pivote = new GameObject($"Cuchilla {i + 1}").transform;
+                pivote.SetParent(raiz.transform, false);
+                float centro = RadioRobot - 0.2f + largo * 0.5f;
+                E.Pieza(PrimitiveType.Cube, "Hoja", pivote, new Vector3(centro, 0.45f, 0f), new Vector3(largo, 0.45f, 0.35f), hojaRoja);
+                for (float x = RadioRobot + 1f; x < RadioPista; x += 2f)
+                    E.Pieza(PrimitiveType.Cube, "Franja", pivote, new Vector3(x, 0.45f, 0f), new Vector3(0.7f, 0.47f, 0.37f), hojaBlanca);
+                E.Pieza(PrimitiveType.Cube, "Filo", pivote, new Vector3(centro, 0.45f, -0.2f), new Vector3(largo, 0.12f, 0.06f), filo);
+                foreach (var c in pivote.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+                pivote.gameObject.SetActive(false);
+                cuchillas[i] = pivote;
+            }
+            mecha.cuchillas = cuchillas;
+            mecha.porciones = porciones.ToArray();
 
             mecha.proyectiles = Proyectiles();
             return mecha;
@@ -241,6 +281,8 @@ namespace BichoShow.Herramientas
                 "Risa" => new Color(0.45f, 1f, 0.55f),
                 "Mareado" => new Color(1f, 0.85f, 0.35f),
                 "Laser" => new Color(1f, 0.35f, 0.85f),
+                "Furia" => new Color(1f, 0.2f, 0.15f),
+                "Corte" => new Color(1f, 0.6f, 0.2f),
                 _ => new Color(0.55f, 0.95f, 1f),
             };
             var p = new Color[w * h];
@@ -284,6 +326,19 @@ namespace BichoShow.Herramientas
                     for (int k = 0; k < 2; k++) { Linea(8, 22 - k, 19, 20 - k); Linea(28, 20 - k, 39, 22 - k); }
                     for (int x = 4; x <= 43; x += 2) Pon(x, 4); // la raya del láser
                     Circulo(24, 4, 2);
+                    break;
+                case "Furia":
+                    // Ojos en raya, cejas muy bajas, boca de dientes y humo saliendo.
+                    for (int k = 0; k < 3; k++) { Linea(9, ojoY - 1 + k, 19, ojoY - 3 + k); Linea(28, ojoY - 3 + k, 38, ojoY - 1 + k); }
+                    for (int x = 13; x <= 34; x++) Pon(x, 6 + ((x / 2) % 2 == 0 ? 0 : -2));
+                    Linea(13, 7, 34, 7);
+                    Circulo(4, 24, 2, false); Circulo(43, 24, 2, false); Circulo(6, 21, 1, false); Circulo(41, 21, 1, false);
+                    break;
+                case "Corte":
+                    // Ojos mirando abajo (al césped) y una sierra por boca.
+                    Circulo(ojoI, ojoY, 4, false); Circulo(ojoD, ojoY, 4, false);
+                    Circulo(ojoI, ojoY - 2, 2); Circulo(ojoD, ojoY - 2, 2);
+                    for (int x = 12; x <= 35; x++) Pon(x, 5 + Mathf.Abs((x % 4) - 2));
                     break;
                 default:
                     Circulo(ojoI, ojoY, 4); Circulo(ojoD, ojoY, 4);

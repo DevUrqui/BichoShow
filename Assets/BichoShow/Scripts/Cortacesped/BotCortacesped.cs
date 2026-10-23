@@ -3,9 +3,10 @@ using UnityEngine;
 namespace BichoShow
 {
     /// <summary>
-    /// Bot para "El Cortacésped Mecha": se queda por el medio del césped; salta los aros del láser
-    /// (los hábiles, justo a tiempo), corre hacia fuera cuando el robot aspira y se aparta de las
-    /// tuercas que le vienen encima.
+    /// Bot para "El Cortacésped Mecha": se queda por el medio del césped; salta los aros bajos y
+    /// las cuchillas (los hábiles, justo a tiempo) y no salta con los aros altos cerca; corre
+    /// hacia fuera cuando el robot aspira (y hacia dentro si sopla), se aparta de las tuercas y
+    /// sale del césped que parpadea.
     /// </summary>
     public class BotCortacesped : MonoBehaviour, IEntradaBicho
     {
@@ -46,7 +47,7 @@ namespace BichoShow
                 Mover = Vector2.zero;
                 return;
             }
-            SaltarAros(robot);
+            Saltar(robot);
             if (Time.time >= siguientePensar)
             {
                 Pensar(robot);
@@ -56,23 +57,35 @@ namespace BichoShow
             Mover = AStick(direccion);
         }
 
-        /// <summary>Salta cuando un aro está a punto de llegar (con más o menos tino).</summary>
-        void SaltarAros(CortacespedMecha robot)
+        /// <summary>Salta cuando un aro bajo o una cuchilla está a punto de llegar (si no viene uno alto).</summary>
+        void Saltar(CortacespedMecha robot)
         {
             if (!bicho.EnSuelo || Time.time - ultimoSalto < 0.5f) return;
-            float d = Plano(transform.position - robot.Centro).magnitude;
+            Vector3 rel = Plano(transform.position - robot.Centro);
+            float d = rel.magnitude;
             float v = Mathf.Max(1f, robot.VelocidadAros);
             float margen = Mathf.Lerp(0.5f, 0.22f, habilidad) + (Mathf.PerlinNoise(Time.time * 2f, semilla) - 0.5f) * Mathf.Lerp(0.4f, 0.08f, habilidad);
-            foreach (float r in robot.RadiosAros)
+            bool saltar = false, altoCerca = false;
+            foreach (var (r, alto) in robot.Aros)
             {
                 if (r > d) continue;
                 float llega = (d - r) / v;
-                if (llega < margen)
-                {
-                    saltarPendiente = true;
-                    ultimoSalto = Time.time;
-                    return;
-                }
+                if (alto) { if (llega < 0.9f) altoCerca = true; }
+                else if (llega < margen) saltar = true;
+            }
+            // Cuchillas: cuánto les falta (en tiempo) para llegar a mi ángulo.
+            float miAngulo = Mathf.Atan2(rel.z, rel.x) * Mathf.Rad2Deg;
+            foreach (var (angulo, velocidad) in robot.Cuchillas)
+            {
+                float falta = Mathf.DeltaAngle(angulo, miAngulo) * Mathf.Sign(velocidad);
+                if (falta < 0f) falta += 360f;
+                if (falta / Mathf.Max(1f, Mathf.Abs(velocidad)) < margen + 0.05f) saltar = true;
+            }
+            // Los torpes, a veces, saltan con el aro alto encima.
+            if (saltar && (!altoCerca || Random.value > habilidad))
+            {
+                saltarPendiente = true;
+                ultimoSalto = Time.time;
             }
         }
 
@@ -84,15 +97,20 @@ namespace BichoShow
             Vector3 fuera = d > 0.05f ? rel / d : Vector3.forward;
             Vector3 deseo;
 
-            if (robot.Aspirando || (robot.Anunciando && robot.AtaqueActual == CortacespedMecha.Ataque.Aspiracion && Random.value < habilidad))
+            if (robot.Aspirando || (robot.Anunciado(CortacespedMecha.Ataque.Aspiracion) && Random.value < habilidad))
             {
                 // ¡A correr hacia fuera! (sin pasarse del borde)
                 deseo = d < robot.radioPista - 2.5f ? fuera : Vector3.Cross(Vector3.up, fuera) * 0.4f;
             }
+            else if (robot.Soplando)
+            {
+                // Sopla: hacia dentro (sin llegar al foso).
+                deseo = d > robot.radioFoso + 3f ? -fuera : Vector3.Cross(Vector3.up, fuera) * 0.4f;
+            }
             else
             {
                 // Pasear por el medio del césped, dando vueltas.
-                if (Time.time >= siguientePaseo)
+                if (Time.time >= siguientePaseo || robot.PorcionEnPeligro(robot.Centro + new Vector3(Mathf.Cos(anguloPaseo), 0f, Mathf.Sin(anguloPaseo)) * radioPaseo))
                 {
                     anguloPaseo = Mathf.Atan2(rel.z, rel.x) + Random.Range(-0.8f, 0.8f);
                     radioPaseo = Random.Range(robot.radioFoso + 4f, robot.radioPista - 4f);
@@ -114,6 +132,14 @@ namespace BichoShow
                     if (Vector3.Dot(lado, hacia) < 0f) lado = -lado;
                     deseo += lado * (1f - dist / 4.5f) * 2f * habilidad;
                 }
+            }
+
+            // Si mi porción del césped se va a caer: a la de al lado.
+            if (robot.PorcionEnPeligro(yo) && Random.value < 0.3f + habilidad)
+            {
+                Vector3 lado = Vector3.Cross(Vector3.up, fuera);
+                if (robot.PorcionEnPeligro(yo + lado * 4f)) lado = -lado;
+                deseo = lado;
             }
 
             // Nunca hacia el foso ni fuera del jardín.

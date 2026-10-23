@@ -5,23 +5,27 @@ namespace BichoShow
 {
     /// <summary>
     /// Prueba "El Cortacésped Mecha" (supervivencia, todos contra todos): un robot cortacésped
-    /// gigante en el centro de un jardín de noche va lanzando ataques (CortacespedMecha). Cada
-    /// ataque que aguantas sin caerte (al foso de chatarra que lo rodea o fuera del jardín), +1.
-    /// Quien se cae vuelve a su sitio, pero se queda sin el punto de ese ataque.
+    /// gigante en el centro de un jardín de noche va lanzando ataques (CortacespedMecha). La
+    /// pelea va por fases: calentamiento, cuchillas (ataques nuevos y variantes) y modo furia
+    /// (combos de dos ataques). Cada tanda de ataques que aguantas sin caerte (al foso de chatarra
+    /// o fuera del jardín), +1; en el modo furia, +2. Quien se cae vuelve a su sitio, sin el punto.
     /// </summary>
     public class RondaCortacesped : RondaBase
     {
         [Header("El Cortacésped Mecha")]
         public CortacespedMecha robot;
+        [Tooltip("Lo que va de ronda (0-1) en que empiezan la fase 2 y la 3.")]
+        public Vector2 cambiosDeFase = new Vector2(0.28f, 0.62f);
 
         readonly int[] puntos = new int[4];
         readonly HashSet<ControladorBicho> caidos = new HashSet<ControladorBicho>();
         readonly HashSet<ControladorBicho> abajo = new HashSet<ControladorBicho>();
+        int fase = 1;
 
         public static RondaCortacesped Instancia { get; private set; }
 
         public override string Titulo => "EL CORTACÉSPED MECHA";
-        protected override string Descripcion => "¡Aguanta los ataques del robot! Salta su láser, corre contra su aspiradora y esquiva las tuercas. Cada ataque sin caerte, +1.";
+        protected override string Descripcion => "¡Aguanta los ataques del robot! Salta su láser y sus cuchillas, corre contra su aspiradora, esquiva las tuercas y no te quedes en el césped que corta. Cada ataque sin caerte, puntos.";
         protected override string ConsejoInicio => "¡Mira su pantalla: te dice qué ataque viene!";
         protected override string AccionX => "placaje (¡échalos al foso!)";
         public override bool Individual => true;
@@ -29,6 +33,7 @@ namespace BichoShow
         public override string NombreEquipo(int equipo) => equipo == 0 ? "Rojo" : "Azul";
         public override Color ColorEquipo(int equipo) => equipo == 0 ? new Color(1f, 0.38f, 0.35f) : new Color(0.3f, 0.6f, 1f);
         public override int PuntosEquipo(int equipo) => puntos[equipo] + puntos[equipo + 2];
+        protected override string EtiquetaJugador(int indice) => fase >= 3 ? "MODO FURIA · x2" : $"FASE {fase}";
 
         void Awake()
         {
@@ -37,6 +42,7 @@ namespace BichoShow
             {
                 robot.AlAnunciar += AlAnunciar;
                 robot.AlTerminar += AlTerminarAtaque;
+                robot.AlAviso += (texto, color) => { if (EstadoActual == Estado.Jugando) Mensaje(texto, color, 2f); };
             }
         }
 
@@ -64,6 +70,8 @@ namespace BichoShow
             for (int i = 0; i < puntos.Length; i++) puntos[i] = 0;
             caidos.Clear();
             abajo.Clear();
+            fase = 1;
+            if (robot != null) robot.fase = 1;
         }
 
         protected override void AlEmpezarRonda()
@@ -71,15 +79,34 @@ namespace BichoShow
             if (robot != null)
             {
                 robot.activo = true;
+                robot.fase = 1;
                 robot.PonerCara(CortacespedMecha.Cara.Enfadado);
             }
-            Mensaje("¡QUE EMPIECE EL CORTE!", new Color(1f, 0.35f, 0.75f), 1.8f);
+            Mensaje("FASE 1: ¡QUE EMPIECE EL CORTE!", new Color(1f, 0.35f, 0.75f), 2f);
         }
 
         protected override void ActualizarJugando()
         {
             if (robot == null) return;
-            robot.progreso = Mathf.Clamp01(TiempoJugado / Mathf.Max(1f, duracionRonda));
+            float progreso = Mathf.Clamp01(TiempoJugado / Mathf.Max(1f, duracionRonda));
+            robot.progreso = progreso;
+
+            // Cambios de fase.
+            int nueva = progreso >= cambiosDeFase.y ? 3 : progreso >= cambiosDeFase.x ? 2 : 1;
+            if (nueva != fase)
+            {
+                fase = nueva;
+                robot.fase = fase;
+                Efectos.Sacudir(0.4f);
+                Sonidos.Reproducir(Sonido.Bocina, robot.Centro, 1f, fase == 3 ? 0.8f : 1f);
+                if (fase == 2)
+                    Mensaje("FASE 2: ¡SACA LAS CUCHILLAS!", new Color(1f, 0.55f, 0.3f), 3f);
+                else
+                {
+                    Mensaje("FASE 3: ¡MODO FURIA! Ataques dobles · puntos x2", new Color(1f, 0.25f, 0.25f), 3.5f);
+                    robot.PonerCara(CortacespedMecha.Cara.Furia);
+                }
+            }
 
             // ¿Alguien se ha caído? (al foso o fuera del jardín: está muy por debajo del césped)
             foreach (var b in ControladorBicho.Todos)
@@ -100,32 +127,43 @@ namespace BichoShow
             }
         }
 
-        void AlAnunciar(CortacespedMecha.Ataque ataque)
+        static string Nombre(CortacespedMecha.Ataque a) => a switch
+        {
+            CortacespedMecha.Ataque.OndaLaser => "ONDA LÁSER",
+            CortacespedMecha.Ataque.Aspiracion => "ASPIRACIÓN",
+            CortacespedMecha.Ataque.LluviaTuercas => "LLUVIA DE TUERCAS",
+            CortacespedMecha.Ataque.Barrido => "BARRIDO DE CUCHILLAS",
+            _ => "CORTE DE CÉSPED",
+        };
+
+        static string Consejo(CortacespedMecha.Ataque a) => a switch
+        {
+            CortacespedMecha.Ataque.OndaLaser => "¡salta los rosas, no los azules!",
+            CortacespedMecha.Ataque.Aspiracion => "¡corre hacia fuera!",
+            CortacespedMecha.Ataque.LluviaTuercas => "¡esquívalas!",
+            CortacespedMecha.Ataque.Barrido => "¡salta la cuchilla!",
+            _ => "¡sal del césped que parpadea!",
+        };
+
+        void AlAnunciar(CortacespedMecha.Ataque a, CortacespedMecha.Ataque? b)
         {
             if (EstadoActual != Estado.Jugando) return;
             caidos.Clear();
-            switch (ataque)
-            {
-                case CortacespedMecha.Ataque.OndaLaser:
-                    Mensaje("¡ONDA LÁSER! ¡A SALTAR!", new Color(1f, 0.35f, 0.8f), 2f);
-                    break;
-                case CortacespedMecha.Ataque.Aspiracion:
-                    Mensaje("¡ASPIRACIÓN! ¡CORRED HACIA FUERA!", new Color(0.45f, 0.85f, 1f), 2f);
-                    break;
-                default:
-                    Mensaje("¡LLUVIA DE TUERCAS!", new Color(1f, 0.75f, 0.3f), 2f);
-                    break;
-            }
+            if (b.HasValue)
+                Mensaje($"¡COMBO! {Nombre(a)} + {Nombre(b.Value)}", new Color(1f, 0.3f, 0.3f), 2.5f);
+            else
+                Mensaje($"¡{Nombre(a)}! {Consejo(a)}", a == CortacespedMecha.Ataque.OndaLaser ? new Color(1f, 0.35f, 0.8f) : new Color(1f, 0.75f, 0.3f), 2.2f);
         }
 
-        void AlTerminarAtaque(CortacespedMecha.Ataque ataque)
+        void AlTerminarAtaque()
         {
             if (EstadoActual != Estado.Jugando) return;
+            int premio = fase >= 3 ? 2 : 1;
             int salvados = 0;
             foreach (var b in ControladorBicho.Todos)
             {
                 if (b == null || b.Retirado || caidos.Contains(b) || b.IndiceJugador < 0 || b.IndiceJugador >= puntos.Length) continue;
-                puntos[b.IndiceJugador]++;
+                puntos[b.IndiceJugador] += premio;
                 salvados++;
             }
             caidos.Clear();

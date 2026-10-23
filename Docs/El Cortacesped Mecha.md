@@ -10,6 +10,7 @@ En Unity: **BichoShow → Crear escena: El Cortacésped Mecha**.
 
 - Se crea `Escenas/Cortacesped.unity`, se añade al build y entra sola en el sorteo del show.
 - Para jugarla suelta, abre la escena, dale a Play, únete y pulsa START.
+- Si ya la tenías creada, al darle a Play sale un aviso para rehacerla con la versión nueva.
 
 ## La arena (vista desde arriba)
 
@@ -22,31 +23,47 @@ En Unity: **BichoShow → Crear escena: El Cortacésped Mecha**.
 
 Alrededor hay gradas con público, focos, hierba gigante, dientes de león y el letrero de neón "BichoShow" detrás del robot.
 
+## Las fases
+
+La pelea va por fases según lo que va de ronda. Cada cambio de fase se anuncia en grande y la cámara tiembla:
+
+| Fase | Cuándo | Qué cambia |
+|---|---|---|
+| **1. Calentamiento** | primer 28 % | Onda láser, aspiración y lluvia de tuercas, de uno en uno. |
+| **2. ¡Saca las cuchillas!** | hasta el 62 % | Se suman el **barrido de cuchillas** y el **corte de césped**, y llegan variantes: aros láser **altos** y la aspiración que de golpe **sopla**. Descansos más cortos. |
+| **3. ¡Modo furia!** | el resto | Cara de furia y robot más rápido, casi sin descanso, y a menudo **dos ataques a la vez** (combos). Cada tanda aguantada vale **el doble**. |
+
 ## Los ataques
 
-El robot descansa un momento y luego **anuncia** el siguiente ataque con la cara de su pantalla (y un aviso en grande), así que se puede ver venir:
+El robot anuncia cada ataque con la cara de su pantalla (y un aviso en grande), así que se puede ver venir:
 
 | Cara | Ataque | Qué hacer |
 |---|---|---|
-| Ojos enfadados con una raya rosa | **Onda láser:** aros rosas a ras de suelo que salen del robot y crecen hasta el borde. Con la ronda avanzada salen dos o tres seguidos, y más rápido. | **Saltar** justo cuando llega el aro. Si te pilla en el suelo, te tumba y te empuja un poco hacia fuera. |
-| Ojos de risa y boca abierta | **Aspiración invertida:** la turbina de arriba gira a tope y tira de todos hacia el robot, más fuerte cuanto más cerca. Se ve el polvo correr hacia él. | **Correr hacia fuera.** Se puede, pero cuesta: si te paras, acabas en el foso. |
-| Ojos enfadados con cejas en V | **Lluvia de tuercas:** escupe tuercas y pilas de goma, unas gordas y otras pequeñas, que rebotan por el césped mientras el robot gira. | **Esquivarlas.** Si te dan, te tumban y te empujan hacia donde iban, quizá fuera del jardín. |
+| Ojos enfadados con una raya rosa | **Onda láser:** aros que salen del robot y crecen hasta el borde, de dos a cinco seguidos. Los **rosas** van a ras de suelo; desde la fase 2 también salen **azules**, a la altura de la cabeza. | Saltar los **rosas** y **no saltar** los azules. Si te pilla, te tumba. |
+| Ojos de risa y boca abierta | **Aspiración invertida:** la turbina tira de todos hacia el robot, más fuerte cuanto más cerca. Desde la fase 2, a mitad puede dar la vuelta y **soplar** hacia fuera ("¡AHORA SOPLA!"). | Correr hacia fuera; si sopla, hacia dentro. |
+| Ojos enfadados con cejas en V | **Lluvia de tuercas:** escupe tuercas y pilas de goma que rebotan mientras el robot gira. Cada vez escupe más deprisa. | Esquivarlas: te tumban y te empujan hacia donde iban. |
+| Ojos en raya, dientes y humo | **Barrido de cuchillas** (fase 2): una cuchilla a rayas a ras de suelo gira por todo el césped (vuelta y media; en la fase 3, dos cuchillas opuestas). | Saltarla justo cuando llega. |
+| Ojos mirando abajo y boca de sierra | **Corte de césped** (fase 2): cuatro o cinco porciones del suelo parpadean, cada vez más deprisa, y se caen un rato. Nunca son todas seguidas. | Salir de las que parpadean antes de que caigan. |
 
-Entre ataque y ataque hay unos segundos de calma, cada vez menos. Al acabar la ronda, el robot se marea (cara de espirales) y se para.
+En el modo furia los combos posibles son: láser + tuercas, cuchillas + tuercas, corte + láser, corte + aspiración y cuchillas + corte.
+
+Al acabar la ronda el robot se marea (cara de espirales), se para y el césped vuelve a su sitio.
 
 ## Puntos
 
-- Cada ataque que termina, +1 a cada bicho que no se ha caído durante ese ataque.
-- Gana quien más ataques aguante. Con placajes (X) se puede echar a los demás al foso.
-- Los bots se quedan en el medio del césped, saltan los aros (los hábiles, más justos), corren hacia fuera con la aspiración y se apartan de las tuercas.
+- Cada tanda de ataques que termina da **+1** (**+2** en el modo furia) a cada bicho que no se ha caído durante esa tanda.
+- Gana quien más aguante. Con placajes (X) se puede echar a los demás al foso.
+- Los bots se quedan por el medio del césped. Saltan los aros bajos y las cuchillas (los hábiles, más justos) y no saltan con un aro alto cerca. Además, corren hacia fuera al aspirar y hacia dentro al soplar, se apartan de las tuercas y salen del césped que parpadea.
 
 ## Si hay que ajustarla
 
 Todo está en el componente **CortacespedMecha** del robot:
 
-- **Velocidad de los aros:** al principio y al final de la ronda (7 y 10 m/s).
-- **Fuerza de la aspiración:** 3 y 4,3 m/s; el bicho corre a 6.
-- **Duración del anuncio:** 1,4 s.
-- **Giro del robot:** 16 °/s; el doble mientras ataca.
+- **Velocidad de los aros:** al principio y al final de la ronda (8 y 12 m/s).
+- **Fuerza de la aspiración:** 3,6 y 4,8 m/s; el bicho corre a 6.
+- **Velocidad de las cuchillas:** 70 y 115 °/s.
+- **Cuándo cambian las fases:** en el componente de la ronda (**Cambios de fase**: 0,28 y 0,62).
+- **Duración del anuncio:** 1,3 s.
+- **Giro del robot:** 18 °/s; casi el doble mientras ataca y más en el modo furia.
 
 Las medidas de la arena (radios del robot, del foso y del césped) están en `CreadorCortacesped.cs`.
