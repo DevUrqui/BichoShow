@@ -20,6 +20,7 @@ namespace BichoShow
         readonly int[] puntos = new int[4];
         readonly HashSet<ControladorBicho> caidos = new HashSet<ControladorBicho>();
         readonly HashSet<ControladorBicho> abajo = new HashSet<ControladorBicho>();
+        readonly Dictionary<ControladorBicho, Vector3> reaparicionPuesta = new Dictionary<ControladorBicho, Vector3>();
         int fase = 1;
 
         public static RondaCortacesped Instancia { get; private set; }
@@ -70,6 +71,7 @@ namespace BichoShow
             for (int i = 0; i < puntos.Length; i++) puntos[i] = 0;
             caidos.Clear();
             abajo.Clear();
+            reaparicionPuesta.Clear();
             fase = 1;
             if (robot != null) robot.fase = 1;
         }
@@ -108,6 +110,8 @@ namespace BichoShow
                 }
             }
 
+            AsegurarReapariciones();
+
             // ¿Alguien se ha caído? (al foso o fuera del jardín: está muy por debajo del césped)
             foreach (var b in ControladorBicho.Todos)
             {
@@ -125,6 +129,41 @@ namespace BichoShow
                 }
                 else if (!estaAbajo) abajo.Remove(b);
             }
+        }
+
+        /// <summary>
+        /// Si el sitio donde reaparece un bicho está en una porción del césped que se va a abrir
+        /// (o abierta), se le cambia a la porción segura más cercana: si no, caería una y otra vez.
+        /// Cuando pasa el peligro, vuelve a su sitio de siempre.
+        /// </summary>
+        void AsegurarReapariciones()
+        {
+            if (gestor == null) return;
+            foreach (var b in ControladorBicho.Todos)
+            {
+                if (b == null || b.Retirado) continue;
+                var punto = gestor.PuntoAparicion(b.IndiceJugador);
+                if (punto == null) continue;
+                Vector3 sitio = SitioSeguro(punto.position);
+                if (reaparicionPuesta.TryGetValue(b, out var antes) && (antes - sitio).sqrMagnitude < 0.01f) continue;
+                reaparicionPuesta[b] = sitio;
+                Vector3 mirar = robot.Centro - sitio;
+                mirar.y = 0f;
+                b.FijarPuntoReaparicion(sitio, mirar.sqrMagnitude > 0.01f ? Quaternion.LookRotation(mirar) : punto.rotation);
+            }
+        }
+
+        Vector3 SitioSeguro(Vector3 sitio)
+        {
+            if (!robot.PorcionEnPeligro(sitio)) return sitio;
+            Vector3 rel = sitio - robot.Centro;
+            for (int k = 1; k <= 12; k++)
+                foreach (float signo in new[] { 1f, -1f })
+                {
+                    Vector3 otro = robot.Centro + Quaternion.Euler(0f, signo * 15f * k, 0f) * rel;
+                    if (!robot.PorcionEnPeligro(otro)) return otro;
+                }
+            return sitio;
         }
 
         static string Nombre(CortacespedMecha.Ataque a) => a switch
