@@ -40,7 +40,7 @@ El robot anuncia cada ataque con la cara de su pantalla (y un aviso en grande), 
 | Cara | Ataque | Qué hacer |
 |---|---|---|
 | Ojos enfadados con una raya rosa | **Onda láser:** aros que salen del robot y crecen hasta el borde, de dos a cinco seguidos. Los **rosas** van a ras de suelo; desde la fase 2 también salen **azules**, a la altura de la cabeza. | Saltar los **rosas** y **no saltar** los azules. Si te pilla, te tumba. |
-| Ojos de risa y boca abierta | **Aspiración invertida:** la turbina tira de todos hacia el robot, más fuerte cuanto más cerca. Desde la fase 2, a mitad puede dar la vuelta y **soplar** hacia fuera ("¡AHORA SOPLA!"). Se ve de dónde viene el aire: rachas blancoazuladas que van en espiral hacia el robot (o hacia fuera al soplar) y flechas en el césped. Ya se ven, más flojas, durante el aviso. | Correr hacia fuera; si sopla, hacia dentro. |
+| Ojos de risa y boca abierta | **Aspiración invertida:** la turbina tira de todos hacia el robot, más fuerte cuanto más cerca. Desde la fase 2, a mitad puede dar la vuelta y **soplar** hacia fuera ("¡AHORA SOPLA!"). Se ve de dónde viene el aire: un remolino en espiral pintado en el suelo que gira hacia donde va el aire, un ciclón alrededor del robot que sube a la turbina, rachas de viento en espiral, recortes de césped volando y flechas en el césped. Todo aparece, más flojo, durante el aviso. | Correr hacia fuera; si sopla, hacia dentro. |
 | Ojos enfadados con cejas en V | **Lluvia de tuercas:** escupe tuercas y pilas de goma que rebotan mientras el robot gira. Cada vez escupe más deprisa. | Esquivarlas: te tumban y te empujan hacia donde iban. |
 | Ojos en raya, dientes y humo | **Barrido de cuchillas** (fase 2): una cuchilla a rayas a ras de suelo gira por todo el césped (vuelta y media; en la fase 3, dos cuchillas opuestas). | Saltarla justo cuando llega. |
 | Ojos mirando abajo y boca de sierra | **Corte de césped** (fase 2): cuatro o cinco porciones del suelo crujen, se ponen rojas (latiendo cada vez más), tiemblan y se hunden un poco; luego se abren de golpe como una trampilla (la bisagra, en el borde del foso) y al rato se vuelven a cerrar. Nunca son todas seguidas. | Salir de las rojas antes de que se abran: si te pilla, resbalas al vacío. |
@@ -67,3 +67,9 @@ Todo está en el componente **CortacespedMecha** del robot:
 - **Giro del robot:** 18 °/s; casi el doble mientras ataca y más en el modo furia.
 
 Las medidas de la arena (radios del robot, del foso y del césped) están en `CreadorCortacesped.cs`.
+
+## Los efectos (hechos en Blender)
+
+Las texturas de los efectos (racha de viento, remolino, ciclón, brillo del láser y recorte de césped) y sus mallas las hace `Arte/Blender/crear_efectos_cortacesped.py`, con el ruido de Blender para los jirones. Deja las texturas en `Assets/BichoShow/Texturas/Efectos` y las mallas en `Arte/Efectos/mallas_cortacesped.json`. Se puede lanzar por el MCP de Blender (el complemento "MCP for Blender") o desde la consola. Después, vuelve a crear la escena.
+
+Los materiales de los efectos son URP Unlit, transparentes y de las dos caras; los que brillan son aditivos (con el bloom de la noche, relucen).

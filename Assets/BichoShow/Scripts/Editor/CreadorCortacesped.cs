@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -18,12 +19,14 @@ namespace BichoShow.Herramientas
     ///  - Fuera: gradas con público, focos, dientes de león y hierba gigante, y el letrero de neón.
     /// Las porciones del césped son cinemáticas (el robot las tira en el "corte de césped"); los
     /// aros del láser (bajos y altos) y las cuchillas del barrido están apagados hasta que atacan.
+    /// Los efectos del viento y del láser usan mallas y texturas hechas en Blender
+    /// (Arte/Blender/crear_efectos_cortacesped.py → Arte/Efectos y Texturas/Efectos).
     /// </summary>
     public static class CreadorCortacesped
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cortacesped.unity";
         /// <summary>Sube al cambiar el mapa: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
-        public const int Version = 4;
+        public const int Version = 5;
         const string CarpetaMallas = E.Raiz + "/Modelos/Cortacesped";
         const float RadioRobot = 4.2f, RadioFoso = 7f, RadioPista = 22f, FondoFoso = -5f, Grosor = 0.8f;
 
@@ -62,6 +65,7 @@ namespace BichoShow.Herramientas
         {
             materiales.Clear();
             porciones.Clear();
+            mallasBlender = null; // por si se han vuelto a generar en Blender
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var camara = A.Camara(22f, 46f);
             camara.centroSinJugadores = Vector3.zero;
@@ -223,10 +227,11 @@ namespace BichoShow.Herramientas
 
             // Los aros del láser (crecen al lanzarse): una pared fina de luz, apagados.
             var aros = new Transform[3];
-            var mallaAro = Tubo("AroLaser", 1f, 0.15f, 0.55f);
+            var mallaAro = Tubo("AroLaser", 1f, 0.05f, 0.65f, 24f);
+            var brillo = TexturaEfecto("Brillo", false);
             for (int i = 0; i < aros.Length; i++)
             {
-                var aro = Pieza($"Aro laser {i + 1}", raiz.transform, mallaAro, Neon("Laser", new Color(1f, 0.25f, 0.75f), 3f), false);
+                var aro = Pieza($"Aro laser {i + 1}", raiz.transform, mallaAro, MaterialEfecto("AroLaser", brillo, new Color(2.2f, 0.5f, 1.6f, 1f), true), false);
                 aro.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 aro.SetActive(false);
                 aros[i] = aro.transform;
@@ -234,10 +239,10 @@ namespace BichoShow.Herramientas
             mecha.aros = aros;
             // Los altos (azules): te dan si saltas.
             var arosAltos = new Transform[3];
-            var mallaAlta = Tubo("AroLaserAlto", 1f, 1.35f, 1.75f);
+            var mallaAlta = Tubo("AroLaserAlto", 1f, 1.25f, 1.85f, 24f);
             for (int i = 0; i < arosAltos.Length; i++)
             {
-                var aro = Pieza($"Aro laser alto {i + 1}", raiz.transform, mallaAlta, Neon("LaserAlto", new Color(0.3f, 0.85f, 1f), 3f), false);
+                var aro = Pieza($"Aro laser alto {i + 1}", raiz.transform, mallaAlta, MaterialEfecto("AroLaserAlto", brillo, new Color(0.5f, 1.6f, 2.2f, 1f), true), false);
                 aro.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 aro.SetActive(false);
                 arosAltos[i] = aro.transform;
@@ -267,16 +272,39 @@ namespace BichoShow.Herramientas
 
             // El viento de la aspiración: rachas en el aire y flechas en el suelo (apagadas).
             var viento = M.Grupo(raiz.transform, "Viento");
-            var aire = Neon("Viento", new Color(0.8f, 0.95f, 1f), 1.6f);
-            var rafagas = new Transform[32];
+            var mallaRacha = MallaBlender("RachaViento");
+            var materialRacha = MaterialEfecto("Racha", TexturaEfecto("Racha", false), new Color(1.1f, 1.5f, 1.9f, 0.9f), true);
+            var rafagas = new Transform[24];
             for (int i = 0; i < rafagas.Length; i++)
             {
-                var r = E.Pieza(PrimitiveType.Cube, "Racha", viento, Vector3.zero, new Vector3(0.07f, 0.07f, 1.8f), aire);
+                var r = Pieza("Racha", viento, mallaRacha, materialRacha, false);
                 r.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.SetActive(false);
                 rafagas[i] = r.transform;
             }
             mecha.rafagas = rafagas;
+
+            var mallaRecorte = MallaBlender("Recorte");
+            var materialRecorte = MaterialEfecto("Recorte", TexturaEfecto("Hoja", false), new Color(0.5f, 0.9f, 0.35f, 1f), false);
+            var recortes = new Transform[20];
+            for (int i = 0; i < recortes.Length; i++)
+            {
+                var h = Pieza("Recorte de cesped", viento, mallaRecorte, materialRecorte, false);
+                h.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                h.SetActive(false);
+                recortes[i] = h.transform;
+            }
+            mecha.recortes = recortes;
+
+            var remolino = Pieza("Remolino", raiz.transform, MallaBlender("Remolino"),
+                                 MaterialEfecto("Remolino", TexturaEfecto("Remolino", true), new Color(0.6f, 1.1f, 1.5f, 0.55f), true), false);
+            remolino.transform.localPosition = new Vector3(0f, 0.06f, 0f);
+            remolino.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mecha.remolino = remolino.GetComponent<Renderer>();
+            var embudo = Pieza("Ciclon", raiz.transform, MallaBlender("Embudo"),
+                               MaterialEfecto("Embudo", TexturaEfecto("Embudo", true), new Color(0.9f, 1.3f, 1.7f, 0.7f), true), false);
+            embudo.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mecha.embudo = embudo.GetComponent<Renderer>();
             var flechaMat = Neon("FlechaViento", new Color(0.45f, 0.9f, 1f), 1.2f);
             var flechas = new Transform[12];
             for (int i = 0; i < flechas.Length; i++)
@@ -618,19 +646,23 @@ namespace BichoShow.Herramientas
         }
 
         /// <summary>Pared de tubo (sin grosor) de radio r, vista por dentro y por fuera.</summary>
-        static Mesh Tubo(string nombre, float r, float y0, float y1)
+        static Mesh Tubo(string nombre, float r, float y0, float y1, float repeticiones = 1f)
         {
             const int n = 72;
             var v = new List<Vector3>();
+            var uv = new List<Vector2>();
             var t = new List<int>();
             for (int i = 0; i <= n; i++)
             {
                 float a = i / (float)n * Mathf.PI * 2f;
                 v.Add(new Vector3(Mathf.Cos(a) * r, y0, Mathf.Sin(a) * r));
                 v.Add(new Vector3(Mathf.Cos(a) * r, y1, Mathf.Sin(a) * r));
+                uv.Add(new Vector2(i / (float)n * repeticiones, 0f));
+                uv.Add(new Vector2(i / (float)n * repeticiones, 1f));
             }
             int doble = v.Count;
             v.AddRange(new List<Vector3>(v)); // la otra cara
+            uv.AddRange(new List<Vector2>(uv));
             for (int i = 0; i < n; i++)
             {
                 int a = i * 2;
@@ -639,9 +671,105 @@ namespace BichoShow.Herramientas
             }
             var m = new Mesh();
             m.SetVertices(v);
+            m.SetUVs(0, uv);
             m.SetTriangles(t, 0);
             m.RecalculateNormals();
             return Guardar(nombre, m);
+        }
+
+        // ---------------------------------------------------------------------
+        // Lo hecho en Blender: mallas (JSON en coordenadas de Unity) y texturas de efectos
+        // ---------------------------------------------------------------------
+
+#pragma warning disable 0649 // los rellena JsonUtility
+        [System.Serializable]
+        class MallasJson { public MallaJson[] mallas; }
+
+        [System.Serializable]
+        class MallaJson
+        {
+            public string nombre;
+            public float[] v, uv;
+            public int[] t;
+        }
+#pragma warning restore 0649
+
+        static Dictionary<string, MallaJson> mallasBlender;
+
+        /// <summary>Una malla de Arte/Efectos/mallas_cortacesped.json (la hace crear_efectos_cortacesped.py).</summary>
+        static Mesh MallaBlender(string nombre)
+        {
+            if (mallasBlender == null)
+            {
+                mallasBlender = new Dictionary<string, MallaJson>();
+                string ruta = Path.Combine(Application.dataPath, "..", "Arte", "Efectos", "mallas_cortacesped.json");
+                if (File.Exists(ruta))
+                    foreach (var m in JsonUtility.FromJson<MallasJson>(File.ReadAllText(ruta)).mallas) mallasBlender[m.nombre] = m;
+                else
+                    Debug.LogWarning($"Bicho Show: no encuentro {ruta}. Genéralo con Arte/Blender/crear_efectos_cortacesped.py.");
+            }
+            var malla = new Mesh();
+            if (mallasBlender.TryGetValue(nombre, out var datos))
+            {
+                var v = new Vector3[datos.v.Length / 3];
+                for (int i = 0; i < v.Length; i++) v[i] = new Vector3(datos.v[i * 3], datos.v[i * 3 + 1], datos.v[i * 3 + 2]);
+                var uv = new Vector2[datos.uv.Length / 2];
+                for (int i = 0; i < uv.Length; i++) uv[i] = new Vector2(datos.uv[i * 2], datos.uv[i * 2 + 1]);
+                malla.indexFormat = v.Length > 65000 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16;
+                malla.vertices = v;
+                malla.uv = uv;
+                malla.triangles = datos.t;
+                malla.RecalculateNormals();
+            }
+            return Guardar("Efecto" + nombre, malla);
+        }
+
+        /// <summary>Textura de Texturas/Efectos (blanca, con transparencia), con sus ajustes de importación.</summary>
+        static Texture2D TexturaEfecto(string nombre, bool repetir)
+        {
+            string ruta = $"{E.Raiz}/Texturas/Efectos/{nombre}.png";
+            AssetDatabase.ImportAsset(ruta);
+            if (AssetImporter.GetAtPath(ruta) is TextureImporter imp)
+            {
+                imp.textureType = TextureImporterType.Default;
+                imp.alphaSource = TextureImporterAlphaSource.FromInput;
+                imp.alphaIsTransparency = true;
+                imp.wrapMode = repetir ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+                imp.mipmapEnabled = true;
+                imp.sRGBTexture = true;
+                imp.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(ruta);
+        }
+
+        /// <summary>Material de efecto: sin luces (URP Unlit), transparente, de las dos caras; aditivo si brilla.</summary>
+        static Material MaterialEfecto(string nombre, Texture2D textura, Color color, bool aditivo)
+        {
+            string ruta = $"{E.Raiz}/Materiales/CortacespedEfecto{nombre}.mat";
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            var m = AssetDatabase.LoadAssetAtPath<Material>(ruta);
+            if (m == null)
+            {
+                m = new Material(shader);
+                AssetDatabase.CreateAsset(m, ruta);
+            }
+            else m.shader = shader;
+            m.SetTexture("_BaseMap", textura);
+            m.mainTexture = textura;
+            m.SetColor("_BaseColor", color);
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", aditivo ? 2f : 0f);
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)(aditivo ? UnityEngine.Rendering.BlendMode.One : UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha));
+            m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_ZWrite", 0f);
+            m.SetFloat("_Cull", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         /// <summary>Prisma hexagonal (tuerca) tumbado, de radio r y grosor g, centrado.</summary>

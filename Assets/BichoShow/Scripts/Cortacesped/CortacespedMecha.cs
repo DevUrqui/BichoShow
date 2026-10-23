@@ -46,6 +46,12 @@ namespace BichoShow
         public Transform[] rafagas;
         [Tooltip("Flechas en el césped (la punta hacia +Z), apagadas: se mueven con el aire.")]
         public Transform[] flechasViento;
+        [Tooltip("Recortes de césped (apagados) que vuelan arrastrados por el aire, dando vueltas.")]
+        public Transform[] recortes;
+        [Tooltip("Remolino en espiral pintado en el suelo (gira hacia donde va el aire).")]
+        public Renderer remolino;
+        [Tooltip("Ciclón alrededor del robot que sube hacia la turbina.")]
+        public Renderer embudo;
 
         [Header("Arena")]
         public float radioRobot = 4.2f;
@@ -132,7 +138,10 @@ namespace BichoShow
             public float angulo, radio, altura, velocidad;
         }
 
-        Racha[] rachas, flechas;
+        Racha[] rachas, flechas, hojas;
+        Material materialRemolino, materialEmbudo;
+        Color colorRemolino, colorEmbudo;
+        float giroRemolino, giroEmbudo;
         float intensidadViento;
         readonly List<AroVivo> arosVivos = new List<AroVivo>();
         readonly List<Rigidbody> sueltos = new List<Rigidbody>();
@@ -185,6 +194,9 @@ namespace BichoShow
         {
             rachas = NuevasRachas(rafagas);
             flechas = NuevasRachas(flechasViento);
+            hojas = NuevasRachas(recortes);
+            if (remolino != null) { materialRemolino = remolino.material; colorRemolino = materialRemolino.GetColor(IdColor); remolino.gameObject.SetActive(false); }
+            if (embudo != null) { materialEmbudo = embudo.material; colorEmbudo = materialEmbudo.GetColor(IdColor); embudo.gameObject.SetActive(false); }
             PonerCara(Cara.Normal);
             Apagar(aros);
             Apagar(arosAltos);
@@ -294,6 +306,52 @@ namespace BichoShow
             float sentido = sopla ? 1f : -1f;
             MoverRachas(rafagas, rachas, dt, sentido, sopla, true);
             MoverRachas(flechasViento, flechas, dt, sentido, sopla, false);
+            MoverHojas(dt, sentido, sopla);
+
+            // El remolino del suelo y el ciclón: giran hacia donde va el aire y se encienden poco a poco.
+            // (Girar en Y positivo hace que los brazos de la espiral parezcan ir hacia dentro.)
+            giroRemolino += -sentido * 70f * intensidadViento * dt;
+            giroEmbudo += -sentido * 260f * intensidadViento * dt;
+            Mostrar(remolino, materialRemolino, colorRemolino, Quaternion.Euler(0f, giroRemolino, 0f), Vector3.one);
+            float pulso = 1f + Mathf.Sin(Time.time * 5f) * 0.04f;
+            Mostrar(embudo, materialEmbudo, colorEmbudo, Quaternion.Euler(0f, giroEmbudo, 0f), new Vector3(pulso, 1f, pulso));
+        }
+
+        void Mostrar(Renderer r, Material m, Color color, Quaternion giro, Vector3 escala)
+        {
+            if (r == null || m == null) return;
+            bool ver = intensidadViento > 0.01f;
+            if (r.gameObject.activeSelf != ver) r.gameObject.SetActive(ver);
+            if (!ver) return;
+            r.transform.localRotation = giro;
+            r.transform.localScale = escala;
+            Color c = color;
+            c.a *= Mathf.SmoothStep(0f, 1f, intensidadViento);
+            m.SetColor(IdColor, c);
+        }
+
+        /// <summary>Los recortes de césped: a ras de suelo, arrastrados por el aire y dando vueltas.</summary>
+        void MoverHojas(float dt, float sentido, bool sopla)
+        {
+            if (recortes == null || hojas == null) return;
+            int visibles = Mathf.RoundToInt(recortes.Length * Mathf.Clamp01(intensidadViento * 1.3f - 0.2f));
+            for (int i = 0; i < recortes.Length; i++)
+            {
+                var t = recortes[i];
+                if (t == null) continue;
+                bool ver = i < visibles;
+                if (t.gameObject.activeSelf != ver) t.gameObject.SetActive(ver);
+                if (!ver) continue;
+                var r = hojas[i];
+                r.radio += sentido * r.velocidad * 0.7f * dt;
+                r.angulo += -sentido * dt * 4f / Mathf.Max(3f, r.radio);
+                if (!sopla && r.radio < radioRobot + 0.3f) { Recolocar(r, false, false); r.altura = UnityEngine.Random.Range(0.15f, 1.4f); }
+                if (sopla && r.radio > radioPista + 6f) { Recolocar(r, false, true); r.altura = UnityEngine.Random.Range(0.15f, 1.4f); }
+                float bote = Mathf.Abs(Mathf.Sin(Time.time * 3f + i)) * 0.4f;
+                Vector3 radial = new Vector3(Mathf.Cos(r.angulo), 0f, Mathf.Sin(r.angulo));
+                t.position = Centro + radial * r.radio + Vector3.up * (Mathf.Min(r.altura, 1.4f) + bote);
+                t.rotation = Quaternion.Euler(Time.time * (200f + i * 37f), Time.time * (150f + i * 23f), i * 40f);
+            }
         }
 
         void MoverRachas(Transform[] lista, Racha[] datos, float dt, float sentido, bool sopla, bool enElAire)
