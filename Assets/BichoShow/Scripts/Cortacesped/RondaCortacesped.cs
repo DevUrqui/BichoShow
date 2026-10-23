@@ -7,21 +7,23 @@ namespace BichoShow
     /// Prueba "El Cortacésped Mecha" (supervivencia, todos contra todos): un robot cortacésped
     /// gigante en el centro de un jardín de noche va lanzando ataques (CortacespedMecha). La
     /// pelea va por fases: calentamiento, cuchillas (ataques nuevos y variantes) y modo furia
-    /// (combos de dos ataques). Cada tanda de ataques que aguantas sin caerte (al foso de chatarra
-    /// o fuera del jardín), +1; en el modo furia, +2. Quien se cae vuelve a su sitio, sin el punto.
+    /// (combos de dos ataques), con un último asalto de hasta tres a la vez. Cada tanda de ataques
+    /// que aguantas sin caerte (al foso de chatarra o fuera del jardín), +1; en el modo furia, +2;
+    /// en el último asalto, +3. Quien se cae vuelve a su sitio, sin el punto.
     /// </summary>
     public class RondaCortacesped : RondaBase
     {
         [Header("El Cortacésped Mecha")]
         public CortacespedMecha robot;
         [Tooltip("Lo que va de ronda (0-1) en que empiezan la fase 2 y la 3.")]
-        public Vector2 cambiosDeFase = new Vector2(0.28f, 0.62f);
+        public Vector2 cambiosDeFase = new Vector2(0.22f, 0.55f);
 
         readonly int[] puntos = new int[4];
         readonly HashSet<ControladorBicho> caidos = new HashSet<ControladorBicho>();
         readonly HashSet<ControladorBicho> abajo = new HashSet<ControladorBicho>();
         readonly Dictionary<ControladorBicho, Vector3> reaparicionPuesta = new Dictionary<ControladorBicho, Vector3>();
         int fase = 1;
+        bool ultimoAsalto;
 
         public static RondaCortacesped Instancia { get; private set; }
 
@@ -34,7 +36,7 @@ namespace BichoShow
         public override string NombreEquipo(int equipo) => equipo == 0 ? "Rojo" : "Azul";
         public override Color ColorEquipo(int equipo) => equipo == 0 ? new Color(1f, 0.38f, 0.35f) : new Color(0.3f, 0.6f, 1f);
         public override int PuntosEquipo(int equipo) => puntos[equipo] + puntos[equipo + 2];
-        protected override string EtiquetaJugador(int indice) => fase >= 3 ? "MODO FURIA · x2" : $"FASE {fase}";
+        protected override string EtiquetaJugador(int indice) => ultimoAsalto ? "ÚLTIMO ASALTO · x3" : fase >= 3 ? "MODO FURIA · x2" : $"FASE {fase}";
 
         void Awake()
         {
@@ -73,6 +75,7 @@ namespace BichoShow
             abajo.Clear();
             reaparicionPuesta.Clear();
             fase = 1;
+            ultimoAsalto = false;
             if (robot != null) robot.fase = 1;
         }
 
@@ -108,6 +111,14 @@ namespace BichoShow
                     Mensaje("FASE 3: ¡MODO FURIA! Ataques dobles · puntos x2", new Color(1f, 0.25f, 0.25f), 3.5f);
                     robot.PonerCara(CortacespedMecha.Cara.Furia);
                 }
+            }
+
+            if (!ultimoAsalto && robot.UltimoAsalto)
+            {
+                ultimoAsalto = true;
+                Efectos.Sacudir(0.5f);
+                Sonidos.Reproducir(Sonido.Bocina, robot.Centro, 1f, 0.65f);
+                Mensaje("¡ÚLTIMO ASALTO! Hasta tres ataques a la vez · puntos x3", new Color(1f, 0.15f, 0.2f), 3.5f);
             }
 
             AsegurarReapariciones();
@@ -188,7 +199,10 @@ namespace BichoShow
         {
             if (EstadoActual != Estado.Jugando) return;
             caidos.Clear();
-            if (b.HasValue)
+            var c = robot.Tercero;
+            if (b.HasValue && c.HasValue)
+                Mensaje($"¡TRIPLE! {Nombre(a)} + {Nombre(b.Value)} + {Nombre(c.Value)}", new Color(1f, 0.2f, 0.25f), 3f);
+            else if (b.HasValue)
                 Mensaje($"¡COMBO! {Nombre(a)} + {Nombre(b.Value)}", new Color(1f, 0.3f, 0.3f), 2.5f);
             else
                 Mensaje($"¡{Nombre(a)}! {Consejo(a)}", a == CortacespedMecha.Ataque.OndaLaser ? new Color(1f, 0.35f, 0.8f) : new Color(1f, 0.75f, 0.3f), 2.2f);
@@ -197,7 +211,7 @@ namespace BichoShow
         void AlTerminarAtaque()
         {
             if (EstadoActual != Estado.Jugando) return;
-            int premio = fase >= 3 ? 2 : 1;
+            int premio = ultimoAsalto ? 3 : fase >= 3 ? 2 : 1;
             int salvados = 0;
             foreach (var b in ControladorBicho.Todos)
             {

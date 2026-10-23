@@ -29,9 +29,10 @@ La pelea va por fases según lo que va de ronda. Cada cambio de fase se anuncia 
 
 | Fase | Cuándo | Qué cambia |
 |---|---|---|
-| **1. Calentamiento** | primer 28 % | Onda láser, aspiración y lluvia de tuercas, de uno en uno. |
-| **2. ¡Saca las cuchillas!** | hasta el 62 % | Se suman el **barrido de cuchillas** y el **corte de césped**, y llegan variantes: aros láser **altos** y la aspiración que de golpe **sopla**. Descansos más cortos. |
-| **3. ¡Modo furia!** | el resto | Cara de furia y robot más rápido, casi sin descanso, y a menudo **dos ataques a la vez** (combos). Cada tanda aguantada vale **el doble**. |
+| **1. Calentamiento** | primer 22 % | Onda láser, aspiración y lluvia de tuercas, de uno en uno. |
+| **2. ¡Saca las cuchillas!** | hasta el 55 % | Se suman el **barrido de cuchillas** y el **corte de césped**. Llegan variantes: aros láser **altos**, la aspiración que de golpe **sopla** y la cuchilla que **cambia de sentido**. A veces, dos ataques a la vez. Descansos más cortos. |
+| **3. ¡Modo furia!** | hasta el 85 % | Cara de furia y robot más rápido, casi sin descanso, y casi siempre **dos ataques a la vez** (combos). La aspiración sopla y a veces **vuelve a aspirar**, el corte de césped puede tener una **segunda oleada** y las tuercas salen de dos en dos. Cada tanda aguantada vale **el doble**. |
+| **¡Último asalto!** | el final | Como la furia, pero a menudo con **tres ataques a la vez**. Cada tanda aguantada vale **el triple**. |
 
 ## Los ataques
 
@@ -39,19 +40,21 @@ El robot anuncia cada ataque con la cara de su pantalla (y un aviso en grande), 
 
 | Cara | Ataque | Qué hacer |
 |---|---|---|
-| Ojos enfadados con una raya rosa | **Onda láser:** aros que salen del robot y crecen hasta el borde, de dos a cinco seguidos. Los **rosas** van a ras de suelo; desde la fase 2 también salen **azules**, a la altura de la cabeza. | Saltar los **rosas** y **no saltar** los azules. Si te pilla, te tumba. |
-| Ojos de risa y boca abierta | **Aspiración invertida:** la turbina tira de todos hacia el robot, más fuerte cuanto más cerca. Desde la fase 2, a mitad puede dar la vuelta y **soplar** hacia fuera ("¡AHORA SOPLA!"). Se ve de dónde viene el aire: un remolino en espiral pintado en el suelo que gira hacia donde va el aire, un ciclón alrededor del robot que sube a la turbina, rachas de viento en espiral, recortes de césped volando y flechas en el césped. Todo aparece, más flojo, durante el aviso. | Correr hacia fuera; si sopla, hacia dentro. |
-| Ojos enfadados con cejas en V | **Lluvia de tuercas:** escupe tuercas y pilas de goma que rebotan mientras el robot gira. Cada vez escupe más deprisa. | Esquivarlas: te tumban y te empujan hacia donde iban. |
-| Ojos en raya, dientes y humo | **Barrido de cuchillas** (fase 2): una cuchilla a rayas a ras de suelo gira por todo el césped (vuelta y media; en la fase 3, dos cuchillas opuestas). | Saltarla justo cuando llega. |
-| Ojos mirando abajo y boca de sierra | **Corte de césped** (fase 2): cuatro o cinco porciones del suelo crujen, se ponen rojas (latiendo cada vez más), tiemblan y se hunden un poco; luego se abren de golpe como una trampilla (la bisagra, en el borde del foso) y al rato se vuelven a cerrar. Nunca son todas seguidas. | Salir de las rojas antes de que se abran: si te pilla, resbalas al vacío. |
+| Ojos enfadados con una raya rosa | **Onda láser:** aros que salen del robot y crecen hasta el borde, de tres a siete seguidos. Los **rosas** van a ras de suelo; desde la fase 2 también salen **azules**, a la altura de la cabeza. | Saltar los **rosas** y **no saltar** los azules. Si te pilla, te tumba. |
+| Ojos de risa y boca abierta | **Aspiración invertida:** la turbina tira de todos hacia el robot, más fuerte cuanto más cerca. Desde la fase 2, a mitad puede dar la vuelta y **soplar** hacia fuera ("¡AHORA SOPLA!"); en la furia, a veces vuelve a aspirar ("¡Y VUELVE A ASPIRAR!"). Se ve de dónde viene el aire: un remolino en espiral pintado en el suelo que gira hacia donde va el aire, un ciclón alrededor del robot que sube a la turbina, rachas de viento en espiral, recortes de césped volando y flechas en el césped. Todo aparece, más flojo, durante el aviso. | Correr hacia fuera; si sopla, hacia dentro. |
+| Ojos enfadados con cejas en V | **Lluvia de tuercas:** escupe tuercas y pilas de goma que rebotan mientras el robot gira. Cada vez escupe más deprisa. | Esquivarlas: te tumban y te empujan hacia donde iban. En la furia salen de dos en dos. |
+| Ojos en raya, dientes y humo | **Barrido de cuchillas** (fase 2): una cuchilla a rayas a ras de suelo gira por todo el césped (una vuelta y tres cuartos; en la fase 3, dos cuchillas opuestas y vuelta y media). A veces frena en seco y **gira al revés** ("¡LA CUCHILLA CAMBIA DE SENTIDO!"). | Saltarla justo cuando llega, y estar atento si da la vuelta. |
+| Ojos mirando abajo y boca de sierra | **Corte de césped** (fase 2): cinco o seis porciones del suelo crujen, se ponen rojas (latiendo cada vez más), tiemblan y se hunden un poco; luego se abren de golpe como una trampilla (la bisagra, en el borde del foso) y al rato se vuelven a cerrar. Nunca son todas seguidas. En la furia, a veces, cuando se cierran, se ponen rojas las de al lado ("¡OTRO CORTE!"). | Salir de las rojas antes de que se abran (y cambiar otra vez en el segundo corte): si te pilla, resbalas al vacío. |
 
-En el modo furia los combos posibles son: láser + tuercas, cuchillas + tuercas, corte + láser, corte + aspiración y cuchillas + corte.
+Los combos posibles son: láser + tuercas, cuchillas + tuercas, corte + láser, corte + aspiración, cuchillas + corte y corte + tuercas. Los tríos del último asalto son láser + tuercas + corte y cuchillas + tuercas + corte.
+
+Los golpes empujan más que antes (más aún en la furia): cerca del borde o del foso, un golpe te puede tirar.
 
 Al acabar la ronda el robot se marea (cara de espirales), se para y el césped vuelve a su sitio.
 
 ## Puntos
 
-- Cada tanda de ataques que termina da **+1** (**+2** en el modo furia) a cada bicho que no se ha caído durante esa tanda.
+- Cada tanda de ataques que termina da **+1** (**+2** en el modo furia y **+3** en el último asalto) a cada bicho que no se ha caído durante esa tanda.
 - Gana quien más aguante. Con placajes (X) se puede echar a los demás al foso.
 - Los bots se quedan por el medio del césped. Saltan los aros bajos y las cuchillas (los hábiles, más justos) y no saltan con un aro alto cerca. Además, corren hacia fuera al aspirar y hacia dentro al soplar, se apartan de las tuercas y salen del césped que se pone rojo.
 
@@ -59,11 +62,11 @@ Al acabar la ronda el robot se marea (cara de espirales), se para y el césped v
 
 Todo está en el componente **CortacespedMecha** del robot:
 
-- **Velocidad de los aros:** al principio y al final de la ronda (8 y 12 m/s).
-- **Fuerza de la aspiración:** 3,6 y 4,8 m/s; el bicho corre a 6.
-- **Velocidad de las cuchillas:** 70 y 115 °/s.
-- **Cuándo cambian las fases:** en el componente de la ronda (**Cambios de fase**: 0,28 y 0,62).
-- **Duración del anuncio:** 1,3 s.
+- **Velocidad de los aros:** al principio y al final de la ronda (9 y 14 m/s).
+- **Fuerza de la aspiración:** 4 y 5,2 m/s (cerca del foso tira un 25 % más); el bicho corre a 6.
+- **Velocidad de las cuchillas:** 85 y 140 °/s.
+- **Cuándo cambian las fases:** en el componente de la ronda (**Cambios de fase**: 0,22 y 0,55); el último asalto, en el robot (**Ultimo asalto**: 0,85).
+- **Duración del anuncio:** 1,15 s (un 15 % menos en la furia).
 - **Giro del robot:** 18 °/s; casi el doble mientras ataca y más en el modo furia.
 
 Las medidas de la arena (radios del robot, del foso y del césped) están en `CreadorCortacesped.cs`.

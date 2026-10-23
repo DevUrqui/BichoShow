@@ -14,7 +14,10 @@ namespace BichoShow
     ///     que saltarla) y el corte de césped (porciones del suelo que se ponen rojas, tiemblan y se
     ///     abren como una trampilla). Y
     ///     variantes: aros láser altos (te dan si saltas) y la aspiración que de golpe sopla.
-    ///  3. Modo furia: descansos mínimos y, a menudo, dos ataques a la vez.
+    ///     También, a veces, dos ataques a la vez; la cuchilla puede pararse y cambiar de sentido.
+    ///  3. Modo furia: descansos mínimos, casi siempre dos ataques a la vez, la aspiración que
+    ///     sopla y vuelve a aspirar, un segundo corte de césped en las otras porciones y tuercas
+    ///     de dos en dos. En el último asalto (el final de la ronda), hasta tres ataques a la vez.
     /// El pivote está en el centro, a la altura del césped.
     /// </summary>
     public class CortacespedMecha : MonoBehaviour
@@ -61,12 +64,14 @@ namespace BichoShow
         [Header("Ritmo")]
         public float giro = 18f;
         [Tooltip("Velocidad de los aros láser (m/s): al principio y al final de la ronda.")]
-        public Vector2 velocidadAro = new Vector2(8f, 12f);
+        public Vector2 velocidadAro = new Vector2(9f, 14f);
         [Tooltip("Lo que arrastra la aspiración (m/s): al principio y al final.")]
-        public Vector2 aspiracion = new Vector2(3.6f, 4.8f);
+        public Vector2 aspiracion = new Vector2(4f, 5.2f);
         [Tooltip("Velocidad de las cuchillas (grados/s): al principio y al final.")]
-        public Vector2 velocidadCuchilla = new Vector2(70f, 115f);
-        public float anuncio = 1.3f;
+        public Vector2 velocidadCuchilla = new Vector2(85f, 140f);
+        public float anuncio = 1.15f;
+        [Tooltip("Lo que va de ronda (0-1) desde el que, en el modo furia, puede lanzar tres ataques a la vez.")]
+        public float ultimoAsalto = 0.85f;
 
         /// <summary>El robot avisa de un ataque (o de dos, en el modo furia: el segundo, si no es null).</summary>
         public event Action<Ataque, Ataque?> AlAnunciar;
@@ -84,7 +89,11 @@ namespace BichoShow
 
         public Vector3 Centro => transform.position;
         public bool Anunciando => estado == Estado.Anuncio;
-        public bool Anunciado(Ataque a) => estado == Estado.Anuncio && (principal == a || segundo == a);
+        public bool Anunciado(Ataque a) => estado == Estado.Anuncio && (principal == a || segundo == a || tercero == a);
+        /// <summary>El tercer ataque del anuncio (solo en el último asalto), si lo hay.</summary>
+        public Ataque? Tercero => tercero;
+        /// <summary>El final de la ronda en el modo furia: hasta tres ataques a la vez.</summary>
+        public bool UltimoAsalto => fase >= 3 && progreso >= ultimoAsalto;
         public bool Aspirando => aspirando && !soplando;
         public bool Soplando => aspirando && soplando;
         public float VelocidadAros => Mathf.Lerp(velocidadAro.x, velocidadAro.y, progreso);
@@ -149,20 +158,22 @@ namespace BichoShow
         Porcion[] trozos;
         Estado estado = Estado.Descanso;
         Ataque principal;
-        Ataque? segundo;
+        Ataque? segundo, tercero;
         float finEstado, siguientePolvo, giroTurbina;
 
         // Lo que está pasando ahora (puede haber dos ataques a la vez).
         int arosPorSalir;
         float siguienteAro;
         bool aspirando, soplando;
-        float finAspiracion, cambioSoplido;
+        float finAspiracion, cambioSoplido, vueltaAspirar;
         bool tuercas;
         float finTuercas, siguienteTuerca;
         bool barriendo;
         int cuchillasEnUso;
-        float anguloCuchilla, giradoCuchilla, vueltasCuchilla, velocidadCuchillaActual;
+        float anguloCuchilla, giradoCuchilla, vueltasCuchilla, velocidadCuchillaActual, invertirEn, pausaCuchilla;
         bool cortando;
+        int salidaCorte;
+        float otraOleada; // cuándo empieza el segundo corte (0 = no hay)
 
         void Awake()
         {
@@ -228,6 +239,8 @@ namespace BichoShow
             arosVivos.Clear();
             arosPorSalir = 0;
             aspirando = tuercas = barriendo = cortando = false;
+            otraOleada = 0f;
+            segundo = tercero = null;
             Apagar(cuchillas);
             foreach (var p in sueltos) if (p != null) Destroy(p.gameObject);
             sueltos.Clear();
@@ -300,7 +313,7 @@ namespace BichoShow
         void ActualizarViento(float dt)
         {
             // Fuerte mientras aspira o sopla; flojito durante el aviso (para que se vea de dónde viene).
-            float objetivo = aspirando ? 1f : estado == Estado.Anuncio && (principal == Ataque.Aspiracion || segundo == Ataque.Aspiracion) ? 0.45f : 0f;
+            float objetivo = aspirando ? 1f : Anunciado(Ataque.Aspiracion) ? 0.45f : 0f;
             intensidadViento = Mathf.MoveTowards(intensidadViento, objetivo, dt * 1.5f);
             bool sopla = aspirando && soplando;
             float sentido = sopla ? 1f : -1f;
@@ -399,17 +412,17 @@ namespace BichoShow
             // Los nuevos, más a menudo al llegar a su fase (y nunca el mismo que el anterior).
             if (fase == 2) { posibles.Add(Ataque.Barrido); posibles.Add(Ataque.CorteCesped); }
             principal = Elegir(posibles);
-            segundo = null;
-            if (fase >= 3 && UnityEngine.Random.value < 0.65f)
+            segundo = tercero = null;
+            // Combos (dos a la vez, de los que se pueden juntar): a veces en la fase 2, casi siempre
+            // en la furia; en el último asalto, a menudo un tercero.
+            float combo = fase >= 3 ? 0.8f : fase == 2 ? 0.25f : 0f;
+            if (UnityEngine.Random.value < combo)
             {
-                // Combo: dos a la vez, de los que se pueden juntar.
-                var compatibles = new List<Ataque>();
-                foreach (Ataque a in Enum.GetValues(typeof(Ataque)))
-                    if (a != principal && SeJuntan(principal, a)) compatibles.Add(a);
-                if (compatibles.Count > 0) segundo = compatibles[UnityEngine.Random.Range(0, compatibles.Count)];
+                segundo = Compatible(principal, null);
+                if (segundo.HasValue && UltimoAsalto && UnityEngine.Random.value < 0.55f) tercero = Compatible(principal, segundo);
             }
             estado = Estado.Anuncio;
-            finEstado = Time.time + anuncio * (segundo.HasValue ? 1.25f : 1f);
+            finEstado = Time.time + anuncio * (fase >= 3 ? 0.85f : 1f) * (tercero.HasValue ? 1.45f : segundo.HasValue ? 1.25f : 1f);
             PonerCara(CaraDe(principal));
             Sonidos.Reproducir(Sonido.Alarma, Centro, 0.7f, principal == Ataque.OndaLaser ? 1.3f : principal == Ataque.Aspiracion ? 0.8f : 1f);
             AlAnunciar?.Invoke(principal, segundo);
@@ -427,13 +440,22 @@ namespace BichoShow
             return elegido;
         }
 
+        /// <summary>Un ataque que se pueda juntar con los ya elegidos (null si no hay ninguno).</summary>
+        static Ataque? Compatible(Ataque a, Ataque? b)
+        {
+            var lista = new List<Ataque>();
+            foreach (Ataque x in Enum.GetValues(typeof(Ataque)))
+                if (x != a && x != b && SeJuntan(a, x) && (!b.HasValue || SeJuntan(b.Value, x))) lista.Add(x);
+            return lista.Count > 0 ? lista[UnityEngine.Random.Range(0, lista.Count)] : (Ataque?)null;
+        }
+
         /// <summary>Qué ataques se pueden hacer a la vez (sin que sea imposible).</summary>
         static bool SeJuntan(Ataque a, Ataque b)
         {
             bool Par(Ataque x, Ataque y) => (a == x && b == y) || (a == y && b == x);
             return Par(Ataque.OndaLaser, Ataque.LluviaTuercas) || Par(Ataque.Barrido, Ataque.LluviaTuercas)
                 || Par(Ataque.CorteCesped, Ataque.OndaLaser) || Par(Ataque.CorteCesped, Ataque.Aspiracion)
-                || Par(Ataque.Barrido, Ataque.CorteCesped);
+                || Par(Ataque.Barrido, Ataque.CorteCesped) || Par(Ataque.CorteCesped, Ataque.LluviaTuercas);
         }
 
         static Cara CaraDe(Ataque a) => a switch
@@ -450,6 +472,7 @@ namespace BichoShow
             estado = Estado.Ataque;
             Empezar(principal);
             if (segundo.HasValue) Empezar(segundo.Value);
+            if (tercero.HasValue) Empezar(tercero.Value);
         }
 
         void Empezar(Ataque a)
@@ -457,20 +480,22 @@ namespace BichoShow
             switch (a)
             {
                 case Ataque.OndaLaser:
-                    arosPorSalir = 2 + Mathf.RoundToInt(progreso * 3f);
+                    arosPorSalir = 3 + Mathf.RoundToInt(progreso * 4f);
                     siguienteAro = Time.time;
                     break;
                 case Ataque.Aspiracion:
                     aspirando = true;
                     soplando = false;
-                    finAspiracion = Time.time + Mathf.Lerp(5f, 7.5f, progreso);
-                    // Desde la fase 2, a mitad de camino puede darse la vuelta y soplar hacia fuera.
-                    cambioSoplido = fase >= 2 && UnityEngine.Random.value < 0.6f ? Time.time + UnityEngine.Random.Range(2.2f, 3.5f) : float.MaxValue;
+                    finAspiracion = Time.time + Mathf.Lerp(5.5f, 8f, progreso);
+                    // Desde la fase 2, a mitad de camino puede darse la vuelta y soplar hacia fuera
+                    // (en la furia, casi siempre; y luego, a veces, vuelve a aspirar).
+                    cambioSoplido = UnityEngine.Random.value < (fase >= 3 ? 0.85f : fase == 2 ? 0.6f : 0f) ? Time.time + UnityEngine.Random.Range(2f, 3.2f) : float.MaxValue;
+                    vueltaAspirar = float.MaxValue;
                     Sonidos.Reproducir(Sonido.Viento, Centro, 1f, 0.7f);
                     break;
                 case Ataque.LluviaTuercas:
                     tuercas = true;
-                    finTuercas = Time.time + Mathf.Lerp(5.5f, 8f, progreso);
+                    finTuercas = Time.time + Mathf.Lerp(6f, 8.5f, progreso);
                     siguienteTuerca = Time.time;
                     break;
                 case Ataque.Barrido:
@@ -479,7 +504,10 @@ namespace BichoShow
                     velocidadCuchillaActual = Mathf.Lerp(velocidadCuchilla.x, velocidadCuchilla.y, progreso) * (UnityEngine.Random.value < 0.5f ? 1f : -1f);
                     anguloCuchilla = UnityEngine.Random.Range(0f, 360f);
                     giradoCuchilla = 0f;
-                    vueltasCuchilla = fase >= 3 ? 1.25f : 1.5f;
+                    vueltasCuchilla = fase >= 3 ? 1.5f : 1.75f;
+                    // Desde la fase 2, a veces se para un momento y gira al revés.
+                    invertirEn = fase >= 2 && UnityEngine.Random.value < (fase >= 3 ? 0.6f : 0.4f) ? UnityEngine.Random.Range(140f, 260f) : float.MaxValue;
+                    pausaCuchilla = 0f;
                     for (int i = 0; i < cuchillas.Length; i++) if (cuchillas[i] != null) cuchillas[i].gameObject.SetActive(i < cuchillasEnUso);
                     tocadosCuchilla.Clear();
                     Sonidos.Reproducir(Sonido.Mecanismo, Centro, 1f, 0.6f);
@@ -493,7 +521,7 @@ namespace BichoShow
         void Terminar()
         {
             estado = Estado.Descanso;
-            float descanso = fase >= 3 ? 0.7f : fase == 2 ? 1.4f : 2.2f;
+            float descanso = fase >= 3 ? 0.5f : fase == 2 ? 1.1f : 1.8f;
             finEstado = Time.time + descanso;
             PonerCara(fase >= 3 ? Cara.Furia : Cara.Normal);
             AlTerminar?.Invoke();
@@ -504,18 +532,27 @@ namespace BichoShow
             if (arosPorSalir > 0 && Time.time >= siguienteAro)
             {
                 // Desde la fase 2, algunos aros van altos (hay que NO saltar).
-                bool alto = fase >= 2 && arosAltos != null && arosAltos.Length > 0 && UnityEngine.Random.value < 0.4f;
+                bool alto = fase >= 2 && arosAltos != null && arosAltos.Length > 0 && UnityEngine.Random.value < (fase >= 3 ? 0.5f : 0.4f);
                 SoltarAro(alto);
                 arosPorSalir--;
-                siguienteAro = Time.time + Mathf.Lerp(1.05f, 0.7f, progreso);
+                siguienteAro = Time.time + Mathf.Lerp(0.95f, 0.6f, progreso);
             }
             if (aspirando)
             {
                 if (!soplando && Time.time >= cambioSoplido)
                 {
                     soplando = true;
+                    cambioSoplido = float.MaxValue;
+                    if (fase >= 3 && UnityEngine.Random.value < 0.5f) vueltaAspirar = Time.time + UnityEngine.Random.Range(1.6f, 2.4f);
                     AlAviso?.Invoke("¡AHORA SOPLA! ¡HACIA DENTRO!", new Color(0.45f, 0.85f, 1f));
                     Sonidos.Reproducir(Sonido.Viento, Centro, 1f, 1.1f);
+                }
+                if (soplando && Time.time >= vueltaAspirar)
+                {
+                    soplando = false;
+                    vueltaAspirar = float.MaxValue;
+                    AlAviso?.Invoke("¡Y VUELVE A ASPIRAR! ¡HACIA FUERA!", new Color(1f, 0.75f, 0.3f));
+                    Sonidos.Reproducir(Sonido.Viento, Centro, 1f, 0.7f);
                 }
                 if (Time.time >= siguientePolvo)
                 {
@@ -531,7 +568,8 @@ namespace BichoShow
                 if (Time.time >= siguienteTuerca)
                 {
                     Escupir();
-                    siguienteTuerca = Time.time + Mathf.Lerp(0.5f, 0.24f, progreso) * UnityEngine.Random.Range(0.8f, 1.2f);
+                    if (fase >= 3) Escupir(); // en la furia, de dos en dos
+                    siguienteTuerca = Time.time + Mathf.Lerp(0.45f, 0.22f, progreso) * UnityEngine.Random.Range(0.8f, 1.2f);
                 }
                 if (Time.time >= finTuercas) tuercas = false;
             }
@@ -603,7 +641,16 @@ namespace BichoShow
             // El barrido: las cuchillas giran a ras de suelo; a quien pillan en el suelo, lo lanzan.
             if (barriendo)
             {
-                float paso = velocidadCuchillaActual * dt;
+                if (giradoCuchilla >= invertirEn)
+                {
+                    // Frena en seco, avisa y vuelve hacia atrás.
+                    invertirEn = float.MaxValue;
+                    velocidadCuchillaActual = -velocidadCuchillaActual;
+                    pausaCuchilla = Time.time + 0.4f;
+                    AlAviso?.Invoke("¡LA CUCHILLA CAMBIA DE SENTIDO!", new Color(1f, 0.5f, 0.3f));
+                    Sonidos.Reproducir(Sonido.Mecanismo, Centro, 1f, 1.5f);
+                }
+                float paso = Time.time < pausaCuchilla ? 0f : velocidadCuchillaActual * dt;
                 anguloCuchilla = Mathf.Repeat(anguloCuchilla + paso, 360f);
                 giradoCuchilla += Mathf.Abs(paso);
                 for (int i = 0; i < cuchillasEnUso && i < cuchillas.Length; i++)
@@ -639,7 +686,7 @@ namespace BichoShow
 
         void Golpear(ControladorBicho b, Vector3 direccion, Color color)
         {
-            b.Cuerpo.linearVelocity = direccion * 4.5f + Vector3.up * 4f;
+            b.Cuerpo.linearVelocity = direccion * (fase >= 3 ? 6.5f : 5.5f) + Vector3.up * 4f;
             b.Tropezar(0.9f);
             Sonidos.Reproducir(Sonido.Derribo, b.transform.position, b.EsBot ? 0.6f : 1f, 1.2f);
             Efectos.Impacto(b.transform.position + Vector3.up * 0.5f, color, 0.6f);
@@ -653,14 +700,22 @@ namespace BichoShow
         {
             if (trozos == null || trozos.Length == 0) return;
             cortando = true;
+            salidaCorte = UnityEngine.Random.Range(0, trozos.Length);
+            float aviso = fase >= 3 ? 1.15f : 1.5f;
+            Oleada(salidaCorte, fase >= 3 ? 6 : 5, aviso, true);
+            // En la furia, a veces otro corte en las porciones de al lado, justo cuando las primeras
+            // empiezan a cerrarse (hay que cambiar de porción otra vez).
+            otraOleada = fase >= 3 && UnityEngine.Random.value < 0.6f ? Time.time + aviso + 2.4f : 0f;
+            Sonidos.Reproducir(Sonido.Mecanismo, Centro, 0.9f, 1.3f);
+        }
+
+        /// <summary>Porciones separadas (una sí y otra no, desde "salida"): siempre queda dónde ponerse.</summary>
+        void Oleada(int salida, int cuantos, float aviso, bool desordenar)
+        {
             int n = trozos.Length;
-            int cuantos = fase >= 3 ? 5 : 4;
-            // Porciones separadas (sin dos seguidas): siempre queda dónde ponerse.
             var elegidas = new List<int>();
-            int salida = UnityEngine.Random.Range(0, n);
-            for (int k = 0; k < n && elegidas.Count < cuantos; k += 2) elegidas.Add((salida + k + (UnityEngine.Random.value < 0.3f ? 1 : 0)) % n);
+            for (int k = 0; k < n && elegidas.Count < cuantos; k += 2) elegidas.Add((salida + k + (desordenar && UnityEngine.Random.value < 0.3f ? 1 : 0)) % n);
             float ahora = Time.time;
-            float aviso = fase >= 3 ? 1.3f : 1.7f;
             foreach (int i in elegidas)
             {
                 var t = trozos[i];
@@ -670,12 +725,18 @@ namespace BichoShow
                 t.sube = t.cae + 2.4f;
                 Sonidos.Reproducir(Sonido.Grieta, t.bisagra, 0.7f, 0.8f);
             }
-            Sonidos.Reproducir(Sonido.Mecanismo, Centro, 0.9f, 1.3f);
         }
 
         void ActualizarCorte()
         {
-            bool queda = false;
+            if (otraOleada > 0f && Time.time >= otraOleada)
+            {
+                otraOleada = 0f;
+                Oleada(salidaCorte + 1, 5, 1.6f, false);
+                AlAviso?.Invoke("¡OTRO CORTE! ¡CAMBIA DE PORCIÓN!", ColorAviso);
+                Sonidos.Reproducir(Sonido.Mecanismo, Centro, 0.9f, 1.5f);
+            }
+            bool queda = otraOleada > 0f;
             foreach (var t in trozos)
             {
                 if (t == null || t.aviso <= 0f) continue;

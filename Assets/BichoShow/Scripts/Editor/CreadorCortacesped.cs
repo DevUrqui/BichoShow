@@ -26,7 +26,7 @@ namespace BichoShow.Herramientas
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cortacesped.unity";
         /// <summary>Sube al cambiar el mapa: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
-        public const int Version = 5;
+        public const int Version = 6;
         const string CarpetaMallas = E.Raiz + "/Modelos/Cortacesped";
         const float RadioRobot = 4.2f, RadioFoso = 7f, RadioPista = 22f, FondoFoso = -5f, Grosor = 0.8f;
 
