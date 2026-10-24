@@ -157,6 +157,18 @@ namespace BichoShow.Herramientas
 
             var informe = BuildPipeline.BuildPlayer(opciones);
             var resumen = informe.summary;
+            // Unity puede dar "Success" sin haber creado nada (p. ej. con el módulo de Android recién
+            // instalado y el editor sin reiniciar): se comprueba que el archivo esté de verdad.
+            if (resumen.result == BuildResult.Succeeded && !File.Exists(salida))
+            {
+                Debug.LogError($"Bicho Show: Unity dice que ha compilado, pero no ha creado {salida}.");
+                EditorUtility.DisplayDialog("Bicho Show",
+                    $"Unity dice que ha compilado, pero no ha creado:\n{salida}\n\n" +
+                    (objetivo == BuildTarget.Android
+                        ? "Si acabas de instalar el módulo de Android, cierra Unity, vuelve a abrir el proyecto y compila otra vez."
+                        : "Mira la consola por si hay algún error."), "Vale");
+                return;
+            }
             if (resumen.result == BuildResult.Succeeded)
             {
                 float megas = resumen.totalSize / (1024f * 1024f);
