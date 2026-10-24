@@ -28,7 +28,9 @@ Después, para volver a compilar para Windows, **Compilar el juego para Windows*
 | Mitad izquierda | Stick: aparece donde pones el dedo y lo sigue si te pasas del borde |
 | Abajo a la derecha | **A** (saltar / aceptar), **X** (lanzarse) y **AGARRAR** (mantener) |
 | Arriba a la derecha | **START** |
+| Arrastrar por la derecha (fuera de los botones) | Girar la cámara en las carreras |
 
+- En las carreras, mientras mueves el stick táctil la cámara no gira sola (si no, giraría bajo el dedo y te desviaría). Se recoloca mirando a la carrera cuando te paras un rato.
 - Si conectas un mando de verdad (Bluetooth), los botones táctiles se esconden.
 - Se dibujan solo en tu pantalla: en una partida online no se mandan a los demás.
 - En el móvil, el juego va a 60 imágenes por segundo y la pantalla no se apaga.
@@ -39,6 +41,5 @@ Después, para volver a compilar para Windows, **Compilar el juego para Windows*
 ## Qué falta
 
 - Escribir el nombre y el código de sala con el teclado del móvil. Ahora se hace con el stick, como en las recreativas.
-- Mover la cámara con el dedo (el stick derecho).
 - Ajustar el rendimiento según cómo vaya en un móvil de verdad.
 - iPhone: hace falta un Mac con Xcode y la cuenta de desarrollador de Apple.

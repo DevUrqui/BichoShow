@@ -14,6 +14,8 @@ namespace BichoShow
     ///  - Mitad izquierda de la pantalla: el stick aparece donde pones el dedo.
     ///  - Derecha: A (saltar / aceptar), X (lanzarse) y AGARRAR (el gatillo: mantener).
     ///  - Arriba a la derecha: START.
+    ///  - Arrastrar el dedo por la derecha (fuera de los botones): gira la cámara de las carreras
+    ///    (CamaraJugador lee ArrastreCamara).
     /// Solo en el móvil (o en el editor, si se activa en el menú BichoShow), y se esconden si se
     /// conecta un mando de verdad. Se dibujan con GUI directamente, no con EstiloShow, para que no
     /// se manden a los invitados de una partida online.
@@ -23,6 +25,18 @@ namespace BichoShow
         public static ControlesTactiles Instancia { get; private set; }
         /// <summary>El mando virtual (null si no hay controles táctiles).</summary>
         public static Gamepad Mando => Instancia != null ? Instancia.mando : null;
+        /// <summary>Lo que se ha arrastrado el dedo de la cámara en este fotograma (píxeles; x a la derecha, y hacia arriba).</summary>
+        public static Vector2 ArrastreCamara => Instancia != null && Instancia.visibles ? Instancia.arrastre : Vector2.zero;
+        /// <summary>¿Se está moviendo el stick táctil?</summary>
+        public static bool MoviendoStick => Instancia != null && Instancia.visibles && Instancia.stick != Vector2.zero;
+
+        /// <summary>¿Ese jugador juega con los controles táctiles?</summary>
+        public static bool EsDe(PlayerInput entrada)
+        {
+            if (entrada == null || Instancia == null || Instancia.mando == null || !Instancia.visibles) return false;
+            foreach (var d in entrada.devices) if (d == Instancia.mando) return true;
+            return false;
+        }
 
 #if UNITY_EDITOR
         public const string ClaveEditor = "BichoShow.TactilEnEditor";
@@ -52,7 +66,7 @@ namespace BichoShow
             public bool pulsado;
         }
 
-        const int DedoStick = -1, DedoNada = -2;
+        const int DedoStick = -1, DedoNada = -2, DedoCamara = -3;
 
         Gamepad mando;
         readonly Circulo[] botones =
@@ -63,7 +77,8 @@ namespace BichoShow
             new Circulo { boton = Boton.Start, texto = "START", color = new Color(0.55f, 0.5f, 0.65f) },
         };
         readonly Dictionary<int, int> dedos = new Dictionary<int, int>(); // dedo → botón (índice), stick o nada
-        Vector2 origenStick, puntaStick, stick;
+        Vector2 origenStick, puntaStick, stick, arrastre;
+        readonly Dictionary<int, Vector2> dedoCamaraAntes = new Dictionary<int, Vector2>();
         bool stickActivo, visibles, habiaEstado;
         float radioStick, unidad;
         Rect segura;
@@ -110,6 +125,7 @@ namespace BichoShow
 
             bool a = false, x = false, agarrar = false, start = false;
             stickActivo = false;
+            arrastre = Vector2.zero;
             var vistos = new HashSet<int>();
             if (visibles)
             {
@@ -127,6 +143,12 @@ namespace BichoShow
                         puntaStick = p;
                         stickActivo = true;
                     }
+                    else if (papel == DedoCamara)
+                    {
+                        Vector2 pantalla = t.screenPosition;
+                        if (dedoCamaraAntes.TryGetValue(dedo, out Vector2 antes)) arrastre += pantalla - antes;
+                        dedoCamaraAntes[dedo] = pantalla;
+                    }
                     else if (papel >= 0)
                     {
                         switch (botones[papel].boton)
@@ -142,7 +164,7 @@ namespace BichoShow
             // Dedos que se han levantado.
             var fuera = new List<int>();
             foreach (var d in dedos.Keys) if (!vistos.Contains(d)) fuera.Add(d);
-            foreach (var d in fuera) dedos.Remove(d);
+            foreach (var d in fuera) { dedos.Remove(d); dedoCamaraAntes.Remove(d); }
 
             stick = Vector2.zero;
             if (stickActivo)
@@ -177,6 +199,8 @@ namespace BichoShow
                 origenStick = puntaStick = p;
                 return DedoStick;
             }
+            // El resto de la pantalla, sobre todo la derecha: mover la cámara.
+            if (p.x >= segura.x + segura.width * 0.45f) return DedoCamara;
             return DedoNada;
         }
 

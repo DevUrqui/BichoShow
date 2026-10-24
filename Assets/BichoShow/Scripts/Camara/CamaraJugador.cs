@@ -11,6 +11,9 @@ namespace BichoShow
     /// así quien juega con teclado no tiene que preocuparse. Si algo se mete entre la cámara y el
     /// bicho (una pared, el fregadero…), se acerca. La crea y la coloca en pantalla
     /// CamarasPorJugador; el stick del bicho va relativo a esta cámara.
+    /// Con los controles táctiles del móvil se gira arrastrando el dedo por la derecha de la
+    /// pantalla, y no se coloca sola mientras se mueve el stick (si no, giraría bajo el dedo y
+    /// el bicho se desviaría): solo cuando el bicho se para un rato.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class CamaraJugador : MonoBehaviour
@@ -38,6 +41,8 @@ namespace BichoShow
         public float velocidadStick = 160f;
         [Tooltip("Grados por unidad de movimiento del ratón.")]
         public float sensibilidadRaton = 0.15f;
+        [Tooltip("Grados al arrastrar el dedo lo que mide la pantalla de alto (móvil).")]
+        public float sensibilidadDedo = 200f;
         [Tooltip("Tras mover la cámara a mano, segundos hasta que vuelve a colocarse sola.")]
         public float esperaAuto = 1.5f;
         [Tooltip("Lo que tarda en colocarse sola mirando a la carrera (s).")]
@@ -107,7 +112,24 @@ namespace BichoShow
 
             // A mano: stick derecho (grados por segundo) o ratón (movimiento de este fotograma).
             Vector2 mirar = LeerMirar(out bool raton);
-            if (mirar.sqrMagnitude > 0.0004f)
+            // Móvil: el dedo arrastrado por la derecha de la pantalla gira la cámara.
+            bool tactil = ControlesTactiles.EsDe(entrada);
+            Vector2 dedo = tactil ? ControlesTactiles.ArrastreCamara : Vector2.zero;
+            if (dedo.sqrMagnitude > 0f)
+            {
+                float k = sensibilidadDedo / Mathf.Max(1f, Screen.height);
+                yaw += dedo.x * k;
+                pitch = Mathf.Clamp(pitch - dedo.y * k, inclinacionMinima, inclinacionMaxima);
+                ultimoManual = Time.unscaledTime;
+                velocidadYaw = velocidadPitch = 0f;
+            }
+            else if (tactil && ControlesTactiles.MoviendoStick)
+            {
+                // Mientras se corre con el stick táctil, la cámara no gira sola.
+                ultimoManual = Time.unscaledTime;
+                velocidadYaw = velocidadPitch = 0f;
+            }
+            else if (mirar.sqrMagnitude > 0.0004f)
             {
                 float k = raton ? sensibilidadRaton : velocidadStick * Time.unscaledDeltaTime;
                 yaw += mirar.x * k;
