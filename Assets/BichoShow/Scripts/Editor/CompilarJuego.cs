@@ -15,10 +15,14 @@ namespace BichoShow.Herramientas
     /// (BichoShow.exe y su carpeta _Data: hay que copiar las dos cosas juntas).
     /// Antes comprueba que estén las escenas del show, las ordena (el menú primero) y ajusta
     /// lo necesario para jugar por Parsec: que siga funcionando aunque la ventana no tenga el foco.
+    ///
+    /// Menús "BichoShow > Móvil: …": la APK de prueba para Android (Builds/Android/BichoShow.apk),
+    /// o compilarla e instalarla en el móvil conectado por USB, y probar los controles táctiles en
+    /// el editor (con el ratón).
     /// </summary>
     public static class CompilarJuego
     {
-        static readonly string[] EscenasDelShow = { "Menu", "Mudanza", "Patata", "Corona", "Lluvia", "Pintura", "Costura", "Despensa", "Voley", "Final", "Cumbre" };
+        static readonly string[] EscenasDelShow = { "Menu", "Mudanza", "Patata", "Corona", "Lluvia", "Pintura", "Costura", "Despensa", "Voley", "Cortacesped", "Final", "Cumbre" };
 
         public static string CarpetaSalida =>
             Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Builds", "Windows");
@@ -27,7 +31,94 @@ namespace BichoShow.Herramientas
         public static void Compilar()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            var rutas = PrepararEscenas();
+            if (rutas == null) return;
 
+            // --- Ajustes del ejecutable ---
+            PlayerSettings.productName = "Bicho Show";
+            PlayerSettings.runInBackground = true;          // sigue jugando aunque la ventana pierda el foco (Parsec, Discord…)
+            PlayerSettings.visibleInBackground = true;
+            PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
+            PlayerSettings.resizableWindow = true;
+            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+
+            string exe = Path.Combine(CarpetaSalida, "BichoShow.exe");
+            Directory.CreateDirectory(CarpetaSalida);
+            Construir(rutas, exe, BuildTarget.StandaloneWindows64, BuildTargetGroup.Standalone, BuildOptions.None,
+                      $"¡Listo! El juego está en:\n{CarpetaSalida}\n\nAbre BichoShow.exe para jugar. Si lo copias a otro sitio, copia la carpeta entera.");
+        }
+
+        // ---------------------------------------------------------------------
+        // Móvil (Android)
+        // ---------------------------------------------------------------------
+
+        public static string CarpetaAndroid =>
+            Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Builds", "Android");
+
+        [MenuItem("BichoShow/Móvil: compilar la APK de prueba (Android)")]
+        public static void CompilarAndroid() => Android(false);
+
+        [MenuItem("BichoShow/Móvil: compilar e instalar en el móvil conectado por USB")]
+        public static void InstalarAndroid() => Android(true);
+
+        static void Android(bool instalar)
+        {
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android))
+            {
+                EditorUtility.DisplayDialog("Bicho Show",
+                    "Falta el módulo de Android. En Unity Hub: Installs → 6000.6.3f1 → Add modules → Android Build Support (con OpenJDK y el SDK y NDK).", "Vale");
+                return;
+            }
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            var rutas = PrepararEscenas();
+            if (rutas == null) return;
+
+            // --- Ajustes de la APK ---
+            PlayerSettings.productName = "Bicho Show";
+            PlayerSettings.companyName = "DevUrqui";
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.devurqui.bichoshow");
+            // IL2CPP y ARM64: los móviles nuevos solo admiten 64 bits.
+            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            PlayerSettings.Android.forceInternetPermission = true; // salas online y ranking
+            // Siempre en horizontal (de un lado o del otro).
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+            PlayerSettings.allowedAutorotateToLandscapeRight = true;
+            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            EditorUserBuildSettings.buildAppBundle = false; // APK suelta (para pasarla e instalarla a mano)
+
+            string apk = Path.Combine(CarpetaAndroid, "BichoShow.apk");
+            Directory.CreateDirectory(CarpetaAndroid);
+            Construir(rutas, apk, BuildTarget.Android, BuildTargetGroup.Android, instalar ? BuildOptions.AutoRunPlayer : BuildOptions.None,
+                      instalar ? "¡Listo! La APK se ha instalado en el móvil y se abrirá sola."
+                               : $"¡Listo! La APK está en:\n{CarpetaAndroid}\n\nPásala al móvil (por cable, Drive…) y ábrela. La primera vez, Android pedirá permiso para instalar apps de esa fuente.");
+        }
+
+        [MenuItem("BichoShow/Móvil: probar los controles táctiles en el editor")]
+        static void AlternarTactilEnEditor()
+        {
+            bool activo = !EditorPrefs.GetBool(ControlesTactiles.ClaveEditor, false);
+            EditorPrefs.SetBool(ControlesTactiles.ClaveEditor, activo);
+            Debug.Log(activo ? "Bicho Show: controles táctiles en el editor ACTIVADOS (al darle a Play; el ratón hace de dedo)."
+                             : "Bicho Show: controles táctiles en el editor desactivados.");
+        }
+
+        [MenuItem("BichoShow/Móvil: probar los controles táctiles en el editor", true)]
+        static bool AlternarTactilEnEditorMarca()
+        {
+            Menu.SetChecked("BichoShow/Móvil: probar los controles táctiles en el editor", EditorPrefs.GetBool(ControlesTactiles.ClaveEditor, false));
+            return true;
+        }
+
+        // ---------------------------------------------------------------------
+        // Lo común
+        // ---------------------------------------------------------------------
+
+        /// <summary>Las escenas del show (el menú primero), ya ordenadas en el build. Null si falta alguna imprescindible.</summary>
+        static List<string> PrepararEscenas()
+        {
             // --- Escenas: el menú primero y luego las pruebas ---
             var rutas = new List<string>();
             foreach (var nombre in EscenasDelShow)
@@ -40,7 +131,7 @@ namespace BichoShow.Herramientas
                     {
                         EditorUtility.DisplayDialog("Bicho Show",
                             $"Falta la escena \"{nombre}\". Créala desde el menú BichoShow (Crear escena…) y vuelve a compilar.", "Vale");
-                        return;
+                        return null;
                     }
                     Debug.LogWarning($"Bicho Show: la escena \"{nombre}\" no existe todavía; el juego compilado no la tendrá.");
                     continue;
@@ -49,25 +140,19 @@ namespace BichoShow.Herramientas
             }
             OrdenarListaDelBuild(rutas);
             RecursosEfectos.Crear();
+            return rutas;
+        }
 
-            // --- Ajustes del ejecutable ---
-            PlayerSettings.productName = "Bicho Show";
-            PlayerSettings.runInBackground = true;          // sigue jugando aunque la ventana pierda el foco (Parsec, Discord…)
-            PlayerSettings.visibleInBackground = true;
-            PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
-            PlayerSettings.resizableWindow = true;
-            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
-
-            string exe = Path.Combine(CarpetaSalida, "BichoShow.exe");
-            Directory.CreateDirectory(CarpetaSalida);
-
+        /// <summary>Compila y avisa de cómo ha ido (con los primeros errores, si falla).</summary>
+        static void Construir(List<string> rutas, string salida, BuildTarget objetivo, BuildTargetGroup grupo, BuildOptions extra, string textoListo)
+        {
             var opciones = new BuildPlayerOptions
             {
                 scenes = rutas.ToArray(),
-                locationPathName = exe,
-                target = BuildTarget.StandaloneWindows64,
-                targetGroup = BuildTargetGroup.Standalone,
-                options = BuildOptions.None,
+                locationPathName = salida,
+                target = objetivo,
+                targetGroup = grupo,
+                options = extra,
             };
 
             var informe = BuildPipeline.BuildPlayer(opciones);
@@ -75,10 +160,9 @@ namespace BichoShow.Herramientas
             if (resumen.result == BuildResult.Succeeded)
             {
                 float megas = resumen.totalSize / (1024f * 1024f);
-                Debug.Log($"Bicho Show: juego compilado en {exe} ({megas:0} MB, {resumen.totalTime.TotalSeconds:0} s).");
-                EditorUtility.RevealInFinder(exe);
-                EditorUtility.DisplayDialog("Bicho Show",
-                    $"¡Listo! El juego está en:\n{CarpetaSalida}\n\nAbre BichoShow.exe para jugar. Si lo copias a otro sitio, copia la carpeta entera.", "Vale");
+                Debug.Log($"Bicho Show: juego compilado en {salida} ({megas:0} MB, {resumen.totalTime.TotalSeconds:0} s).");
+                EditorUtility.RevealInFinder(salida);
+                EditorUtility.DisplayDialog("Bicho Show", textoListo, "Vale");
             }
             else
             {
