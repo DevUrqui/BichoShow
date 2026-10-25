@@ -5,8 +5,9 @@ namespace BichoShow
     /// <summary>
     /// Bot para "El Cortacésped Mecha": se queda por el medio del césped; salta los aros bajos y
     /// las cuchillas (los hábiles, justo a tiempo) y no salta con los aros altos cerca; corre
-    /// hacia fuera cuando el robot aspira (y hacia dentro si sopla), se aparta de las tuercas y
-    /// sale del césped que parpadea.
+    /// hacia fuera cuando el robot aspira (y hacia dentro si sopla), se aparta de la chatarra,
+    /// salta los neumáticos, sale de las dianas de los pernos y de los charcos, y del césped que
+    /// parpadea.
     /// </summary>
     public class BotCortacesped : MonoBehaviour, IEntradaBicho
     {
@@ -81,6 +82,15 @@ namespace BichoShow
                 if (falta < 0f) falta += 360f;
                 if (falta / Mathf.Max(1f, Mathf.Abs(velocidad)) < margen + 0.05f) saltar = true;
             }
+            // Neumáticos que vienen hacia mí: saltar justo antes de que lleguen.
+            foreach (var rueda in robot.Ruedas)
+            {
+                Vector3 hacia = Plano(transform.position - rueda.transform.position);
+                float delante = Vector3.Dot(hacia, rueda.direccion);
+                if (delante <= 0f) continue;
+                float lado = (hacia - rueda.direccion * delante).magnitude;
+                if (lado < rueda.radio + 0.6f && delante / Mathf.Max(1f, rueda.velocidad) < margen + 0.12f) saltar = true;
+            }
             // Los torpes, a veces, saltan con el aro alto encima.
             if (saltar && (!altoCerca || Random.value > habilidad))
             {
@@ -132,6 +142,15 @@ namespace BichoShow
                     if (Vector3.Dot(lado, hacia) < 0f) lado = -lado;
                     deseo += lado * (1f - dist / 4.5f) * 2f * habilidad;
                 }
+            }
+
+            // Fuera de las dianas de los pernos y de los charcos de aceite.
+            foreach (var (centro, radio) in robot.Peligros)
+            {
+                Vector3 lejos = Plano(yo - centro);
+                float dist = lejos.magnitude;
+                if (dist > radio + 1f) continue;
+                deseo += (dist > 0.05f ? lejos / dist : fuera) * (1.2f + habilidad * 1.5f);
             }
 
             // Si mi porción del césped se va a caer: a la de al lado.

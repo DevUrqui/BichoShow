@@ -31,7 +31,7 @@ namespace BichoShow
         public static RondaCortacesped Instancia { get; private set; }
 
         public override string Titulo => "EL CORTACÉSPED MECHA";
-        protected override string Descripcion => "¡Aguanta los ataques del robot! Salta su láser y sus cuchillas, corre contra su aspiradora, esquiva las tuercas y no te quedes en el césped que corta. Cada ataque sin caerte, puntos.";
+        protected override string Descripcion => "¡Aguanta los ataques del robot! Salta su láser y sus cuchillas, corre contra su aspiradora, esquiva su chatarra (y salta sus ruedas) y no te quedes en el césped que corta. Cada ataque sin caerte, puntos.";
         protected override string ConsejoInicio => "¡Mira su pantalla: te dice qué ataque viene!";
         protected override string AccionX => "placaje (¡échalos al foso!)";
         public override bool Individual => true;
@@ -228,7 +228,7 @@ namespace BichoShow
         {
             CortacespedMecha.Ataque.OndaLaser => "LÁSER",
             CortacespedMecha.Ataque.Aspiracion => "ASPIRADORA",
-            CortacespedMecha.Ataque.LluviaTuercas => "TUERCAS",
+            CortacespedMecha.Ataque.LluviaTuercas => "CHATARRA",
             CortacespedMecha.Ataque.Barrido => "CUCHILLAS",
             _ => "CORTE",
         };
@@ -237,7 +237,7 @@ namespace BichoShow
         {
             CortacespedMecha.Ataque.OndaLaser => "ONDA LÁSER",
             CortacespedMecha.Ataque.Aspiracion => "ASPIRACIÓN",
-            CortacespedMecha.Ataque.LluviaTuercas => "LLUVIA DE TUERCAS",
+            CortacespedMecha.Ataque.LluviaTuercas => "LLUVIA DE CHATARRA",
             CortacespedMecha.Ataque.Barrido => "BARRIDO DE CUCHILLAS",
             _ => "CORTE DE CÉSPED",
         };
@@ -246,7 +246,7 @@ namespace BichoShow
         {
             CortacespedMecha.Ataque.OndaLaser => "¡salta los rosas, no los azules!",
             CortacespedMecha.Ataque.Aspiracion => "¡corre hacia fuera!",
-            CortacespedMecha.Ataque.LluviaTuercas => "¡esquívalas!",
+            CortacespedMecha.Ataque.LluviaTuercas => "¡esquívala, salta las ruedas y sal de las dianas!",
             CortacespedMecha.Ataque.Barrido => "¡salta la cuchilla!",
             _ => "¡sal del césped que parpadea!",
         };

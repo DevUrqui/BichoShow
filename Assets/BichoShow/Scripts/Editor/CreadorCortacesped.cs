@@ -26,7 +26,7 @@ namespace BichoShow.Herramientas
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Cortacesped.unity";
         /// <summary>Sube al cambiar el mapa: al darle a Play se avisa si la escena es de antes (EscenasAnticuadas).</summary>
-        public const int Version = 6;
+        public const int Version = 7;
         const string CarpetaMallas = E.Raiz + "/Modelos/Cortacesped";
         const float RadioRobot = 4.2f, RadioFoso = 7f, RadioPista = 22f, FondoFoso = -5f, Grosor = 0.8f;
 
@@ -65,6 +65,7 @@ namespace BichoShow.Herramientas
         {
             materiales.Clear();
             porciones.Clear();
+            mallasBlender = null; // por si se han vuelto a generar en Blender
             mallasBlender = null; // por si se han vuelto a generar en Blender
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var camara = A.Camara(22f, 46f);
@@ -273,11 +274,12 @@ namespace BichoShow.Herramientas
             // El viento de la aspiración: rachas en el aire y flechas en el suelo (apagadas).
             var viento = M.Grupo(raiz.transform, "Viento");
             var mallaRacha = MallaBlender("RachaViento");
-            var materialRacha = MaterialEfecto("Racha", TexturaEfecto("Racha", false), new Color(1.1f, 1.5f, 1.9f, 0.9f), true);
-            var rafagas = new Transform[24];
+            var materialRacha = MaterialEfecto("Racha", TexturaEfecto("Racha", false), new Color(1.3f, 1.8f, 2.2f, 1f), true);
+            var rafagas = new Transform[30];
             for (int i = 0; i < rafagas.Length; i++)
             {
                 var r = Pieza("Racha", viento, mallaRacha, materialRacha, false);
+                r.transform.localScale = Vector3.one * 1.9f; // a la distancia de juego, las finas no se veían
                 r.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.SetActive(false);
                 rafagas[i] = r.transform;
@@ -290,6 +292,7 @@ namespace BichoShow.Herramientas
             for (int i = 0; i < recortes.Length; i++)
             {
                 var h = Pieza("Recorte de cesped", viento, mallaRecorte, materialRecorte, false);
+                h.transform.localScale = Vector3.one * 1.6f;
                 h.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 h.SetActive(false);
                 recortes[i] = h.transform;
@@ -297,12 +300,12 @@ namespace BichoShow.Herramientas
             mecha.recortes = recortes;
 
             var remolino = Pieza("Remolino", raiz.transform, MallaBlender("Remolino"),
-                                 MaterialEfecto("Remolino", TexturaEfecto("Remolino", true), new Color(0.6f, 1.1f, 1.5f, 0.55f), true), false);
+                                 MaterialEfecto("Remolino", TexturaEfecto("Remolino", true), new Color(0.8f, 1.4f, 1.9f, 0.85f), true), false);
             remolino.transform.localPosition = new Vector3(0f, 0.06f, 0f);
             remolino.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mecha.remolino = remolino.GetComponent<Renderer>();
             var embudo = Pieza("Ciclon", raiz.transform, MallaBlender("Embudo"),
-                               MaterialEfecto("Embudo", TexturaEfecto("Embudo", true), new Color(0.9f, 1.3f, 1.7f, 0.7f), true), false);
+                               MaterialEfecto("Embudo", TexturaEfecto("Embudo", true), new Color(1f, 1.5f, 1.9f, 0.85f), true), false);
             embudo.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mecha.embudo = embudo.GetComponent<Renderer>();
             var flechaMat = Neon("FlechaViento", new Color(0.45f, 0.9f, 1f), 1.2f);
@@ -311,6 +314,7 @@ namespace BichoShow.Herramientas
             {
                 var flecha = new GameObject("Flecha viento").transform;
                 flecha.SetParent(viento, false);
+                flecha.localScale = Vector3.one * 1.6f;
                 foreach (float lado in new[] { -1f, 1f })
                 {
                     var brazo = E.Pieza(PrimitiveType.Cube, "Brazo", flecha, new Vector3(lado * 0.42f, 0f, -0.42f), new Vector3(0.28f, 0.04f, 1.3f), flechaMat);
@@ -321,10 +325,127 @@ namespace BichoShow.Herramientas
                 flechas[i] = flecha;
             }
             mecha.flechasViento = flechas;
+
+            // Anillos en el suelo con flechas en V: se cierran hacia el robot al aspirar (cian) y se
+            // abren al soplar (blanco cálido). Radio 1 en la malla: el robot los escala.
+            var texSuccion = TexturaEfecto("Succion", true);
+            mecha.anillosSuccion = Anillos("Anillo succion", viento, MallaBlender("AnilloSuccion"),
+                                           MaterialEfecto("AnilloSuccion", texSuccion, new Color(0.6f, 1.25f, 1.75f, 0.6f), true));
+            mecha.anillosSoplido = Anillos("Anillo soplido", viento, MallaBlender("AnilloSoplido"),
+                                           MaterialEfecto("AnilloSoplido", texSuccion, new Color(1.7f, 1.45f, 0.85f, 0.6f), true));
+
+            // Partículas: líneas de velocidad en espiral y polvo arrastrado por el césped.
+            mecha.particulasAspira = ParticulasViento("Particulas aspira", viento, true);
+            mecha.particulasSopla = ParticulasViento("Particulas sopla", viento, false);
             mecha.porciones = porciones.ToArray();
 
-            mecha.proyectiles = Proyectiles();
+            mecha.proyectiles = Proyectiles(mecha);
             return mecha;
+        }
+
+        /// <summary>Cuatro anillos planos (radio 1 en la malla) a ras de suelo, apagados.</summary>
+        static Transform[] Anillos(string nombre, Transform padre, Mesh malla, Material material)
+        {
+            var lista = new Transform[4];
+            for (int i = 0; i < lista.Length; i++)
+            {
+                var a = Pieza(nombre, padre, malla, material, false);
+                a.transform.localPosition = new Vector3(0f, 0.07f + i * 0.004f, 0f);
+                a.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                a.SetActive(false);
+                lista[i] = a.transform;
+            }
+            return lista;
+        }
+
+        /// <summary>
+        /// Viento de partículas (apagado; lo enciende el robot): líneas de velocidad que van en
+        /// espiral hacia el robot (o salen de él) y polvo arrastrado por el césped. Se mueven solas
+        /// (sin script), así que también se ven en las partidas online.
+        /// </summary>
+        static GameObject ParticulasViento(string nombre, Transform padre, bool haciaDentro)
+        {
+            var raiz = new GameObject(nombre);
+            raiz.transform.SetParent(padre, false);
+            Sistema(raiz.transform, "Lineas", haciaDentro, false);
+            Sistema(raiz.transform, "Polvo", haciaDentro, true);
+            raiz.SetActive(false);
+            return raiz;
+        }
+
+        static void Sistema(Transform padre, string nombre, bool haciaDentro, bool polvo)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(padre, false);
+            go.transform.localPosition = new Vector3(0f, polvo ? 0.4f : 1.4f, 0f);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            float velocidad = polvo ? 8f : 15f;
+            float recorrido = RadioPista + 1f - (RadioRobot + 0.8f);
+            var main = ps.main;
+            main.loop = true;
+            main.prewarm = true;
+            main.playOnAwake = true;
+            main.duration = 2f;
+            main.startSpeed = 0f;
+            main.startLifetime = recorrido / velocidad;
+            main.startSize = polvo ? new ParticleSystem.MinMaxCurve(1.3f, 2.6f) : new ParticleSystem.MinMaxCurve(0.2f, 0.36f);
+            main.startColor = polvo ? new Color(0.85f, 0.92f, 1f, 0.5f)
+                            : haciaDentro ? new Color(0.65f, 0.95f, 1f, 1f) : new Color(1f, 0.92f, 0.7f, 1f);
+            main.startRotation = polvo ? new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f) : new ParticleSystem.MinMaxCurve(0f);
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.maxParticles = polvo ? 120 : 360;
+
+            var emision = ps.emission;
+            emision.rateOverTime = polvo ? 32f : 120f;
+
+            var forma = ps.shape;
+            forma.shapeType = ParticleSystemShapeType.Circle;
+            forma.radius = haciaDentro ? RadioPista + 1f : RadioRobot + 0.8f;
+            forma.radiusThickness = 0f;
+            forma.rotation = new Vector3(90f, 0f, 0f);
+            forma.randomPositionAmount = polvo ? 0.4f : 1.2f;
+
+            // Hacia el centro (o hacia fuera) y girando: una espiral.
+            var vel = ps.velocityOverLifetime;
+            vel.enabled = true;
+            vel.space = ParticleSystemSimulationSpace.Local;
+            vel.x = new ParticleSystem.MinMaxCurve(0f);
+            vel.y = new ParticleSystem.MinMaxCurve(0f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f);
+            vel.radial = new ParticleSystem.MinMaxCurve(haciaDentro ? -velocidad : velocidad);
+            vel.orbitalY = new ParticleSystem.MinMaxCurve(haciaDentro ? 0.55f : -0.55f);
+
+            var color = ps.colorOverLifetime;
+            color.enabled = true;
+            var degradado = new Gradient();
+            degradado.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                              new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(1f, 0.75f), new GradientAlphaKey(0f, 1f) });
+            color.color = new ParticleSystem.MinMaxGradient(degradado);
+
+            var render = go.GetComponent<ParticleSystemRenderer>();
+            render.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            render.sharedMaterial = RecursosEfectos.Material(polvo ? "Nube" : "Chispa");
+            if (polvo)
+            {
+                render.renderMode = ParticleSystemRenderMode.Billboard;
+                var hojas = ps.textureSheetAnimation;
+                hojas.enabled = true;
+                hojas.numTilesX = 2;
+                hojas.numTilesY = 2;
+                hojas.frameOverTime = new ParticleSystem.MinMaxCurve(0f);
+                hojas.startFrame = new ParticleSystem.MinMaxCurve(0f, 3.999f);
+                var giro = ps.rotationOverLifetime;
+                giro.enabled = true;
+                giro.z = new ParticleSystem.MinMaxCurve(-1.5f, 1.5f);
+            }
+            else
+            {
+                render.renderMode = ParticleSystemRenderMode.Stretch;
+                render.velocityScale = 0.1f;
+                render.lengthScale = 2.5f;
+            }
         }
 
         /// <summary>Textura de la pantalla LED (píxeles gordos) con la cara que toca, en un material que brilla.</summary>
@@ -422,7 +543,7 @@ namespace BichoShow.Herramientas
         }
 
         /// <summary>Plantillas (apagadas) de lo que escupe: tuercas y pilas de goma que rebotan.</summary>
-        static GameObject[] Proyectiles()
+        static GameObject[] Proyectiles(CortacespedMecha mecha)
         {
             var plantillas = M.Grupo(mapa, "Plantillas");
             var rebote = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>($"{CarpetaMallas}/Goma.physicMaterial");
@@ -465,6 +586,80 @@ namespace BichoShow.Herramientas
                 E.Pieza(PrimitiveType.Cylinder, "Polo", pila.transform, new Vector3(0f, 1.05f, 0f), new Vector3(0.35f, 0.08f, 0.35f), Mat("PilaPolo", new Color(0.85f, 0.8f, 0.7f), 0.8f));
                 return pila;
             }
+
+            // --- La chatarra nueva (mallas de Blender: crear_chatarra_cortacesped.py) ---
+            // Muelle: bota mucho.
+            var saltarin = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>($"{CarpetaMallas}/Muelle.physicMaterial");
+            if (saltarin == null)
+            {
+                saltarin = new PhysicsMaterial("Muelle") { bounciness = 0.95f, bounceCombine = PhysicsMaterialCombine.Maximum, dynamicFriction = 0.2f, staticFriction = 0.2f };
+                AssetDatabase.CreateAsset(saltarin, $"{CarpetaMallas}/Muelle.physicMaterial");
+            }
+            var muelle = Pieza("un muelle", plantillas, MallaBlender("Muelle"), Mat("Muelle", new Color(0.25f, 0.85f, 0.75f), 0.75f), false);
+            var capsula = muelle.AddComponent<CapsuleCollider>();
+            capsula.height = 1.15f;
+            capsula.radius = 0.46f;
+            mecha.plantillaMuelle = Preparar(muelle, 2f);
+            capsula.sharedMaterial = saltarin;
+
+            // Lata de aceite: al caer, charco resbaladizo.
+            var lata = new GameObject("una lata de aceite");
+            Pieza("Lata", lata.transform, MallaBlender("Lata"), Mat("Lata", new Color(0.85f, 0.15f, 0.12f), 0.6f), false);
+            Pieza("Etiqueta", lata.transform, MallaBlender("LataEtiqueta"), Mat("LataEtiqueta", new Color(0.97f, 0.88f, 0.55f), 0.4f), false);
+            var cuerpoLata = lata.AddComponent<CapsuleCollider>();
+            cuerpoLata.height = 1.04f;
+            cuerpoLata.radius = 0.36f;
+            cuerpoLata.center = new Vector3(0f, 0.52f, 0f);
+            // (A.Disco coloca en coordenadas del mundo: las plantillas están en y = -60.)
+            var charco = new GameObject("Charco de aceite");
+            charco.transform.SetParent(plantillas, false);
+            charco.transform.position = new Vector3(0f, -60f, 0f);
+            A.Disco(charco.transform, "Mancha", new Vector3(0f, -60f, 0f), -60f + 0.02f, 1f, 0.02f, Mat("Aceite", new Color(0.07f, 0.06f, 0.09f), 0.97f));
+            A.Disco(charco.transform, "Brillo", new Vector3(0.3f, -60f, 0.25f), -60f + 0.03f, 0.35f, 0.01f, Neon("AceiteBrillo", new Color(0.55f, 0.4f, 0.9f), 0.6f));
+            foreach (var c in charco.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+            charco.transform.localScale = new Vector3(2.2f, 1f, 2.2f);
+            charco.AddComponent<CharcoAceite>().radio = 2.2f;
+            charco.SetActive(false);
+            mecha.plantillaLata = Preparar(lata, 3f);
+            lata.AddComponent<LataAceite>().charco = charco;
+
+            // Neumático: rueda hacia fuera (sin físicas).
+            var rueda = new GameObject("un neumatico");
+            rueda.transform.SetParent(plantillas, false);
+            rueda.transform.position = new Vector3(0f, -60f, 0f);
+            var dibujo = new GameObject("Dibujo").transform;
+            dibujo.SetParent(rueda.transform, false);
+            dibujo.localScale = Vector3.one * 0.8f;
+            Pieza("Goma", dibujo, MallaBlender("Neumatico"), Mat("Neumatico", new Color(0.09f, 0.09f, 0.11f), 0.25f), false);
+            Pieza("Llanta", dibujo, MallaBlender("Llanta"), Mat("Llanta", new Color(1f, 0.75f, 0.15f), 0.55f), false);
+            rueda.AddComponent<RuedaRodante>().radio = 0.8f;
+            rueda.SetActive(false);
+            mecha.plantillaRueda = rueda;
+
+            // Perno gigante: diana roja en el suelo y el perno que baja.
+            var perno = new GameObject("un perno gigante");
+            perno.transform.SetParent(plantillas, false);
+            perno.transform.position = new Vector3(0f, -60f, 0f);
+            var cuerpoPerno = new GameObject("Cuerpo").transform;
+            cuerpoPerno.SetParent(perno.transform, false);
+            Pieza("Rosca", cuerpoPerno, MallaBlender("PernoRosca"), Mat("PernoRosca", new Color(0.62f, 0.66f, 0.74f), 0.7f), false);
+            Pieza("Cabeza", cuerpoPerno, MallaBlender("PernoCabeza"), Mat("PernoCabeza", new Color(1f, 0.45f, 0.15f), 0.55f), false);
+            var diana = new GameObject("Diana").transform;
+            diana.SetParent(perno.transform, false);
+            var rojoDiana = MaterialEfecto("Diana", TexturaEfecto("Brillo", false), new Color(2.2f, 0.35f, 0.3f, 0.9f), true);
+            var aroDiana = Pieza("Aro", diana, Anillo("DianaAro", 2.0f, 2.35f, 0f, 360f, 0.04f, 0.02f), Neon("DianaNeon", new Color(1f, 0.2f, 0.15f), 2.5f), false);
+            aroDiana.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            var centroDiana = Pieza("Centro", diana, Anillo("DianaCentro", 0.55f, 0.85f, 0f, 360f, 0.04f, 0.02f), Neon("DianaNeon", new Color(1f, 0.2f, 0.15f), 2.5f), false);
+            centroDiana.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            var halo = A.Disco(diana, "Halo", new Vector3(0f, -60f, 0f), -60f + 0.015f, 2.3f, 0.01f, rojoDiana);
+            foreach (var c in halo.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+            foreach (var rr in perno.GetComponentsInChildren<Renderer>()) rr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            foreach (var rr in cuerpoPerno.GetComponentsInChildren<Renderer>()) rr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            var pg = perno.AddComponent<PernoGigante>();
+            pg.cuerpo = cuerpoPerno;
+            pg.diana = diana;
+            perno.SetActive(false);
+            mecha.plantillaPerno = perno;
 
             return new[]
             {
@@ -689,7 +884,7 @@ namespace BichoShow.Herramientas
         class MallaJson
         {
             public string nombre;
-            public float[] v, uv;
+            public float[] v, uv, n;
             public int[] t;
         }
 #pragma warning restore 0649
@@ -719,7 +914,13 @@ namespace BichoShow.Herramientas
                 malla.vertices = v;
                 malla.uv = uv;
                 malla.triangles = datos.t;
-                malla.RecalculateNormals();
+                if (datos.n != null && datos.n.Length == datos.v.Length)
+                {
+                    var n = new Vector3[v.Length];
+                    for (int i = 0; i < n.Length; i++) n[i] = new Vector3(datos.n[i * 3], datos.n[i * 3 + 1], datos.n[i * 3 + 2]);
+                    malla.normals = n;
+                }
+                else malla.RecalculateNormals();
             }
             return Guardar("Efecto" + nombre, malla);
         }

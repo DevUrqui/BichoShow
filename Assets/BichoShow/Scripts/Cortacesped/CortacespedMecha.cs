@@ -9,7 +9,9 @@ namespace BichoShow
     /// va lanzando ataques, que anuncia antes con la cara de su pantalla LED. La pelea va por
     /// fases (las pone RondaCortacesped según lo que va de ronda):
     ///  1. Calentamiento: onda láser (aros a ras de suelo que hay que saltar), aspiración (tira
-    ///     hacia el foso: hay que correr hacia fuera) y lluvia de tuercas y pilas que rebotan.
+    ///     hacia el foso: hay que correr hacia fuera) y lluvia de chatarra: tuercas, pilas y muelles
+    ///     que rebotan (desde la fase 2, también neumáticos que ruedan, latas de aceite que dejan
+    ///     charcos y abanicos de tuercas; en la 3, pernos gigantes que caen sobre una diana).
     ///  2. Cuchillas: además, el barrido de cuchillas (una cuchilla a ras de suelo que gira; hay
     ///     que saltarla) y el corte de césped (porciones del suelo que se ponen rojas, tiemblan y se
     ///     abren como una trampilla). Y
@@ -68,6 +70,20 @@ namespace BichoShow
         public Renderer remolino;
         [Tooltip("Ciclón alrededor del robot que sube hacia la turbina.")]
         public Renderer embudo;
+        [Tooltip("Anillos en el suelo con flechas hacia dentro (se cierran hacia el robot al aspirar), apagados.")]
+        public Transform[] anillosSuccion;
+        [Tooltip("Anillos con flechas hacia fuera (se abren al soplar), apagados.")]
+        public Transform[] anillosSoplido;
+        [Tooltip("Partículas (líneas de velocidad y polvo) que van hacia el robot: se encienden al aspirar.")]
+        public GameObject particulasAspira;
+        [Tooltip("Partículas que salen del robot: se encienden al soplar.")]
+        public GameObject particulasSopla;
+
+        [Header("Chatarra nueva (plantillas apagadas)")]
+        public GameObject plantillaMuelle;
+        public GameObject plantillaLata;
+        public GameObject plantillaRueda;
+        public GameObject plantillaPerno;
 
         [Header("Arena")]
         public float radioRobot = 4.2f;
@@ -135,10 +151,31 @@ namespace BichoShow
                 for (int i = 0; i < cuchillasEnUso; i++) yield return (anguloCuchilla + i * 180f, velocidadCuchillaActual);
             }
         }
-        /// <summary>Las tuercas y pilas que andan sueltas (para los bots).</summary>
+        /// <summary>Las tuercas, pilas, muelles y latas que andan sueltas (para los bots).</summary>
         public IEnumerable<Rigidbody> Proyectiles
         {
             get { foreach (var p in sueltos) if (p != null) yield return p; }
+        }
+        /// <summary>Los neumáticos que ruedan (para los bots).</summary>
+        public IEnumerable<RuedaRodante> Ruedas
+        {
+            get { foreach (var r in ruedas) if (r != null) yield return r; }
+        }
+        /// <summary>Sitios peligrosos del césped: dianas de pernos y charcos de aceite (centro y radio).</summary>
+        public IEnumerable<(Vector3 centro, float radio)> Peligros
+        {
+            get
+            {
+                foreach (var p in pernos) if (p != null && !p.Caido) yield return (p.transform.position, p.radio + 0.4f);
+                foreach (var c in charcos) if (c != null) yield return (c.transform.position, c.RadioActual);
+            }
+        }
+
+        /// <summary>Una lata ha dejado un charco (para que los bots lo esquiven y se quite al acabar).</summary>
+        public void RegistrarCharco(CharcoAceite c)
+        {
+            charcos.RemoveAll(x => x == null);
+            charcos.Add(c);
         }
 
         enum Estado { Descanso, Anuncio, Ataque }
@@ -191,7 +228,11 @@ namespace BichoShow
         bool aspirando, soplando;
         float finAspiracion, cambioSoplido, vueltaAspirar;
         bool tuercas;
-        float finTuercas, siguienteTuerca;
+        float finTuercas, siguienteTuerca, siguienteAbanico;
+        readonly List<RuedaRodante> ruedas = new List<RuedaRodante>();
+        readonly List<PernoGigante> pernos = new List<PernoGigante>();
+        readonly List<CharcoAceite> charcos = new List<CharcoAceite>();
+        float[] radiosSuccion, radiosSoplido;
         bool barriendo;
         int cuchillasEnUso;
         float anguloCuchilla, giradoCuchilla, vueltasCuchilla, velocidadCuchillaActual, invertirEn, pausaCuchilla;
@@ -235,6 +276,10 @@ namespace BichoShow
         void Start()
         {
             rachas = NuevasRachas(rafagas);
+            radiosSuccion = Repartir(anillosSuccion);
+            radiosSoplido = Repartir(anillosSoplido);
+            if (particulasAspira != null) particulasAspira.SetActive(false);
+            if (particulasSopla != null) particulasSopla.SetActive(false);
             flechas = NuevasRachas(flechasViento);
             hojas = NuevasRachas(recortes);
             if (remolino != null) { materialRemolino = remolino.material; colorRemolino = materialRemolino.GetColor(IdColor); remolino.gameObject.SetActive(false); }
@@ -276,6 +321,12 @@ namespace BichoShow
             Apagar(cuchillas);
             foreach (var p in sueltos) if (p != null) Destroy(p.gameObject);
             sueltos.Clear();
+            foreach (var r in ruedas) if (r != null) Destroy(r.gameObject);
+            foreach (var p in pernos) if (p != null) Destroy(p.gameObject);
+            foreach (var c in charcos) if (c != null) Destroy(c.gameObject);
+            ruedas.Clear();
+            pernos.Clear();
+            charcos.Clear();
             if (trozos != null)
                 foreach (var t in trozos)
                 {
@@ -365,6 +416,11 @@ namespace BichoShow
             MoverRachas(rafagas, rachas, dt, sentido, sopla, true);
             MoverRachas(flechasViento, flechas, dt, sentido, sopla, false);
             MoverHojas(dt, sentido, sopla);
+            // Anillos en el suelo que se cierran hacia el robot (o se abren al soplar), y partículas.
+            MoverAnillos(anillosSuccion, radiosSuccion, dt, sopla ? 0f : intensidadViento, -1f);
+            MoverAnillos(anillosSoplido, radiosSoplido, dt, sopla ? intensidadViento : 0f, 1f);
+            Encender(particulasAspira, aspirando && !soplando);
+            Encender(particulasSopla, aspirando && soplando);
 
             // El remolino del suelo y el ciclón: giran hacia donde va el aire y se encienden poco a poco.
             // (Girar en Y positivo hace que los brazos de la espiral parezcan ir hacia dentro.)
@@ -373,6 +429,46 @@ namespace BichoShow
             Mostrar(remolino, materialRemolino, colorRemolino, Quaternion.Euler(0f, giroRemolino, 0f), Vector3.one);
             float pulso = 1f + Mathf.Sin(Time.time * 5f) * 0.04f;
             Mostrar(embudo, materialEmbudo, colorEmbudo, Quaternion.Euler(0f, giroEmbudo, 0f), new Vector3(pulso, 1f, pulso));
+        }
+
+        /// <summary>Radios de partida de los anillos, repartidos por el césped.</summary>
+        float[] Repartir(Transform[] lista)
+        {
+            if (lista == null) return new float[0];
+            var r = new float[lista.Length];
+            float desde = radioFoso + 0.6f, largo = radioPista + 0.5f - desde;
+            for (int i = 0; i < r.Length; i++)
+            {
+                r[i] = desde + largo * i / Mathf.Max(1, r.Length);
+                if (lista[i] != null) lista[i].gameObject.SetActive(false);
+            }
+            return r;
+        }
+
+        /// <summary>Los anillos del suelo: se cierran (sentido -1) o se abren (+1); más cuanto más fuerte es el viento.</summary>
+        void MoverAnillos(Transform[] lista, float[] radios, float dt, float intensidad, float sentido)
+        {
+            if (lista == null || radios == null) return;
+            int visibles = Mathf.RoundToInt(lista.Length * Mathf.Clamp01(intensidad * 1.2f));
+            float desde = radioFoso + 0.6f, hasta = radioPista + 0.5f, largo = hasta - desde;
+            for (int i = 0; i < lista.Length && i < radios.Length; i++)
+            {
+                var t = lista[i];
+                if (t == null) continue;
+                bool ver = i < visibles;
+                if (t.gameObject.activeSelf != ver) t.gameObject.SetActive(ver);
+                if (!ver) continue;
+                radios[i] += sentido * Mathf.Lerp(4f, 8f, intensidad) * dt;
+                if (radios[i] < desde) radios[i] += largo;
+                if (radios[i] > hasta) radios[i] -= largo;
+                t.localScale = new Vector3(radios[i], 1f, radios[i]);
+                t.localRotation = Quaternion.Euler(0f, giroRemolino * 0.6f + i * 7f, 0f);
+            }
+        }
+
+        static void Encender(GameObject go, bool encendido)
+        {
+            if (go != null && go.activeSelf != encendido) go.SetActive(encendido);
         }
 
         void Mostrar(Renderer r, Material m, Color color, Quaternion giro, Vector3 escala)
@@ -557,8 +653,9 @@ namespace BichoShow
                     break;
                 case Ataque.LluviaTuercas:
                     tuercas = true;
-                    finTuercas = Time.time + Mathf.Lerp(6f, 8.5f, progreso);
+                    finTuercas = Time.time + Mathf.Lerp(6.5f, 9f, progreso);
                     siguienteTuerca = Time.time;
+                    siguienteAbanico = Time.time + 1.5f;
                     break;
                 case Ataque.Barrido:
                     barriendo = true;
@@ -706,9 +803,15 @@ namespace BichoShow
             {
                 if (Time.time >= siguienteTuerca)
                 {
-                    Escupir();
-                    if (fase >= 3) Escupir(); // en la furia, de dos en dos
-                    siguienteTuerca = Time.time + Mathf.Lerp(0.45f, 0.22f, progreso) * UnityEngine.Random.Range(0.8f, 1.2f);
+                    Lanzar();
+                    if (fase >= 3) Lanzar(); // en la furia, de dos en dos
+                    siguienteTuerca = Time.time + Mathf.Lerp(0.4f, 0.2f, progreso) * UnityEngine.Random.Range(0.8f, 1.2f);
+                }
+                // Desde la fase 2, de vez en cuando un abanico de cinco tuercas.
+                if (fase >= 2 && Time.time >= siguienteAbanico)
+                {
+                    Abanico();
+                    siguienteAbanico = Time.time + UnityEngine.Random.Range(2.6f, 3.6f);
                 }
                 if (Time.time >= finTuercas) tuercas = false;
             }
@@ -945,7 +1048,103 @@ namespace BichoShow
         // Lluvia de tuercas
         // ---------------------------------------------------------------------
 
-        void Escupir()
+        /// <summary>
+        /// Una pieza de chatarra al azar, según la fase: tuercas y pilas siempre, muelles desde el
+        /// principio, neumáticos y latas desde la fase 2 y pernos gigantes en la furia.
+        /// </summary>
+        void Lanzar()
+        {
+            float r = UnityEngine.Random.value;
+            float perno = fase >= 3 ? 0.14f : 0f;
+            float rueda = perno + (fase >= 2 ? 0.15f : 0f);
+            float lata = rueda + (fase >= 2 ? 0.13f : 0f);
+            float muelle = lata + (fase >= 3 ? 0.18f : fase == 2 ? 0.2f : 0.3f);
+            if (r < perno && plantillaPerno != null) SoltarPerno();
+            else if (r >= perno && r < rueda && plantillaRueda != null) SoltarRueda();
+            else if (r >= rueda && r < lata && plantillaLata != null) Escupir(plantillaLata);
+            else if (r >= lata && r < muelle && plantillaMuelle != null) Escupir(plantillaMuelle);
+            else Escupir();
+        }
+
+        /// <summary>Cinco tuercas a la vez, en abanico.</summary>
+        void Abanico()
+        {
+            for (int k = -2; k <= 2; k++) Escupir(null, k * 17f);
+            Sonidos.Reproducir(Sonido.Mecanismo, Centro, 0.8f, 1.4f);
+        }
+
+        /// <summary>Hacia dónde va lo que suelta: donde apunta el villano o hacia un bicho (más o menos).</summary>
+        Vector3 DireccionAtaque()
+        {
+            Vector3 apunta = Pilotado ? villano.StickMundo : Vector3.zero;
+            if (apunta != Vector3.zero) return apunta;
+            var vivos = new List<ControladorBicho>();
+            foreach (var b in ControladorBicho.Todos) if (b != null && !b.Retirado) vivos.Add(b);
+            Vector3 dir;
+            if (vivos.Count > 0)
+            {
+                dir = vivos[UnityEngine.Random.Range(0, vivos.Count)].transform.position - Centro;
+                dir.y = 0f;
+            }
+            else dir = Vector3.zero;
+            if (dir.sqrMagnitude < 0.01f) dir = Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f) * Vector3.forward;
+            return Quaternion.Euler(0f, UnityEngine.Random.Range(-14f, 14f), 0f) * dir.normalized;
+        }
+
+        /// <summary>Un neumático que sale rodando del borde del foso hacia fuera.</summary>
+        void SoltarRueda()
+        {
+            Vector3 dir = DireccionAtaque();
+            var plantilla = plantillaRueda.GetComponent<RuedaRodante>();
+            float radio = plantilla != null ? plantilla.radio : 0.8f;
+            Vector3 desde = Centro + dir * (radioFoso + 0.7f) + Vector3.up * radio;
+            var go = Instantiate(plantillaRueda, desde, Quaternion.LookRotation(dir));
+            go.name = plantillaRueda.name;
+            var rueda = go.GetComponent<RuedaRodante>();
+            rueda.robot = this;
+            rueda.direccion = dir;
+            rueda.velocidad = Mathf.Lerp(7.5f, 11f, progreso);
+            rueda.hasta = radioPista + 0.3f;
+            ruedas.RemoveAll(x => x == null);
+            ruedas.Add(rueda);
+            go.SetActive(true);
+            Efectos.Polvo(desde - Vector3.up * radio, 0.8f);
+            Sonidos.Reproducir(Sonido.Bote, desde, 0.8f, 0.7f);
+        }
+
+        /// <summary>Un perno gigante que cae sobre una diana: cerca de un bicho (o donde apunte el villano).</summary>
+        void SoltarPerno()
+        {
+            Vector3 punto;
+            Vector3 apunta = Pilotado ? villano.StickMundo : Vector3.zero;
+            if (apunta != Vector3.zero) punto = Centro + apunta * UnityEngine.Random.Range(radioFoso + 2.5f, radioPista - 2.5f);
+            else
+            {
+                Vector3 dir = DireccionAtaque();
+                punto = Centro + dir * UnityEngine.Random.Range(radioFoso + 2.5f, radioPista - 2.5f);
+                // Muchas veces, justo donde está ese bicho (con un poco de margen).
+                foreach (var b in ControladorBicho.Todos)
+                {
+                    if (b == null || b.Retirado || UnityEngine.Random.value < 0.5f) continue;
+                    Vector3 rel = b.transform.position - Centro;
+                    rel.y = 0f;
+                    if (rel.magnitude < radioFoso + 2.5f || rel.magnitude > radioPista - 2.5f) continue;
+                    punto = Centro + rel + UnityEngine.Random.insideUnitSphere.normalized * 1.2f;
+                    break;
+                }
+            }
+            punto.y = Centro.y;
+            var go = Instantiate(plantillaPerno, punto, Quaternion.identity);
+            go.name = plantillaPerno.name;
+            var perno = go.GetComponent<PernoGigante>();
+            perno.robot = this;
+            perno.aviso = Mathf.Lerp(1.35f, 1.05f, progreso);
+            pernos.RemoveAll(x => x == null);
+            pernos.Add(perno);
+            go.SetActive(true);
+        }
+
+        void Escupir(GameObject elegida = null, float? anguloFijo = null)
         {
             if (proyectiles == null || proyectiles.Length == 0 || boca == null) return;
 
@@ -965,15 +1164,16 @@ namespace BichoShow
             }
             desde += UnityEngine.Random.insideUnitSphere * 0.35f; // las de una ráfaga, sin salir una dentro de otra
 
-            var plantilla = proyectiles[UnityEngine.Random.Range(0, proyectiles.Length)];
+            var plantilla = elegida != null ? elegida : proyectiles[UnityEngine.Random.Range(0, proyectiles.Length)];
             var go = Instantiate(plantilla, desde, UnityEngine.Random.rotation);
             go.name = plantilla.name;
             go.SetActive(true);
             var rb = go.GetComponent<Rigidbody>();
             sueltos.Add(rb);
             if (go.TryGetComponent(out ProyectilChatarra chatarra)) chatarra.robot = this;
+            if (go.TryGetComponent(out LataAceite lata)) lata.robot = this;
 
-            float angulo = UnityEngine.Random.Range(-abre, abre);
+            float angulo = anguloFijo ?? UnityEngine.Random.Range(-abre, abre);
             Vector3 dir = Quaternion.Euler(0f, angulo, 0f) * delante;
             float distancia = UnityEngine.Random.Range(radioFoso + 1.5f, radioPista - 2f);
             Vector3 destino = Centro + dir * distancia;
