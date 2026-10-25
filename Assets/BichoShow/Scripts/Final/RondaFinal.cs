@@ -40,6 +40,7 @@ namespace BichoShow
 
         int llegados;
         readonly List<ControladorBicho> miembros = new List<ControladorBicho>();
+        readonly Dictionary<ControladorBicho, float> atrapadoDesde = new Dictionary<ControladorBicho, float>();
 
         public override string Titulo => "JUNTOS O NADA";
         protected override string Descripcion => "Cada pareja tiene su circuito y solo se supera cooperando. ¡La primera pareja en la meta gana!";
@@ -107,6 +108,7 @@ namespace BichoShow
         protected override void AlPrepararRonda()
         {
             llegados = 0;
+            atrapadoDesde.Clear();
             foreach (var e in equipos)
             {
                 e.puntos = 0;
@@ -196,6 +198,30 @@ namespace BichoShow
             }
 
             if (conJugadores > 0 && enMeta >= conJugadores) TerminarRonda();
+            Rescatar();
+        }
+
+        /// <summary>
+        /// Quien se queda atrapado (delante del bloque, en el fondo de un foso…) vuelve solo al
+        /// principio de su prueba a los pocos segundos.
+        /// </summary>
+        void Rescatar()
+        {
+            foreach (var b in ControladorBicho.Todos)
+            {
+                if (b == null || b.Retirado) continue;
+                int equipo = EquipoDe(b);
+                if (equipo < 0 || equipo >= equipos.Length || equipos[equipo].terminado) { atrapadoDesde.Remove(b); continue; }
+                var paso = PasoActual(equipo);
+                bool atrapado = (paso != null && paso.Atrapado(b)) || (b.EnSuelo && b.transform.position.y < -1.5f);
+                if (!atrapado) { atrapadoDesde.Remove(b); continue; }
+                if (!atrapadoDesde.TryGetValue(b, out float desde)) { atrapadoDesde[b] = Time.time; continue; }
+                if (Time.time - desde < 3f) continue;
+                atrapadoDesde.Remove(b);
+                b.Reaparecer();
+                Mensaje($"¡{NombreJugador(b)} vuelve al principio de la prueba!", ColorEquipo(equipo), 2f);
+                Estadisticas.Evento("rescate", b, paso != null ? paso.pista : "");
+            }
         }
 
         /// <summary>Al superar una prueba, si alguien se cae vuelve al inicio de la siguiente.</summary>

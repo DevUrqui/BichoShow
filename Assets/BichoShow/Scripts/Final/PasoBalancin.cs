@@ -43,14 +43,18 @@ namespace BichoShow
             bool frenado = balancin == null || balancin.Frenado;
             float angulo = balancin != null ? balancin.Angulo : 0f;
 
+            // Antes de subir a la tabla, ponerse en línea con ella (es estrecha: en diagonal se cae).
+            bool fueraDeLinea = !EnTabla(bot) && Mathf.Abs(bot.transform.position.x - xTabla) > 0.5f;
+
             // Con la tabla frenada (o sin compañero): cruzar sin más.
             if (companero == null || Cruzado(companero))
-                return frenado ? otraOrilla : orilla;
+                return frenado && !fueraDeLinea ? otraOrilla : orilla;
 
             bool cruzo = rol == 0 ? !(EnTabla(companero) && companero.transform.position.z > bot.transform.position.z + 1f)
                                   : (EnTabla(bot) && bot.transform.position.z > companero.transform.position.z + 1f);
             if (cruzo)
             {
+                if (fueraDeLinea) return orilla;
                 // Avanzar; si la tabla se inclina hacia delante, esperar a que el otro equilibre.
                 intensidad = angulo > 5f ? 0f : 0.7f;
                 return otraOrilla;

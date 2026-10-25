@@ -36,6 +36,12 @@ namespace BichoShow
         /// <summary>El bot está listo y solo falta su compañero (lo pide dando saltitos).</summary>
         public virtual bool EsperandoCompanero(ControladorBicho bot) => false;
 
+        /// <summary>
+        /// ¿Está ese bicho en un sitio del que no puede salir (p. ej. delante del bloque, que
+        /// ya no podrán empujar)? La ronda lo devuelve al principio de la prueba a los pocos segundos.
+        /// </summary>
+        public virtual bool Atrapado(ControladorBicho b) => false;
+
         /// <summary>Qué está haciendo el bot, para la etiqueta de depuración.</summary>
         public virtual string Estado(ControladorBicho bot) => pista;
 

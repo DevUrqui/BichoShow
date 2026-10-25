@@ -53,6 +53,8 @@ namespace BichoShow
             bool cruzo = companero == null || Cruzado(companero) || EnHueco(bot) || (rol == 0 && !EnHueco(companero));
             if (cruzo)
             {
+                // Antes de entrar al hueco, ponerse en línea con el camino (si no, entra en diagonal y se cae).
+                if (!EnHueco(bot) && Mathf.Abs(bot.transform.position.x - xCamino) > 0.5f) return orilla;
                 int t = TramoDe(bot);
                 // Avanzar mientras el tramo siguiente esté encendido.
                 int hasta = t;

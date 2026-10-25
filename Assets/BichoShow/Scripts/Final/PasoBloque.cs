@@ -300,7 +300,17 @@ namespace BichoShow
             return Vector3.Dot(relativo, AdelantePlano) < -1.1f && relativo.magnitude < 2.6f;
         }
 
-        public override bool EsperandoCompanero(ControladorBicho bot) => HaciendoFuerza(bot) && Empujando < Necesarios();
+        // Sin saltitos junto al bloque: saltando mientras empuja, se subía encima y caía al otro lado.
+        public override bool EsperandoCompanero(ControladorBicho bot) => false;
+
+        /// <summary>Delante del bloque (o en el foso) antes de que caiga: desde ahí ya no se puede empujar.</summary>
+        public override bool Atrapado(ControladorBicho b)
+        {
+            if (bloque == null || fase != Fase.Empujable) return false;
+            Vector3 relativo = Plano(b.transform.position - bloque.position);
+            float medioLargo = (HaciaZ ? bloque.transform.lossyScale.z : bloque.transform.lossyScale.x) * 0.5f;
+            return Vector3.Dot(relativo, AdelantePlano) > medioLargo + 0.3f && Mathf.Abs(Vector3.Dot(relativo, Vector3.Cross(Vector3.up, AdelantePlano))) < 2.5f;
+        }
 
         public override string Estado(ControladorBicho bot)
         {

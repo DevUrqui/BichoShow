@@ -26,7 +26,7 @@ namespace BichoShow.Herramientas
     {
         public const string RutaEscena = E.CarpetaEscenas + "/Final.unity";
         /// <summary>Súbela al cambiar el mapa: las escenas viejas avisan al darle a Play (EscenasAnticuadas).</summary>
-        public const int Version = 2;
+        public const int Version = 3;
 
         static readonly Color ColorRojo = new Color(1f, 0.38f, 0.35f);
         static readonly Color ColorAzul = new Color(0.3f, 0.6f, 1f);
@@ -203,6 +203,14 @@ namespace BichoShow.Herramientas
             E.Bloque("PasilloB", p1, new Vector3(lx, -1f, -20.7f), new Vector3(3f, 2f, 1.4f), m.suelo);
             foreach (float lado in new[] { -1f, 1f })
                 E.Bloque("ParedPasillo", p1, new Vector3(lx + 1.7f * lado, 0.3f, -25.5f), new Vector3(0.4f, 5.4f, 11f), m.pared);
+            // Techo bajo sobre el pasillo (invisible, con unas vigas para que se note): nadie puede
+            // subirse al bloque y pasar por encima (luego, atrapado delante, ya no se podría empujar).
+            var techo = new GameObject("Techo invisible");
+            techo.transform.SetParent(p1, false);
+            techo.transform.position = new Vector3(lx, 2.85f, -25.5f);
+            techo.AddComponent<BoxCollider>().size = new Vector3(3f, 0.5f, 10.6f);
+            for (float zv = -30.2f; zv <= -20.6f; zv += 2.4f)
+                E.Bloque("Viga", p1, new Vector3(lx, 2.75f, zv), new Vector3(3.4f, 0.25f, 0.25f), m.peligro);
             var bloque = E.Bloque("Bloque", p1, new Vector3(lx, 1.2f, -28f), new Vector3(2.8f, 2.4f, 2.4f), m.bloque);
             var rbBloque = bloque.AddComponent<Rigidbody>();
             rbBloque.mass = 45f;
