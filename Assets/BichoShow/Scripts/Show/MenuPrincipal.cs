@@ -69,7 +69,8 @@ namespace BichoShow
         // ---------------------------------------------------------------------
 
         /// <summary>¿Lleva el menú la cámara en esta pantalla?</summary>
-        bool CamaraPropia => PlayerInput.all.Count > 0 && (pantalla == Pantalla.Principal || pantalla == Pantalla.Opciones || pantalla == Pantalla.Vestuario);
+        bool CamaraPropia => PlayerInput.all.Count > 0 &&
+            (pantalla == Pantalla.Principal || pantalla == Pantalla.Opciones || pantalla == Pantalla.Vestuario || pantalla == Pantalla.Online);
 
         void LateUpdate()
         {
@@ -129,7 +130,7 @@ namespace BichoShow
         }
 
         /// <summary>Hasta dónde llega (en píxeles) la columna de botones de la izquierda, con su tarjeta.</summary>
-        float BordeColumna => Screen.width * 0.05f + EstiloShow.Px(pantalla == Pantalla.Principal ? 540f : 680f) + EstiloShow.Px(60f);
+        float BordeColumna => Screen.width * 0.05f + EstiloShow.Px(pantalla == Pantalla.Principal ? 540f : pantalla == Pantalla.Online ? 600f : 680f) + EstiloShow.Px(60f);
 
         /// <summary>Dónde se ve en pantalla (coordenadas de GUI) un punto del mundo; null si queda detrás.</summary>
         Vector2? EnPantalla(Vector3 mundo)
@@ -713,38 +714,62 @@ namespace BichoShow
             System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
             var (id, nombreCarrera) = RankingTiempos.Carreras[carreraRanking];
 
-            float y = h * 0.33f;
-            var cabecera = new Rect(w * 0.5f - px(520f), y, px(1040f), px(76f));
-            EstiloShow.Panel(cabecera, EstiloShow.Morado.WithAlpha(0.95f), cabecera.height * 0.5f);
-            EstiloShow.Texto(cabecera, $"<   RANKING · {nombreCarrera}   >", tam(40f), EstiloShow.Oro);
-            y += px(96f);
+            float y = h * 0.31f;
+            // Pestañas: una por carrera (la que se ve, en cian); con el stick se cambia.
+            var carreras = RankingTiempos.Carreras;
+            int tamPestana = tam(28f);
+            float huecoPestana = px(14f), glifo = px(52f);
+            var anchos = new float[carreras.Length];
+            float total = 0f;
+            for (int i = 0; i < carreras.Length; i++)
+            {
+                anchos[i] = EstiloShow.Ancho(carreras[i].nombre, tamPestana) + px(48f);
+                total += anchos[i] + (i > 0 ? huecoPestana : 0f);
+            }
+            float xp = w * 0.5f - total * 0.5f;
+            EstiloShow.Glifo(new Rect(xp - glifo - px(18f), y + px(2f), glifo, glifo), "<", EstiloShow.GlifoTecla);
+            for (int i = 0; i < carreras.Length; i++)
+            {
+                bool vista = i == carreraRanking;
+                var pestana = new Rect(xp, y, anchos[i], px(56f));
+                if (vista) pestana = EstiloShow.Escalar(pestana, 1.08f);
+                EstiloShow.Panel(pestana, vista ? EstiloShow.Cian : EstiloShow.MoradoOscuro.WithAlpha(0.85f), pestana.height * 0.5f, -1f, vista);
+                EstiloShow.Texto(pestana, carreras[i].nombre, tamPestana, vista ? Color.white : new Color(1f, 1f, 1f, 0.7f));
+                xp += anchos[i] + huecoPestana;
+            }
+            EstiloShow.Glifo(new Rect(xp - huecoPestana + px(18f), y + px(2f), glifo, glifo), ">", EstiloShow.GlifoTecla);
+            y += px(104f);
 
             float anchoTabla = px(560f), hueco = px(30f);
             float x0 = w * 0.5f - anchoTabla - hueco * 0.5f;
             var locales = RankingTiempos.Locales(id);
             var filasLocales = new List<(int, string, float, string)>();
             for (int i = 0; i < locales.Count; i++) filasLocales.Add((i + 1, locales[i].nombre, locales[i].segundos, locales[i].bicho));
-            Tabla(new Rect(x0, y, anchoTabla, h - y - px(110f)), "En este ordenador", filasLocales, filasLocales.Count == 0 ? "Aún no hay tiempos. ¡Corre esta carrera!" : "");
+            Tabla(new Rect(x0, y, anchoTabla, h - y - px(110f)), "En este ordenador", EstiloShow.Rosa, filasLocales, filasLocales.Count == 0 ? "Aún no hay tiempos. ¡Corre esta carrera!" : "");
 
             var mundiales = RankingOnline.Filas(id);
             var filasMundiales = new List<(int, string, float, string)>();
             foreach (var f in mundiales) filasMundiales.Add((f.puesto, f.nombre, f.segundos, f.bicho));
-            Tabla(new Rect(x0 + anchoTabla + hueco, y, anchoTabla, h - y - px(110f)), "Mundial", filasMundiales, RankingOnline.Estado(id));
+            Tabla(new Rect(x0 + anchoTabla + hueco, y, anchoTabla, h - y - px(110f)), "Mundial", EstiloShow.Oro, filasMundiales, RankingOnline.Estado(id));
 
             EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
                 ("Stick", EstiloShow.GlifoTecla, "otra carrera"), ("A", EstiloShow.GlifoA, "volver"));
         }
 
-        static void Tabla(Rect r, string titulo, List<(int puesto, string nombre, float segundos, string bicho)> filas, string aviso)
+        /// <summary>Una tabla de tiempos: cabecera de su color, medallas a los tres primeros y filas alternas.</summary>
+        static void Tabla(Rect r, string titulo, Color colorTitulo, List<(int puesto, string nombre, float segundos, string bicho)> filas, string aviso)
         {
             System.Func<float, float> px = EstiloShow.Px;
             System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
             float altoFila = Mathf.Min(px(46f), (r.height - px(70f)) / RankingTiempos.Puestos);
-            float alto = px(66f) + altoFila * Mathf.Max(1, Mathf.Min(filas.Count, RankingTiempos.Puestos)) + px(16f);
+            float alto = px(58f) + altoFila * Mathf.Max(1, Mathf.Min(filas.Count, RankingTiempos.Puestos)) + px(16f);
             var panel = new Rect(r.x, r.y, r.width, alto);
             EstiloShow.Panel(panel, EstiloShow.MoradoOscuro.WithAlpha(0.92f), px(26f));
-            EstiloShow.Texto(new Rect(r.x, r.y + px(8f), r.width, px(50f)), titulo, tam(34f), Color.white);
-            float y = r.y + px(66f);
+            float anchoTitulo = EstiloShow.Ancho(titulo, tam(30f)) + px(60f);
+            var pildora = new Rect(r.center.x - anchoTitulo * 0.5f, r.y - px(24f), anchoTitulo, px(52f));
+            EstiloShow.Panel(pildora, colorTitulo, pildora.height * 0.5f);
+            EstiloShow.Texto(pildora, titulo, tam(30f), Color.white);
+            float y = r.y + px(50f);
             if (filas.Count == 0)
             {
                 EstiloShow.Texto(new Rect(r.x + px(16f), y, r.width - px(32f), altoFila), aviso, tam(24f), new Color(1f, 1f, 1f, 0.85f),
@@ -756,9 +781,16 @@ namespace BichoShow
             {
                 if (puesto > RankingTiempos.Puestos) break;
                 var fila = new Rect(r.x + px(14f), y, r.width - px(28f), altoFila - px(4f));
-                if (puesto <= 3) EstiloShow.Panel(fila, medallas[puesto - 1].WithAlpha(0.35f), fila.height * 0.5f, -1f, false);
+                if (puesto <= 3) EstiloShow.Panel(fila, medallas[puesto - 1].WithAlpha(0.28f), fila.height * 0.5f, -1f, false);
+                else if (puesto % 2 == 0) EstiloShow.Panel(fila, EstiloShow.Morado.WithAlpha(0.35f), fila.height * 0.5f, -1f, false);
                 int t = tam(26f);
-                EstiloShow.Texto(new Rect(fila.x + px(10f), fila.y, px(56f), fila.height), $"{puesto}º", t, puesto <= 3 ? medallas[puesto - 1] : Color.white, TextAnchor.MiddleLeft);
+                var medalla = new Rect(fila.x + px(6f), fila.center.y - fila.height * 0.45f, fila.height * 0.9f, fila.height * 0.9f);
+                if (puesto <= 3)
+                {
+                    EstiloShow.Panel(medalla, medallas[puesto - 1], medalla.height * 0.5f, -1f, false);
+                    EstiloShow.Texto(medalla, puesto.ToString(), tam(24f), Color.white);
+                }
+                else EstiloShow.Texto(medalla, $"{puesto}º", tam(22f), new Color(1f, 1f, 1f, 0.75f));
                 EstiloShow.Texto(new Rect(fila.x + px(70f), fila.y, fila.width * 0.42f, fila.height), nombre, t, Color.white, TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
                 EstiloShow.Texto(new Rect(fila.x + fila.width * 0.52f, fila.y, fila.width * 0.24f, fila.height), bicho, tam(20f), new Color(1f, 1f, 1f, 0.75f), TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
                 EstiloShow.Texto(new Rect(fila.x + fila.width * 0.72f, fila.y, fila.width * 0.26f, fila.height), RankingTiempos.Formato(segundos), t, EstiloShow.Oro, TextAnchor.MiddleRight);
@@ -980,18 +1012,22 @@ namespace BichoShow
 
             if (pantalla == Pantalla.Online)
             {
-                float ancho = px(600f), alto = px(74f), paso = alto + px(16f);
-                EstiloShow.Texto(new Rect(x, y - px(84f), ancho * 1.5f, px(70f)), "JUGAR ONLINE", tam(60f), Color.white, TextAnchor.MiddleLeft);
+                float ancho = px(600f), alto = px(70f), paso = alto + px(14f);
+                y = h * 0.34f;
+                var tarjetaOnline = new Rect(x - px(26f), y - px(100f), ancho + px(70f), paso * 4f - px(14f) + px(230f));
+                EstiloShow.Panel(tarjetaOnline, EstiloShow.MoradoOscuro.WithAlpha(0.55f), px(40f), -1f, false);
+                EstiloShow.Texto(new Rect(x, y - px(86f), ancho, px(70f)), "JUGAR ONLINE", tam(58f), EstiloShow.Oro, TextAnchor.MiddleLeft);
                 string[] opciones = { "Partida rápida", "Crear una sala", "Unirse con código", "Volver" };
+                Color[] colores = { EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Oro, new Color(0.62f, 0.6f, 0.72f) };
                 for (int i = 0; i < opciones.Length; i++)
                 {
-                    EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion && !RedShow.Ocupado, tam(42f));
+                    EstiloShow.BotonMenu(new Rect(x, y, ancho, alto), opciones[i], i == seleccion && !RedShow.Ocupado, tam(40f), colores[i]);
                     y += paso;
                 }
-                EstiloShow.Texto(new Rect(x, y + px(4f), ancho * 1.3f, px(90f)),
+                EstiloShow.Texto(new Rect(x + px(10f), y + px(4f), ancho - px(20f), px(90f)),
                     "Partida rápida: te junta con quien esté buscando, sin código. O crea una sala y pasa el código a tus amigos.",
-                    tam(26f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
-                DibujarEstadoRed(new Rect(x, y + px(110f), ancho * 1.3f, px(70f)), RedShow.Buscando ? "Buscando partida (START para cancelar)" : "Abriendo el plató");
+                    tam(24f), Color.white, TextAnchor.UpperLeft, EstiloShow.Fuente.Texto, true);
+                DibujarEstadoRed(new Rect(x, tarjetaOnline.yMax + px(14f), ancho, px(64f)), RedShow.Buscando ? "Buscando partida (START para cancelar)" : "Abriendo el plató");
                 EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
                     ("Stick", EstiloShow.GlifoTecla, "elegir"), ("A", EstiloShow.GlifoA, "aceptar"));
                 return;
@@ -999,7 +1035,9 @@ namespace BichoShow
 
             if (pantalla == Pantalla.Codigo)
             {
-                EstiloShow.Texto(new Rect(0, h * 0.33f, w, px(70f)), "CÓDIGO DE LA SALA", tam(60f), Color.white);
+                var titulo = new Rect(w * 0.5f - px(330f), h * 0.33f, px(660f), px(70f));
+                EstiloShow.Panel(titulo, EstiloShow.Cian, titulo.height * 0.5f);
+                EstiloShow.Texto(titulo, "CÓDIGO DE LA SALA", tam(46f), Color.white);
                 float lado = px(112f), hueco = px(18f);
                 float total = codigo.Length * lado + (codigo.Length - 1) * hueco;
                 float cx = w * 0.5f - total * 0.5f, cy = h * 0.33f + px(96f);
@@ -1008,7 +1046,7 @@ namespace BichoShow
                     bool elegida = i == cursor && !RedShow.Ocupado;
                     var casilla = new Rect(cx + i * (lado + hueco), cy, lado, lado * 1.15f);
                     if (elegida) casilla = EstiloShow.Escalar(casilla, 1.06f + Mathf.Sin(Time.unscaledTime * 6f) * 0.02f);
-                    EstiloShow.Panel(casilla, elegida ? EstiloShow.Oro : EstiloShow.Morado.WithAlpha(0.92f), px(22f));
+                    EstiloShow.Panel(casilla, elegida ? EstiloShow.Oro : EstiloShow.MoradoOscuro.WithAlpha(0.92f), px(22f));
                     string letra = codigo[i] == '\0' ? (elegida && Mathf.Repeat(Time.unscaledTime, 1f) < 0.5f ? "_" : "") : codigo[i].ToString();
                     EstiloShow.Texto(casilla, letra, tam(76f), Color.white);
                 }
@@ -1027,7 +1065,9 @@ namespace BichoShow
             if (RedShow.PartidaRapida)
             {
                 // Partida rápida: sin código; la cuenta atrás hasta el show.
-                EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(14f), tarjeta.width, px(44f)), "PARTIDA RÁPIDA", tam(30f), Color.white);
+                var cabecera = new Rect(tarjeta.center.x - px(190f), tarjeta.y - px(22f), px(380f), px(52f));
+                EstiloShow.Panel(cabecera, EstiloShow.Rosa, cabecera.height * 0.5f);
+                EstiloShow.Texto(cabecera, "PARTIDA RÁPIDA", tam(30f), Color.white);
                 float? queda = RedShow.SegundosParaSalida;
                 string cuenta = queda.HasValue ? Mathf.CeilToInt(queda.Value).ToString() : "...";
                 float latido = queda.HasValue && queda.Value < 6f ? 1f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 6f)) * 0.08f : 1f;
@@ -1038,7 +1078,9 @@ namespace BichoShow
             }
             else
             {
-                EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(14f), tarjeta.width, px(44f)), "CÓDIGO DE LA SALA", tam(30f), Color.white);
+                var cabecera = new Rect(tarjeta.center.x - px(210f), tarjeta.y - px(22f), px(420f), px(52f));
+                EstiloShow.Panel(cabecera, EstiloShow.Cian, cabecera.height * 0.5f);
+                EstiloShow.Texto(cabecera, "CÓDIGO DE LA SALA", tam(30f), Color.white);
                 string codigoSala = RedShow.Codigo ?? "";
                 EstiloShow.Texto(new Rect(tarjeta.x, tarjeta.y + px(56f), tarjeta.width, px(110f)), string.Join(" ", codigoSala.ToCharArray()), tam(92f), EstiloShow.Oro);
                 string subtitulo = RedShow.EsAnfitrion
@@ -1078,8 +1120,9 @@ namespace BichoShow
                 // Menú de la sala, encima de todo.
                 int n = RedShow.EsAnfitrion ? 3 : 2;
                 var fondo = new Rect(w * 0.5f - px(380f), h * 0.4f, px(760f), px(120f + 90f * n));
-                EstiloShow.Panel(fondo, EstiloShow.Morado.WithAlpha(0.97f), px(40f));
-                EstiloShow.Texto(new Rect(fondo.x, fondo.y + px(16f), fondo.width, px(60f)), RedShow.PartidaRapida ? "PARTIDA RÁPIDA" : "SALA", tam(52f), Color.white);
+                EstiloShow.Panel(fondo, EstiloShow.MoradoOscuro.WithAlpha(0.95f), px(40f));
+                EstiloShow.Texto(new Rect(fondo.x, fondo.y + px(16f), fondo.width, px(60f)), RedShow.PartidaRapida ? "PARTIDA RÁPIDA" : "SALA", tam(52f), EstiloShow.Oro);
+                Color[] coloresSala = { EstiloShow.Verde, EstiloShow.Cian, EstiloShow.Rosa };
                 string[] opciones = RedShow.PartidaRapida
                     ? (RedShow.EsAnfitrion ? new[] { "¡Empezar ya!", "Seguir esperando", "Salir (se cierra para todos)" } : new[] { "Seguir esperando", "Salir" })
                     : RedShow.EsAnfitrion
@@ -1088,7 +1131,7 @@ namespace BichoShow
                 float by = fondo.y + px(96f);
                 for (int i = 0; i < opciones.Length; i++)
                 {
-                    EstiloShow.Boton(new Rect(fondo.x + px(70f), by, fondo.width - px(140f), px(74f)), opciones[i], i == seleccion && !RedShow.Ocupado, tam(40f));
+                    EstiloShow.BotonMenu(new Rect(fondo.x + px(70f), by, fondo.width - px(140f), px(70f)), opciones[i], i == seleccion && !RedShow.Ocupado, tam(38f), coloresSala[i % coloresSala.Length]);
                     by += px(90f);
                 }
                 EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
@@ -1175,6 +1218,9 @@ namespace BichoShow
                 DibujarVestuario(w, h);
                 return;
             }
+
+            // En el ranking y en el código, un velo detrás (las tablas y las casillas se leen mejor).
+            if (PlayerInput.all.Count > 0 && (pantalla == Pantalla.Ranking || pantalla == Pantalla.Codigo)) EstiloShow.FondoPlato(0.55f);
 
             // --- Título con letras que rebotan y cinta debajo ---
             Color[] coloresTitulo = { EstiloShow.Oro, EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Verde, EstiloShow.Lila };

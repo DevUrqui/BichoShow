@@ -383,7 +383,14 @@ namespace BichoShow
 
         string RolSiguiente => RondaActual + 1 < programa.Count ? RolSabotaje(programa[RondaActual + 1].escena) ?? "SABOTEADOR" : "SABOTEADOR";
 
-        string NombreDe(int i) => esHumano[i] ? $"J{i + 1}" : $"Bot {i + 1}";
+        /// <summary>El nombre que ha escrito el jugador (o J1, J2…); los bots, "Bot N".</summary>
+        string NombreDe(int i)
+        {
+            if (!esHumano[i]) return $"Bot {i + 1}";
+            foreach (var b in ControladorBicho.Todos)
+                if (b != null && b.IndiceJugador == i && !b.EsBot) return NombresJugadores.De(b);
+            return $"J{i + 1}";
+        }
 
         Color ColorDe(int i) => GestorJugadores.Instancia != null ? GestorJugadores.Instancia.ColorDe(i) : Color.white;
 
@@ -406,16 +413,39 @@ namespace BichoShow
                 case EstadoShow.Marcador:
                 {
                     EstiloShow.FondoPlato(0.95f);
-                    EstiloShow.Texto(new Rect(0, h * 0.04f, w, Px(120f)), "MARCADOR", Tam(110f), EstiloShow.Oro, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo, false, 1.2f);
-                    EstiloShow.Texto(new Rect(0, h * 0.04f + Px(108f), w, Px(50f)), $"tras la ronda {RondaActual + 1} de {programa.Count}", Tam(36f), Color.white);
-                    DibujarTabla(w, h, h * 0.27f);
+                    EstiloShow.Confeti(24, 0.5f);
+                    EstiloShow.TituloRebote(new Rect(0, h * 0.02f, w, Px(130f)), "MARCADOR", Tam(110f),
+                                            new[] { EstiloShow.Oro, EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Verde, EstiloShow.Lila }, 0.7f);
+                    var cinta = new Rect(w * 0.5f - Px(240f), h * 0.02f + Px(130f), Px(480f), Px(52f));
+                    EstiloShow.Panel(cinta, EstiloShow.Rosa, cinta.height * 0.5f);
+                    EstiloShow.Texto(cinta, $"TRAS LA RONDA {RondaActual + 1} DE {programa.Count}", Tam(30f), Color.white);
+                    DibujarPuntosRonda(w * 0.5f, cinta.yMax + Px(26f), RondaActual);
+                    DibujarTabla(w, h, h * 0.29f);
 
+                    // La siguiente prueba, en una tarjeta.
                     var siguiente = programa[RondaActual + 1];
-                    var cartel = new Rect(w * 0.5f - Px(560f), h - Px(250f), Px(1120f), Px(76f));
-                    EstiloShow.Panel(cartel, EstiloShow.Morado.WithAlpha(0.92f), cartel.height * 0.5f);
-                    EstiloShow.Texto(cartel, $"Siguiente: {siguiente.nombre}" + (siguiente.multiplicador > 1 ? $"  ·  ¡estrellas x{siguiente.multiplicador}!" : ""), Tam(40f), Color.white);
+                    var cartel = new Rect(w * 0.5f - Px(600f), h - Px(250f), Px(1200f), Px(78f));
+                    EstiloShow.Panel(cartel, EstiloShow.MoradoOscuro.WithAlpha(0.92f), cartel.height * 0.5f);
+                    var etiqueta = new Rect(cartel.x + Px(14f), cartel.y + Px(12f), Px(210f), cartel.height - Px(24f));
+                    EstiloShow.Panel(etiqueta, EstiloShow.Cian, etiqueta.height * 0.5f, -1f, false);
+                    EstiloShow.Texto(etiqueta, "SIGUIENTE", Tam(28f), Color.white);
+                    bool multiplica = siguiente.multiplicador > 1;
+                    EstiloShow.Texto(new Rect(etiqueta.xMax + Px(16f), cartel.y, cartel.width - etiqueta.width - Px(multiplica ? 290f : 50f), cartel.height),
+                                     siguiente.nombre, Tam(38f), Color.white);
+                    if (multiplica)
+                    {
+                        var chip = new Rect(cartel.xMax - Px(250f), cartel.y + Px(12f), Px(236f), cartel.height - Px(24f));
+                        EstiloShow.Panel(chip, EstiloShow.Oro, chip.height * 0.5f, -1f, false);
+                        EstiloShow.Texto(chip, $"¡ESTRELLAS x{siguiente.multiplicador}!", Tam(26f), Color.white);
+                    }
                     if (saboteadorSiguiente >= 0)
-                        EstiloShow.Texto(new Rect(0, h - Px(168f), w, Px(46f)), $"{NombreDe(saboteadorSiguiente)} va último y será {RolSiguiente}", Tam(32f), EstiloShow.Lila);
+                    {
+                        string texto = $"{NombreDe(saboteadorSiguiente)} va último y será {RolSiguiente}";
+                        float ancho = EstiloShow.Ancho(texto, Tam(30f)) + Px(60f);
+                        var pildora = new Rect(w * 0.5f - ancho * 0.5f, h - Px(162f), ancho, Px(50f));
+                        EstiloShow.Panel(pildora, new Color(0.45f, 0.2f, 0.7f, 0.95f), pildora.height * 0.5f, -1f, false);
+                        EstiloShow.Texto(pildora, texto, Tam(30f), EstiloShow.Lila);
+                    }
                     if (Time.time - inicioEstado > 1f)
                         EstiloShow.Ayuda(new Rect(0, h - Px(98f), w, Px(54f)), ("A", EstiloShow.GlifoA, "seguir"));
                     break;
@@ -427,6 +457,7 @@ namespace BichoShow
                     bool empate = Enumerable.Range(0, 4).Count(i => participa[i] && estrellas[i] == estrellas[ganador]) > 1;
                     Color colorGanador = empate ? EstiloShow.Oro : ColorDe(ganador);
                     EstiloShow.FondoPlato(0.95f, new Vector2(w * 0.5f, h * 0.13f), colorGanador);
+                    EstiloShow.Confeti(80, 0.9f);
 
                     string titulo = empate ? "¡EMPATE EN LO MÁS ALTO!" : $"¡GANA {NombreDe(ganador).ToUpper()}!";
                     EstiloShow.TituloRebote(new Rect(0, h * 0.03f, w, Px(170f)), titulo, Ajustar(titulo, Tam(140f), w * 0.8f),
@@ -447,6 +478,24 @@ namespace BichoShow
             }
         }
 
+        /// <summary>Un punto por prueba del show: las jugadas en verde, la actual dorada y latiendo; la final, una estrella.</summary>
+        void DibujarPuntosRonda(float centroX, float centroY, int actual)
+        {
+            float punto = Px(26f), separacion = Px(40f);
+            float px0 = centroX - (programa.Count - 1) * separacion * 0.5f;
+            for (int i = 0; i < programa.Count; i++)
+            {
+                var c = new Vector2(px0 + i * separacion, centroY);
+                bool esta = i == actual;
+                float lado = esta ? punto * (1.25f + Mathf.Sin(Time.unscaledTime * 6f) * 0.08f) : punto;
+                var r = new Rect(c.x - lado * 0.5f, c.y - lado * 0.5f, lado, lado);
+                if (programa[i].esFinal)
+                    EstiloShow.Estrella(EstiloShow.Escalar(r, 1.3f), esta || i < actual ? EstiloShow.Oro : EstiloShow.Morado, esta ? Time.unscaledTime * 80f : 0f);
+                else
+                    EstiloShow.Panel(r, i < actual ? EstiloShow.Verde : esta ? EstiloShow.Oro : EstiloShow.Morado, lado * 0.5f, Px(2f), false);
+            }
+        }
+
         /// <summary>
         /// Cartel de la siguiente prueba mientras carga y se presenta la ronda: qué ronda es (con un
         /// punto por prueba del show), el nombre, el tipo de prueba, de qué va y un consejo, las
@@ -462,19 +511,7 @@ namespace BichoShow
             var cinta = new Rect(w * 0.5f - Px(260f), h * 0.075f, Px(520f), Px(74f));
             EstiloShow.Panel(cinta, prueba.esFinal ? EstiloShow.Oro : EstiloShow.Rosa, cinta.height * 0.5f);
             EstiloShow.Texto(cinta, prueba.esFinal ? "¡LA GRAN FINAL!" : $"RONDA {RondaActual + 1} DE {programa.Count}", Tam(44f), Color.white);
-            float punto = Px(26f), separacion = Px(40f);
-            float px0 = w * 0.5f - (programa.Count - 1) * separacion * 0.5f;
-            for (int i = 0; i < programa.Count; i++)
-            {
-                var c = new Vector2(px0 + i * separacion, cinta.yMax + Px(30f));
-                bool actual = i == RondaActual;
-                float lado = actual ? punto * (1.25f + Mathf.Sin(Time.unscaledTime * 6f) * 0.08f) : punto;
-                var r = new Rect(c.x - lado * 0.5f, c.y - lado * 0.5f, lado, lado);
-                if (programa[i].esFinal)
-                    EstiloShow.Estrella(EstiloShow.Escalar(r, 1.3f), actual || i < RondaActual ? EstiloShow.Oro : EstiloShow.Morado, actual ? Time.unscaledTime * 80f : 0f);
-                else
-                    EstiloShow.Panel(r, i < RondaActual ? EstiloShow.Verde : actual ? EstiloShow.Oro : EstiloShow.Morado, lado * 0.5f, Px(2f), false);
-            }
+            DibujarPuntosRonda(w * 0.5f, cinta.yMax + Px(30f), RondaActual);
 
             // El nombre de la prueba.
             string nombre = prueba.nombre.ToUpper();
