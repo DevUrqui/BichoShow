@@ -12,16 +12,21 @@ namespace BichoShow.Herramientas
     /// <summary>
     /// Menú "BichoShow > Crear escena: Gran final (Juntos o nada)".
     /// Dos carriles en espejo (rojo a la izquierda, azul a la derecha) con un vacío entre medias.
-    /// Cada carril, de la salida (z = -46) a la meta (z = 34):
+    /// Cada carril, de la salida (z = -46) a la meta (z = 108):
     ///   1. Pasillo estrecho tapado por un bloque que hay que empujar entre dos hasta un foso.
     ///   2. Puente levadizo sobre un hueco: uno pisa una placa mientras el otro cruza.
     ///   3. Puerta que solo se abre pisando a la vez dos placas separadas.
-    ///   4. Ascensor que solo sube con los dos encima, hasta la meta en lo alto.
-    /// Trampas para el saboteador: una barredora y dos empujadores por carril.
+    ///   4. Pasillos cruzados: las compuertas de cada pasillo las abren las placas del otro.
+    ///   5. Camino de baldosas: cada tramo está solo mientras el compañero pisa su placa.
+    ///   6. Balancín: uno cruza y el otro hace de contrapeso; al llegar, se pisa el freno.
+    ///   7. Ascensor que solo sube con los dos encima, hasta la meta en lo alto.
+    /// Trampas (para el saboteador, o solas si no hay): dos barredoras y tres empujadores por carril.
     /// </summary>
     public static class CreadorFinal
     {
-        const string RutaEscena = E.CarpetaEscenas + "/Final.unity";
+        public const string RutaEscena = E.CarpetaEscenas + "/Final.unity";
+        /// <summary>Súbela al cambiar el mapa: las escenas viejas avisan al darle a Play (EscenasAnticuadas).</summary>
+        public const int Version = 2;
 
         static readonly Color ColorRojo = new Color(1f, 0.38f, 0.35f);
         static readonly Color ColorAzul = new Color(0.3f, 0.6f, 1f);
@@ -40,9 +45,6 @@ namespace BichoShow.Herramientas
                 EditorUtility.DisplayDialog("Bicho Show", $"No encuentro los controles en:\n{E.RutaControles}", "Vale");
                 return;
             }
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(RutaEscena) != null &&
-                !EditorUtility.DisplayDialog("Bicho Show", "La escena de la final ya existe. ¿Rehacerla?", "Rehacer", "Cancelar"))
-                return;
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
             E.CrearCarpeta(E.Raiz, "Materiales");
@@ -114,9 +116,9 @@ namespace BichoShow.Herramientas
             var carrilRojo = CrearCarril(mapa, 0, -7f, -1f, m);
             var carrilAzul = CrearCarril(mapa, 1, 7f, 1f, m);
 
-            M.Cartel(mapa, "JUNTOS O NADA", new Vector3(0f, 9f, 35.8f), 3.5f, Color.white);
+            M.Cartel(mapa, "JUNTOS O NADA", new Vector3(0f, 9f, 109.8f), 3.5f, Color.white);
             CrearPlato(mapa);
-            var vacio = M.ZonaTrigger<ZonaMortal>("ZonaVacio", mapa, new Vector3(0f, -12f, -5f), new Vector3(120f, 4f, 160f));
+            var vacio = M.ZonaTrigger<ZonaMortal>("ZonaVacio", mapa, new Vector3(0f, -12f, 30f), new Vector3(120f, 4f, 230f));
             vacio.motivoObjeto = "se ha caído al vacío";
 
             // Plataforma de saboteador (jugando la final suelta), en la esquina de la salida roja.
@@ -167,8 +169,10 @@ namespace BichoShow.Herramientas
                 new RondaFinal.Equipo { nombre = "Rojo", color = ColorRojo, puntosControl = carrilRojo.controles, pasos = carrilRojo.pasos },
                 new RondaFinal.Equipo { nombre = "Azul", color = ColorAzul, puntosControl = carrilAzul.controles, pasos = carrilAzul.pasos },
             };
-            ronda.confeti = M.Particulas("Confeti", rondaGo.transform, new Vector3(0f, 4.3f, 30f),
+            ronda.confeti = M.Particulas("Confeti", rondaGo.transform, new Vector3(0f, 4.3f, 104f),
                 ColorRojo, new Color(1f, 0.92f, 0.3f), 150, 5f, 10f, m.particula);
+
+            new GameObject(EscenasAnticuadas.Marca + Version);
 
             Ambientes.Aplicar(Ambientes.Tema.Plato);
             EditorSceneManager.SaveScene(escena, RutaEscena);
@@ -221,23 +225,7 @@ namespace BichoShow.Herramientas
             E.Bloque("Orilla", p2, new Vector3(lx, -1f, -15f), new Vector3(10f, 2f, 10f), m.suelo);
             E.Bloque("OtraOrilla", p2, new Vector3(lx, -1f, 7f), new Vector3(10f, 2f, 18f), m.suelo);
 
-            var barredora = new GameObject($"Barredora ({campo})");
-            barredora.transform.SetParent(p2, false);
-            barredora.transform.position = new Vector3(lx, 0f, -14.5f);
-            barredora.AddComponent<Rigidbody>().isKinematic = true;
-            var giro = barredora.AddComponent<BarraGiratoria>();
-            giro.velocidadGiro = equipo == 0 ? 55f : -55f;
-            // Las colisiones siguen siendo el cilindro y el brazo de siempre; lo que se ve es el modelo del kit.
-            var eje = E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.7f, 0.6f, 0.7f), m.peligro, conCollider: true);
-            var brazo = E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(7f, 0.4f, 0.4f), m.obstaculo, local: true);
-            Object.DestroyImmediate(eje.GetComponent<MeshRenderer>());
-            Object.DestroyImmediate(brazo.GetComponent<MeshRenderer>());
-            var modeloBarredora = Kit("Barredora", barredora.transform, Vector3.zero, local: true);
-            giro.nombreTrampa = $"Barredora ({campo})";
-            giro.enfriamiento = 8f;
-            giro.radioEfecto = 5f;
-            giro.alturaMarcador = 3f;
-            giro.renderersAviso = modeloBarredora.GetComponentsInChildren<Renderer>();
+            Barredora(p2, $"Barredora ({campo})", new Vector3(lx, 0f, -14.5f), equipo == 0 ? 55f : -55f, m);
 
             var pivote = new GameObject("PuenteLevadizo");
             pivote.transform.SetParent(p2, false);
@@ -284,37 +272,142 @@ namespace BichoShow.Herramientas
             paso3.placaB = puerta.placaB;
             paso3.salida = new Vector3(lx, 0f, 15.5f);
 
-            // --- 4. El ascensor y la meta ---
-            var p4 = M.Grupo(carril, "4 Ascensor");
-            E.Bloque("Explanada", p4, new Vector3(lx, -1f, 20f), new Vector3(10f, 2f, 8f), m.suelo);
-            E.Bloque("Repisa", p4, new Vector3(lx, 1f, 29f), new Vector3(10f, 6f, 10f), m.pared);
-            var ascensorGo = E.Bloque("Ascensor", p4, new Vector3(lx, 0.15f, 21.8f), new Vector3(4f, 0.3f, 4f), m.ascensor);
+            // --- 4. Los pasillos cruzados (las compuertas de un pasillo las abren las placas del otro) ---
+            var p4 = M.Grupo(carril, "4 Pasillos");
+            E.Bloque("SueloPasillos", p4, new Vector3(lx, -1f, 29f), new Vector3(10f, 2f, 26f), m.suelo);
+            const float z0 = 17f, largoPasillos = 20f;
+            float xA = lx - 1.6f, xB = lx + 1.6f;
+            E.Bloque("ParedMedio", p4, new Vector3(lx, 1.5f, z0 + largoPasillos * 0.5f), new Vector3(0.4f, 3f, largoPasillos), m.pared);
+            foreach (float lado in new[] { -1f, 1f })
+                E.Bloque("ParedFuera", p4, new Vector3(lx + lado * 4f, 1.5f, z0 + largoPasillos * 0.5f), new Vector3(2f, 3f, largoPasillos), m.pared);
+            // B: placa, compuerta, placa, compuerta… ; A: compuerta, placa, compuerta, placa…
+            var placasB = new List<PlacaPresion>();
+            var placasA = new List<PlacaPresion>();
+            for (int i = 0; i < 3; i++)
+            {
+                placasB.Add(Placa(p4, $"PlacaB{i + 1}", new Vector3(xB, 0f, z0 + 1.5f + 6f * i), equipo, m));
+                placasA.Add(Placa(p4, $"PlacaA{i + 1}", new Vector3(xA, 0f, z0 + 6f + 6f * i), equipo, m));
+            }
+            var compuertasA = new List<Compuerta>();
+            var compuertasB = new List<Compuerta>();
+            for (int i = 0; i < 3; i++)
+            {
+                compuertasA.Add(CompuertaPasillo(p4, $"CompuertaA{i + 1}", new Vector3(xA, 0f, z0 + 3f + 6f * i), placasB[i], equipo, colorEquipo));
+                compuertasB.Add(CompuertaPasillo(p4, $"CompuertaB{i + 1}", new Vector3(xB, 0f, z0 + 4.5f + 6f * i), placasA[i], equipo, colorEquipo));
+            }
+            M.Cartel(p4, "TU PAREJA TE ABRE", new Vector3(lx, 4f, z0 - 0.4f), 0.6f, Color.white);
+
+            var paso4 = p4.gameObject.AddComponent<PasoPasillos>();
+            paso4.equipo = equipo;
+            paso4.pista = "Cada uno por un pasillo: ¡tu placa abre su compuerta!";
+            paso4.zFin = z0 + largoPasillos + 0.2f;
+            paso4.zEntrada = z0;
+            paso4.xA = xA;
+            paso4.xB = xB;
+            paso4.placasA = placasA.ToArray();
+            paso4.placasB = placasB.ToArray();
+            paso4.compuertasA = compuertasA.ToArray();
+            paso4.compuertasB = compuertasB.ToArray();
+            paso4.salida = new Vector3(lx, 0f, 39.5f);
+
+            // --- 5. El camino de baldosas (z 42-56: cada tramo, mientras se pisa su placa) ---
+            var p5 = M.Grupo(carril, "5 Baldosas");
+            const float zHueco5 = 42f, zFin5 = 56f;
+            E.Bloque("OrillaLejana", p5, new Vector3(lx, -1f, 61f), new Vector3(10f, 2f, 10f), m.suelo);
+            float xCamino = lx - fuera * 1.8f;
+            var baldosa = E.CrearMaterial("Baldosa", new Color(0.4f, 0.95f, 1f), 0.6f);
+            var tramos = new GameObject[3];
+            var placasTramo = new PlacaPresion[3];
+            float largoTramo = (zFin5 - zHueco5) / tramos.Length;
+            for (int i = 0; i < tramos.Length; i++)
+            {
+                var tramo = new GameObject($"Tramo {i + 1}");
+                tramo.transform.SetParent(p5, false);
+                float zc = zHueco5 + largoTramo * (i + 0.5f);
+                // Dos baldosas por tramo, con una raya entre medias (se nota que son losas).
+                E.Bloque("Baldosa", tramo.transform, new Vector3(xCamino, -0.16f, zc - largoTramo * 0.25f), new Vector3(2.4f, 0.32f, largoTramo * 0.5f - 0.06f), baldosa);
+                E.Bloque("Baldosa", tramo.transform, new Vector3(xCamino, -0.16f, zc + largoTramo * 0.25f), new Vector3(2.4f, 0.32f, largoTramo * 0.5f - 0.06f), baldosa);
+                tramos[i] = tramo;
+                placasTramo[i] = Placa(p5, $"PlacaTramo{i + 1}", new Vector3(lx + fuera * (0.6f + 1.8f * i), 0f, 39.8f), equipo, m);
+                M.Cartel(p5, (i + 1).ToString(), new Vector3(lx + fuera * (0.6f + 1.8f * i), 1.4f, 40.9f), 0.5f, Color.white);
+            }
+            var placaTodo = Placa(p5, "PlacaLejana", new Vector3(lx + fuera * 2.4f, 0f, 57.6f), equipo, m);
+            var camino = p5.gameObject.AddComponent<CaminoBaldosas>();
+            camino.equipo = equipo;
+            camino.tramos = tramos;
+            camino.placas = placasTramo;
+            camino.placaLejos = placaTodo;
+            M.Cartel(p5, "PISA EL TRAMO DE TU PAREJA", new Vector3(lx, 3.2f, 41.4f), 0.5f, Color.white);
+            Empujador(p5, $"Empujador ({campo}) 3", lx, fuera, 38.6f, 0.8f, m);
+
+            var paso5 = p5.gameObject.AddComponent<PasoBaldosas>();
+            paso5.equipo = equipo;
+            paso5.pista = "Uno pisa las placas 1-2-3, el otro cruza por las baldosas";
+            paso5.zFin = zFin5 + 0.4f;
+            paso5.camino = camino;
+            paso5.xCamino = xCamino;
+            paso5.zInicioHueco = zHueco5;
+            paso5.zFinHueco = zFin5;
+            paso5.salida = new Vector3(xCamino, 0f, 57.4f);
+
+            // --- 6. El balancín (z 66-82): uno cruza, el otro hace de contrapeso ---
+            var p6 = M.Grupo(carril, "6 Balancin");
+            const float zHueco6 = 66f, zFin6 = 82f, zEje = 74f;
+            Barredora(p6, $"Barredora ({campo}) 2", new Vector3(lx, 0f, 61.6f), equipo == 0 ? -60f : 60f, m);
+            E.Bloque("OrillaMeta", p6, new Vector3(lx, -1f, 90f), new Vector3(10f, 2f, 16f), m.suelo);
+            var eje = new GameObject("Balancin");
+            eje.transform.SetParent(p6, false);
+            eje.transform.position = new Vector3(lx, 0f, zEje);
+            eje.AddComponent<Rigidbody>().isKinematic = true;
+            E.Bloque("Tabla", eje.transform, new Vector3(0f, -0.18f, 0f), new Vector3(2.6f, 0.4f, 20f), m.madera, local: true);
+            E.Bloque("Raya", eje.transform, new Vector3(0f, 0.03f, 0f), new Vector3(2.62f, 0.04f, 0.3f), colorEquipo, local: true);
+            E.Pieza(PrimitiveType.Cylinder, "Eje", eje.transform, new Vector3(0f, -0.55f, 0f), new Vector3(0.6f, 1.4f, 0.6f), m.peligro).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            var balancin = eje.AddComponent<Balancin>();
+            balancin.equipo = equipo;
+            balancin.freno = Placa(p6, "Freno", new Vector3(lx + fuera * 2.6f, 0f, zFin6 + 1.5f), equipo, m);
+            M.Cartel(p6, "FRENO", new Vector3(lx + fuera * 2.6f, 1.6f, zFin6 + 2.6f), 0.5f, Color.white);
+            M.Cartel(p6, "UNO CRUZA, OTRO HACE DE CONTRAPESO", new Vector3(lx, 3.2f, zHueco6 - 1.4f), 0.45f, Color.white);
+
+            var paso6 = p6.gameObject.AddComponent<PasoBalancin>();
+            paso6.equipo = equipo;
+            paso6.pista = "¡Contrapeso! Uno cruza, el otro al revés; al llegar, pisa el freno";
+            paso6.zFin = zFin6 + 0.4f;
+            paso6.balancin = balancin;
+            paso6.xTabla = lx;
+            paso6.zInicioHueco = zHueco6;
+            paso6.zFinHueco = zFin6;
+            paso6.salida = new Vector3(lx, 0f, 86f);
+
+            // --- 7. El ascensor y la meta ---
+            var p7 = M.Grupo(carril, "7 Ascensor");
+            E.Bloque("Repisa", p7, new Vector3(lx, 1f, 103f), new Vector3(10f, 6f, 10f), m.pared);
+            var ascensorGo = E.Bloque("Ascensor", p7, new Vector3(lx, 0.15f, 95.8f), new Vector3(4f, 0.3f, 4f), m.ascensor);
             ascensorGo.AddComponent<Rigidbody>().isKinematic = true;
             var ascensor = ascensorGo.AddComponent<Ascensor>();
             ascensor.equipo = equipo;
             ascensor.subida = 3.7f;
-            M.Cartel(p4, "SUBID LOS DOS", new Vector3(lx, 2.8f, 23.85f), 0.7f, Color.white);
-            Empujador(p4, $"Empujador ({campo}) 2", lx, fuera, 18f, 1.6f, m);
+            M.Cartel(p7, "SUBID LOS DOS", new Vector3(lx, 2.8f, 97.85f), 0.7f, Color.white);
+            Empujador(p7, $"Empujador ({campo}) 2", lx, fuera, 92f, 1.6f, m);
 
             // Meta en lo alto: arco hinchable del equipo, trofeo, cañones de confeti y altavoz
-            M.Decorado(PrimitiveType.Cube, "Banderin", p4, new Vector3(lx, 4.02f, 26f), new Vector3(10f, 0.04f, 0.5f), colorEquipo);
-            KitObjetos.Poner("ArcoMeta", p4, new Vector3(lx, 4f, 26f), 0f, colorEquipo, kit: KitObjetos.KitPlato);
-            Kit("Trofeo", p4, new Vector3(lx, 4f, 32f), 180f, 1.2f);
-            Kit("CanonConfeti", p4, new Vector3(lx - fuera * 3.8f, 4f, 33f), 180f - fuera * 20f);
-            Kit("CanonConfeti", p4, new Vector3(lx + fuera * 2.4f, 4f, 33.3f), 180f + fuera * 20f);
-            Kit("Altavoz", p4, new Vector3(lx + fuera * 4.1f, 4f, 33.3f), 180f);
-            M.Cartel(p4, "META", new Vector3(lx, 8f, 33.5f), 1.4f, Color.white);
+            M.Decorado(PrimitiveType.Cube, "Banderin", p7, new Vector3(lx, 4.02f, 100f), new Vector3(10f, 0.04f, 0.5f), colorEquipo);
+            KitObjetos.Poner("ArcoMeta", p7, new Vector3(lx, 4f, 100f), 0f, colorEquipo, kit: KitObjetos.KitPlato);
+            Kit("Trofeo", p7, new Vector3(lx, 4f, 106f), 180f, 1.2f);
+            Kit("CanonConfeti", p7, new Vector3(lx - fuera * 3.8f, 4f, 107f), 180f - fuera * 20f);
+            Kit("CanonConfeti", p7, new Vector3(lx + fuera * 2.4f, 4f, 107.3f), 180f + fuera * 20f);
+            Kit("Altavoz", p7, new Vector3(lx + fuera * 4.1f, 4f, 107.3f), 180f);
+            M.Cartel(p7, "META", new Vector3(lx, 8f, 107.5f), 1.4f, Color.white);
             var meta = new GameObject("Meta").AddComponent<PlacaPresion>();
-            meta.transform.SetParent(p4, false);
-            meta.transform.position = new Vector3(lx, 4f, 30f);
+            meta.transform.SetParent(p7, false);
+            meta.transform.position = new Vector3(lx, 4f, 104f);
             meta.tamano = new Vector3(9f, 3f, 7f);
             meta.equipo = equipo;
 
-            var paso4 = p4.gameObject.AddComponent<PasoAscensor>();
-            paso4.equipo = equipo;
-            paso4.pista = "¡Subid los dos al ascensor!";
-            paso4.ascensor = ascensor;
-            paso4.meta = meta;
+            var paso7 = p7.gameObject.AddComponent<PasoAscensor>();
+            paso7.equipo = equipo;
+            paso7.pista = "¡Subid los dos al ascensor!";
+            paso7.ascensor = ascensor;
+            paso7.meta = meta;
 
             // --- Puntos de control: salida y el inicio de cada prueba ---
             var controles = new[]
@@ -323,9 +416,44 @@ namespace BichoShow.Herramientas
                 Control(carril, "Control1", new Vector3(lx, 0.2f, -19.2f)),
                 Control(carril, "Control2", new Vector3(lx - fuera * 1.5f, 0.2f, 1.5f)),
                 Control(carril, "Control3", new Vector3(lx, 0.2f, 14.5f)),
+                Control(carril, "Control4", new Vector3(lx, 0.2f, 38.8f)),
+                Control(carril, "Control5", new Vector3(lx - fuera * 1.8f, 0.2f, 57.2f)),
+                Control(carril, "Control6", new Vector3(lx, 0.2f, 86f)),
             };
 
-            return (new PasoCooperativo[] { paso1, paso2, paso3, paso4 }, controles);
+            return (new PasoCooperativo[] { paso1, paso2, paso3, paso4, paso5, paso6, paso7 }, controles);
+        }
+
+        /// <summary>Barredora giratoria del kit (la colisión es el cilindro y el brazo de siempre).</summary>
+        static void Barredora(Transform padre, string nombre, Vector3 posicion, float velocidad, Mats m)
+        {
+            var barredora = new GameObject(nombre);
+            barredora.transform.SetParent(padre, false);
+            barredora.transform.position = posicion;
+            barredora.AddComponent<Rigidbody>().isKinematic = true;
+            var giro = barredora.AddComponent<BarraGiratoria>();
+            giro.velocidadGiro = velocidad;
+            var eje = E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.7f, 0.6f, 0.7f), m.peligro, conCollider: true);
+            var brazo = E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(7f, 0.4f, 0.4f), m.obstaculo, local: true);
+            Object.DestroyImmediate(eje.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(brazo.GetComponent<MeshRenderer>());
+            var modelo = Kit("Barredora", barredora.transform, Vector3.zero, local: true);
+            giro.nombreTrampa = nombre;
+            giro.enfriamiento = 8f;
+            giro.radioEfecto = 5f;
+            giro.alturaMarcador = 3f;
+            giro.renderersAviso = modelo.GetComponentsInChildren<Renderer>();
+        }
+
+        /// <summary>Compuerta de los pasillos: se hunde mientras se pisa su placa (en el otro pasillo).</summary>
+        static Compuerta CompuertaPasillo(Transform padre, string nombre, Vector3 posicion, PlacaPresion placa, int equipo, Material color)
+        {
+            var go = E.Bloque(nombre, padre, posicion + Vector3.up * 1.5f, new Vector3(2.8f, 3f, 0.4f), color);
+            go.AddComponent<Rigidbody>().isKinematic = true;
+            var c = go.AddComponent<Compuerta>();
+            c.placa = placa;
+            c.equipo = equipo;
+            return c;
         }
 
         static PlacaPresion Placa(Transform padre, string nombre, Vector3 posicion, int equipo, Mats m)
@@ -394,7 +522,7 @@ namespace BichoShow.Herramientas
             {
                 float x = 16.5f * lado;
                 float giroGrada = -lado * 90f; // mirando hacia los carriles
-                for (int k = 0; k < 8; k++)
+                for (int k = 0; k < 16; k++)
                 {
                     float z = -38f + 9.5f * k;
                     var grada = Kit("Grada", gradas, new Vector3(x, 0f, z), giroGrada);
@@ -416,12 +544,12 @@ namespace BichoShow.Herramientas
                 }
 
                 // Torres de focos en uno de cada dos huecos entre gradas.
-                for (int k = 0; k < 7; k += 2)
+                for (int k = 0; k < 15; k += 2)
                     Kit("TorreFocos", plato, new Vector3(x, 0f, -33.25f + 9.5f * k), giroGrada);
             }
 
             // Pantalla gigante detrás de las metas (el cartel de "JUNTOS O NADA" va delante).
-            Kit("Pantalla", plato, new Vector3(0f, 4f, 37f), 180f);
+            Kit("Pantalla", plato, new Vector3(0f, 4f, 111f), 180f);
 
             // Una cámara de tele en la esquina de dentro de cada salida, enfocando su carril.
             foreach (float lx in new[] { -7f, 7f })

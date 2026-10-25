@@ -26,6 +26,7 @@ namespace BichoShow.Herramientas
             (CreadorDespensa.RutaEscena, CreadorDespensa.Version, CreadorDespensa.Crear),
             (CreadorCostura.RutaEscena, CreadorCostura.Version, CreadorCostura.Crear),
             (CreadorCortacesped.RutaEscena, CreadorCortacesped.Version, CreadorCortacesped.Crear),
+            (CreadorFinal.RutaEscena, CreadorFinal.Version, CreadorFinal.Crear),
         };
 
         static EscenasAnticuadas() => EditorApplication.playModeStateChanged += AlCambiarModo;

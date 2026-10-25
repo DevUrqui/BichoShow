@@ -5,7 +5,8 @@ namespace BichoShow
 {
     /// <summary>
     /// La gran final, "Juntos o nada": cada pareja tiene su propio circuito con pruebas que solo
-    /// se superan cooperando (bloque, puente levadizo, puerta doble, ascensor). Puntos por cada
+    /// se superan cooperando (bloque, puente levadizo, puerta doble, pasillos cruzados, camino de
+    /// baldosas, balancín y ascensor). Puntos por cada
     /// prueba superada por los dos; bonus a quien llegue primero a la meta.
     /// Si te caes, vuelves al inicio de la prueba en la que está tu pareja.
     /// </summary>
@@ -34,7 +35,7 @@ namespace BichoShow
         public int bonusPrimero = 300;
         public int bonusSegundo = 150;
         [Tooltip("La final dura al menos esto, aunque el show pida rondas más cortas (s).")]
-        public float duracionMinima = 150f;
+        public float duracionMinima = 240f;
         public ParticleSystem confeti;
 
         int llegados;
