@@ -12,6 +12,9 @@ namespace BichoShow
     /// derecha para cambiar un valor) y A / START para aceptar. Las opciones se guardan.
     /// Mientras el menú está abierto, los bichos no se mueven (el stick es para el menú), salvo
     /// en la sala online: ahí todos corren por el plató mientras llegan los demás.
+    /// La cámara la lleva el menú en la pantalla principal, en opciones y en el vestuario: los
+    /// bichos salen a la derecha de los botones o, en el vestuario, grandes y arriba, cada uno
+    /// con su panel justo debajo (así no se tapan). En el resto, la cámara de grupo de siempre.
     /// </summary>
     public class MenuPrincipal : MonoBehaviour
     {
@@ -34,6 +37,17 @@ namespace BichoShow
         float salidaRapida = -1f; // partida rápida (anfitrión): cuándo empieza el show
         readonly Dictionary<PlayerInput, Vector2> stickAnterior = new Dictionary<PlayerInput, Vector2>();
 
+        // Cámara del menú
+        Camera camaraMenu;
+        CamaraGrupo camaraGrupo;
+        Vector3 velocidadCamara;
+
+        /// <summary>Color de cada opción del menú principal.</summary>
+        static readonly Color[] ColoresOpciones =
+        {
+            EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Oro, EstiloShow.Verde, EstiloShow.Lila, new Color(0.62f, 0.6f, 0.72f),
+        };
+
         void Start()
         {
             bots = PlayerPrefs.GetInt("BichoShow.Bots", 1) == 1;
@@ -46,6 +60,85 @@ namespace BichoShow
             Musica.Poner(Musica.Tema.Plato);
             Sonidos.Precargar();
             if (Keyboard.current != null) Keyboard.current.onTextInput += AlEscribir;
+            camaraMenu = Camera.main;
+            if (camaraMenu != null) camaraGrupo = camaraMenu.GetComponent<CamaraGrupo>();
+        }
+
+        // ---------------------------------------------------------------------
+        // Cámara
+        // ---------------------------------------------------------------------
+
+        /// <summary>¿Lleva el menú la cámara en esta pantalla?</summary>
+        bool CamaraPropia => PlayerInput.all.Count > 0 && (pantalla == Pantalla.Principal || pantalla == Pantalla.Opciones || pantalla == Pantalla.Vestuario);
+
+        void LateUpdate()
+        {
+            if (camaraMenu == null) return;
+            bool propia = CamaraPropia;
+            if (camaraGrupo != null && camaraGrupo.enabled == propia) camaraGrupo.enabled = !propia;
+            if (!propia) return;
+
+            // Los bichos: su centro y lo que ocupan a lo ancho.
+            Vector3 min = new Vector3(float.MaxValue, 0f, float.MaxValue), max = new Vector3(float.MinValue, 0f, float.MinValue);
+            float altura = 0f;
+            foreach (var p in PlayerInput.all)
+            {
+                Vector3 q = p.transform.position;
+                min = Vector3.Min(min, q);
+                max = Vector3.Max(max, q);
+                altura += q.y;
+            }
+            altura /= PlayerInput.all.Count;
+            Vector3 centro = new Vector3((min.x + max.x) * 0.5f, altura, (min.z + max.z) * 0.5f);
+            float ancho = max.x - min.x;
+
+            // Vestuario: cerca y arriba (los paneles van debajo). Si no: a la derecha de los botones.
+            bool vestuario = pantalla == Pantalla.Vestuario;
+            float tangente = Mathf.Tan(camaraMenu.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float distancia, fx, fy;
+            if (vestuario)
+            {
+                distancia = Mathf.Max(6.4f, ancho * 0.85f + 4.4f);
+                fx = 0.5f;
+                fy = 0.66f;
+            }
+            else
+            {
+                // En el hueco que deja la columna de botones a la derecha, y lo bastante lejos para que quepan todos.
+                float libre = Mathf.Clamp(1f - BordeColumna / Mathf.Max(1f, Screen.width), 0.3f, 1f);
+                float necesaria = (ancho + 2.4f) / (libre * 2f * tangente * camaraMenu.aspect);
+                distancia = Mathf.Max(8.5f, necesaria);
+                fx = 1f - libre * 0.5f;
+                fy = 0.47f;
+            }
+
+            Vector3 direccion = new Vector3(0f, 0.45f, -1f).normalized;
+            Vector3 foco = centro + Vector3.up * 0.8f;
+            Quaternion giro = Quaternion.LookRotation(-direccion);
+            float mitadAlto = distancia * tangente;
+            float mitadAncho = mitadAlto * camaraMenu.aspect;
+            // Mover la cámara al revés de donde queremos que salgan los bichos en la pantalla.
+            Vector3 posicion = foco + direccion * distancia
+                             - giro * Vector3.right * ((fx - 0.5f) * 2f * mitadAncho)
+                             - giro * Vector3.up * ((fy - 0.5f) * 2f * mitadAlto);
+
+            float dt = Time.unscaledDeltaTime;
+            var t = camaraMenu.transform;
+            t.position = Vector3.SmoothDamp(t.position, posicion, ref velocidadCamara, 0.35f, Mathf.Infinity, dt);
+            t.rotation = Quaternion.Slerp(t.rotation, giro, 1f - Mathf.Exp(-6f * dt));
+        }
+
+        /// <summary>Hasta dónde llega (en píxeles) la columna de botones de la izquierda, con su tarjeta.</summary>
+        float BordeColumna => Screen.width * 0.05f + EstiloShow.Px(pantalla == Pantalla.Principal ? 540f : 680f) + EstiloShow.Px(60f);
+
+        /// <summary>Dónde se ve en pantalla (coordenadas de GUI) un punto del mundo; null si queda detrás.</summary>
+        Vector2? EnPantalla(Vector3 mundo)
+        {
+            var cam = camaraMenu != null ? camaraMenu : Camera.main;
+            if (cam == null) return null;
+            Vector3 s = cam.WorldToScreenPoint(mundo);
+            if (s.z < 0f) return null;
+            return new Vector2(s.x, Screen.height - s.y);
         }
 
         void OnDestroy()
@@ -347,25 +440,69 @@ namespace BichoShow
             System.Func<float, float> px = EstiloShow.Px;
             System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
 
-            var jugadores = new List<PlayerInput>(PlayerInput.all);
-            jugadores.Sort((a, b) => a.playerIndex.CompareTo(b.playerIndex));
-            float hueco = px(20f);
-            float ancho = Mathf.Min(px(430f), (w * 0.94f - hueco * (jugadores.Count - 1)) / Mathf.Max(1, jugadores.Count));
-            float alto = px(436f);
-            float x = w * 0.5f - (jugadores.Count * ancho + (jugadores.Count - 1) * hueco) * 0.5f;
-            float y = h - alto - px(120f);
-
-            EstiloShow.Texto(new Rect(0, y - px(90f), w, px(80f)), "VESTUARIO", tam(72f), EstiloShow.Oro);
-
-            foreach (var j in jugadores)
+            // Cabecera: una cinta arriba (los bichos, grandes, van debajo; los paneles, abajo).
+            var cinta = new Rect(w * 0.5f - px(290f), px(22f), px(580f), px(82f));
+            EstiloShow.Panel(cinta, EstiloShow.Rosa.WithAlpha(0.96f), cinta.height * 0.5f);
+            EstiloShow.Texto(cinta, "VESTUARIO", tam(58f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo, false, 1.2f);
+            for (int s = -1; s <= 1; s += 2)
             {
+                float lado = px(64f);
+                EstiloShow.Estrella(new Rect(cinta.center.x + s * (cinta.width * 0.5f + lado * 0.2f) - lado * 0.5f, cinta.center.y - lado * 0.5f, lado, lado),
+                                    EstiloShow.Oro, Time.unscaledTime * 50f * s);
+            }
+
+            // Un panel por jugador, justo debajo de su bicho (ordenados como se ven, sin pisarse).
+            var jugadores = new List<PlayerInput>(PlayerInput.all);
+            int n = jugadores.Count;
+            float hueco = px(18f);
+            float ancho = Mathf.Min(px(400f), (w * 0.96f - hueco * (n - 1)) / Mathf.Max(1, n));
+            float alto = px(380f);
+            float y = h - alto - px(96f);
+            var centros = new float[n];
+            for (int k = 0; k < n; k++)
+            {
+                var s = EnPantalla(jugadores[k].transform.position);
+                centros[k] = s.HasValue ? s.Value.x : w * 0.5f;
+            }
+            var orden = new List<int>();
+            for (int k = 0; k < n; k++) orden.Add(k);
+            orden.Sort((a, b) => centros[a].CompareTo(centros[b]));
+            var cx = new float[n];
+            for (int k = 0; k < n; k++)
+            {
+                cx[k] = centros[orden[k]];
+                if (k > 0) cx[k] = Mathf.Max(cx[k], cx[k - 1] + ancho + hueco);
+            }
+            float sobra = cx[n - 1] + ancho * 0.5f - (w - px(16f));
+            if (sobra > 0f) for (int k = 0; k < n; k++) cx[k] -= sobra;
+            float falta = px(16f) - (cx[0] - ancho * 0.5f);
+            if (falta > 0f) for (int k = 0; k < n; k++) cx[k] += falta;
+
+            for (int k = 0; k < n; k++)
+            {
+                var j = jugadores[orden[k]];
                 int i = j.playerIndex;
                 Color color = GestorJugadores.Instancia != null ? GestorJugadores.Instancia.ColorDe(i) : Color.white;
                 bool listo = listos.Contains(j);
                 filaVestuario.TryGetValue(j, out int fila);
-                var panel = new Rect(x, y, ancho, alto);
-                EstiloShow.Panel(panel, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.45f).WithAlpha(0.94f), px(30f));
-                EstiloShow.Texto(new Rect(panel.x, panel.y + px(8f), panel.width, px(54f)), $"J{i + 1}", tam(46f), Color.white);
+                var panel = new Rect(cx[k] - ancho * 0.5f, y, ancho, alto);
+                Color fondo = Color.Lerp(color, EstiloShow.MoradoOscuro, 0.5f).WithAlpha(0.95f);
+
+                // Un piquito arriba que apunta a su bicho (como un bocadillo).
+                float pico = px(30f);
+                var s = EnPantalla(j.transform.position);
+                float xPico = Mathf.Clamp(s.HasValue ? s.Value.x : panel.center.x, panel.x + pico * 1.5f, panel.xMax - pico * 1.5f);
+                var matriz = GUI.matrix;
+                var rombo = new Rect(xPico - pico * 0.5f, panel.y - pico * 0.42f, pico, pico);
+                GUIUtility.RotateAroundPivot(45f, rombo.center);
+                EstiloShow.Rectangulo(rombo, Color.Lerp(fondo, Color.white, 0.25f));
+                GUI.matrix = matriz;
+                EstiloShow.Panel(panel, fondo, px(28f));
+
+                // Cabecera: su nombre (o J1) en una píldora de su color.
+                var cabecera = new Rect(panel.x + px(14f), panel.y + px(10f), panel.width - px(28f), px(42f));
+                EstiloShow.Panel(cabecera, color, cabecera.height * 0.5f, -1f, false);
+                EstiloShow.Texto(cabecera, NombresJugadores.DeLocal(i), tam(32f), Color.white);
 
                 j.TryGetComponent(out Vestuario v);
                 if (v == null)
@@ -375,37 +512,38 @@ namespace BichoShow
                 }
                 else
                 {
-                    var filaNombre = new Rect(panel.x + px(14f), panel.y + px(68f), panel.width - px(28f), px(56f));
+                    float filaY = panel.y + px(62f), paso = px(52f), altoFila = px(46f);
+                    var filaNombre = new Rect(panel.x + px(14f), filaY, panel.width - px(28f), altoFila);
                     if (editandoNombre.TryGetValue(j, out var edicion))
                     {
                         EstiloShow.Panel(filaNombre, EstiloShow.Rosa, filaNombre.height * 0.5f, -1f, false);
-                        EstiloShow.Texto(filaNombre, NombreConCursor(edicion), tam(28f), Color.white);
+                        EstiloShow.Texto(filaNombre, NombreConCursor(edicion), tam(26f), Color.white);
                     }
                     else
                     {
                         string guardado = NombresJugadores.Guardado(i);
                         FilaPrenda(filaNombre, "Nombre", guardado.Length > 0 ? guardado : "(escríbelo)", !listo && fila == 0);
                     }
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(130f), panel.width - px(28f), px(56f)), "Bicho",
+                    FilaPrenda(new Rect(panel.x + px(14f), filaY + paso, panel.width - px(28f), altoFila), "Bicho",
                                PersonajeBicho.Nombres[Mathf.Clamp(v.Especie, 0, PersonajeBicho.Nombres.Length - 1)], !listo && fila == 1);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(192f), panel.width - px(28f), px(56f)), "Gorro",
+                    FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 2f, panel.width - px(28f), altoFila), "Gorro",
                                Vestuario.NombresGorros[v.Gorro], !listo && fila == 2);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(254f), panel.width - px(28f), px(56f)), "Cara",
+                    FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 3f, panel.width - px(28f), altoFila), "Cara",
                                Vestuario.NombresComplementos[v.Complemento], !listo && fila == 3);
-                    FilaPrenda(new Rect(panel.x + px(14f), panel.y + px(316f), panel.width - px(28f), px(56f)), "Cuerpo",
+                    FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 4f, panel.width - px(28f), altoFila), "Cuerpo",
                                Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 4);
                 }
-                var boton = new Rect(panel.x + panel.width * 0.2f, panel.yMax - px(56f), panel.width * 0.6f, px(46f));
+                var boton = new Rect(panel.x + panel.width * 0.18f, panel.yMax - px(54f), panel.width * 0.64f, px(42f));
+                if (listo) boton = EstiloShow.Escalar(boton, 1.05f + Mathf.Sin(Time.unscaledTime * 6f) * 0.02f);
                 EstiloShow.Panel(boton, listo ? EstiloShow.Verde : EstiloShow.Morado.WithAlpha(0.9f), boton.height * 0.5f, -1f, false);
                 bool escribiendo = editandoNombre.ContainsKey(j);
                 string textoBoton = listo ? "¡LISTO!"
                                   : escribiendo ? (j.currentControlScheme == "Teclado" ? "Escribe · Enter = ok" : "↑↓ letra · X borra · A ok")
                                   : fila == 0 ? "A = escribir" : "A = listo";
-                EstiloShow.Texto(boton, textoBoton, tam(escribiendo ? 20f : 26f), Color.white);
-                x += ancho + hueco;
+                EstiloShow.Texto(boton, textoBoton, tam(escribiendo ? 19f : 24f), Color.white);
             }
 
-            EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),
+            EstiloShow.Ayuda(new Rect(0, h - px(80f), w, px(48f)),
                 ("Stick", EstiloShow.GlifoTecla, "elegir y cambiar"), ("Stick der.", EstiloShow.GlifoTecla, "girar"), ("A", EstiloShow.GlifoA, "listo"), ("START", EstiloShow.GlifoTecla, "volver"));
         }
 
@@ -1032,12 +1170,18 @@ namespace BichoShow
             System.Func<float, float> px = EstiloShow.Px;
             System.Func<float, int> tam = v => Mathf.RoundToInt(EstiloShow.Px(v));
 
+            if (PlayerInput.all.Count > 0 && pantalla == Pantalla.Vestuario)
+            {
+                DibujarVestuario(w, h);
+                return;
+            }
+
             // --- Título con letras que rebotan y cinta debajo ---
             Color[] coloresTitulo = { EstiloShow.Oro, EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Verde, EstiloShow.Lila };
-            EstiloShow.TituloRebote(new Rect(0, h * 0.04f, w, px(190f)), "BICHO SHOW", tam(170f), coloresTitulo);
-            var cinta = new Rect(w * 0.5f - px(430f), h * 0.04f + px(185f), px(860f), px(58f));
+            EstiloShow.TituloRebote(new Rect(0, h * 0.03f, w, px(180f)), "BICHO SHOW", tam(158f), coloresTitulo);
+            var cinta = new Rect(w * 0.5f - px(420f), h * 0.03f + px(172f), px(840f), px(56f));
             EstiloShow.Panel(cinta, EstiloShow.Rosa.WithAlpha(0.95f), cinta.height * 0.5f);
-            EstiloShow.Texto(cinta, "El concurso de bichos más torpe de la tele", tam(34f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo);
+            EstiloShow.Texto(cinta, "El concurso de bichos más torpe de la tele", tam(32f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Titulo);
 
             if (PlayerInput.all.Count == 0)
             {
@@ -1050,11 +1194,6 @@ namespace BichoShow
                 return;
             }
 
-            if (pantalla == Pantalla.Vestuario)
-            {
-                DibujarVestuario(w, h);
-                return;
-            }
             if (pantalla == Pantalla.Ranking)
             {
                 DibujarRanking(w, h);
@@ -1067,21 +1206,26 @@ namespace BichoShow
             }
 
             // --- Opciones (columna a la izquierda: el escenario con los bichos queda a la vista) ---
-            float x = w * 0.05f, ancho = px(pantalla == Pantalla.Principal ? 560f : 780f);
-            float alto = px(74f), paso = alto + px(pantalla == Pantalla.Principal ? 14f : 16f);
-            float y = h * 0.36f;
+            float x = w * 0.05f, ancho = px(pantalla == Pantalla.Principal ? 540f : 680f);
+            float alto = px(pantalla == Pantalla.Principal ? 70f : 72f), paso = alto + px(pantalla == Pantalla.Principal ? 14f : 16f);
+            float y = h * 0.34f;
+            // La tarjeta de detrás de la columna (con hueco para que el elegido se asome).
+            int filas = pantalla == Pantalla.Principal ? 6 : 6;
+            var tarjeta = new Rect(x - px(26f), y - px(pantalla == Pantalla.Principal ? 26f : 100f), ancho + px(70f),
+                                   paso * filas - px(14f) + px(pantalla == Pantalla.Principal ? 52f : 126f));
+            EstiloShow.Panel(tarjeta, EstiloShow.MoradoOscuro.WithAlpha(0.55f), px(40f), -1f, false);
             if (pantalla == Pantalla.Principal)
             {
                 string[] opciones = { "¡Empezar el show!", "Jugar online", "Vestuario", "Ranking", "Opciones", "Salir" };
                 for (int i = 0; i < opciones.Length; i++)
                 {
-                    EstiloShow.Boton(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(42f));
+                    EstiloShow.BotonMenu(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(40f), ColoresOpciones[i]);
                     y += paso;
                 }
             }
             else
             {
-                EstiloShow.Texto(new Rect(x, y - px(84f), ancho, px(70f)), "OPCIONES", tam(60f), Color.white, TextAnchor.MiddleLeft);
+                EstiloShow.Texto(new Rect(x, y - px(86f), ancho, px(70f)), "OPCIONES", tam(58f), EstiloShow.Oro, TextAnchor.MiddleLeft);
                 Fila(new Rect(x, y, ancho, alto), 0, "Bots en los huecos", bots ? "Sí" : "No", null); y += paso;
                 Fila(new Rect(x, y, ancho, alto), 1, "Habilidad de los bots", NombresHabilidad[nivelHabilidad], null); y += paso;
                 Fila(new Rect(x, y, ancho, alto), 2, "Duración de cada ronda", $"{Duraciones[nivelDuracion]} s", null); y += paso;
@@ -1093,24 +1237,43 @@ namespace BichoShow
             // --- Jugadores unidos: una ficha de su color cada uno ---
             var jugadores = new List<PlayerInput>(PlayerInput.all);
             jugadores.Sort((a, b) => a.playerIndex.CompareTo(b.playerIndex));
-            float anchoFicha = px(250f), altoFicha = px(78f), hueco = px(18f);
-            float fx = w * 0.5f - (jugadores.Count * anchoFicha + (jugadores.Count - 1) * hueco) * 0.5f;
-            float fy = h - px(200f);
+            // Las placas, como mucho tan anchas como el hueco entre dos bichos (para no pisarse).
+            float anchoFicha = px(230f), altoFicha = px(74f);
+            var xs = new List<float>();
+            foreach (var j in jugadores)
+            {
+                var s = EnPantalla(j.transform.position);
+                if (s.HasValue) xs.Add(s.Value.x);
+            }
+            xs.Sort();
+            for (int k = 1; k < xs.Count; k++) anchoFicha = Mathf.Min(anchoFicha, xs[k] - xs[k - 1] - px(10f));
+            anchoFicha = Mathf.Max(anchoFicha, px(120f));
+            bool estrecha = anchoFicha < px(200f);
+            float fyMax = 0f;
             foreach (var j in jugadores)
             {
                 int i = j.playerIndex;
                 Color color = GestorJugadores.Instancia != null ? GestorJugadores.Instancia.ColorDe(i) : Color.white;
+                // Bajo los pies de su bicho, como una placa con su nombre.
+                var pie = EnPantalla(j.transform.position + Vector3.down * 0.15f);
+                if (!pie.HasValue) continue;
+                float fx = Mathf.Clamp(pie.Value.x - anchoFicha * 0.5f, BordeColumna + px(6f), w - anchoFicha - px(10f));
+                float fy = Mathf.Min(pie.Value.y + px(12f), h - altoFicha - px(100f));
+                fyMax = Mathf.Max(fyMax, fy + altoFicha);
                 var ficha = new Rect(fx, fy + Mathf.Sin(Time.unscaledTime * 3f + i) * px(4f), anchoFicha, altoFicha);
                 EstiloShow.Panel(ficha, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.25f).WithAlpha(0.95f), altoFicha * 0.5f);
                 string mando = j.currentControlScheme == "Teclado" ? "Teclado" : "Mando";
-                EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), NombresJugadores.DeLocal(i), tam(40f), Color.white);
+                EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), NombresJugadores.DeLocal(i), tam(estrecha ? 34f : 40f), Color.white);
                 EstiloShow.Texto(new Rect(ficha.x, ficha.y + ficha.height * 0.48f, ficha.width, ficha.height * 0.45f),
-                                 $"{mando} · equipo {(i % 2 == 0 ? "Rojo" : "Azul")}", tam(22f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
-                fx += anchoFicha + hueco;
+                                 estrecha ? $"Equipo {(i % 2 == 0 ? "Rojo" : "Azul")}" : $"{mando} · equipo {(i % 2 == 0 ? "Rojo" : "Azul")}", tam(estrecha ? 19f : 21f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
             }
             if (jugadores.Count < 4)
-                EstiloShow.Texto(new Rect(0, fy - px(52f), w, px(44f)), "¿Más jugadores? ¡Pulsad un botón en otro mando!", tam(28f),
-                                 new Color(1f, 1f, 1f, 0.9f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+            {
+                var aviso = new Rect(w * 0.66f - px(330f), Mathf.Max(fyMax + px(8f), h - px(150f)), px(660f), px(46f));
+                EstiloShow.Panel(aviso, EstiloShow.MoradoOscuro.WithAlpha(0.6f), aviso.height * 0.5f, -1f, false);
+                EstiloShow.Texto(aviso, "¿Más jugadores? ¡Pulsad un botón en otro mando!", tam(25f),
+                                 new Color(1f, 1f, 1f, 0.92f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+            }
 
             // --- Ayuda de botones ---
             EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),

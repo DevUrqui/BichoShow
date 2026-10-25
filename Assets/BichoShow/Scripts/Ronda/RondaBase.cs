@@ -69,6 +69,10 @@ namespace BichoShow
         protected virtual string Controles => "Stick / WASD mover · A / espacio saltar · Gatillo / E agarrar · X / Q lanzarse o lanzar lo agarrado";
         /// <summary>Consejo grande que se ve los primeros segundos de la ronda (lo más importante de la prueba).</summary>
         protected virtual string ConsejoInicio => null;
+        /// <summary>De qué va la prueba (para la pantalla de presentación del show).</summary>
+        public string TextoDescripcion => Descripcion;
+        /// <summary>El consejo de la prueba (para la pantalla de presentación del show).</summary>
+        public string TextoConsejo => ConsejoInicio;
         /// <summary>Segundos que lleva jugándose la ronda.</summary>
         protected float TiempoJugado => Mathf.Max(0f, duracionRonda - TiempoRestante);
         public abstract string NombreEquipo(int equipo);

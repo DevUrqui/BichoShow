@@ -107,12 +107,13 @@ namespace BichoShow.Herramientas
             camara.ColocarAlInstante();
 
             var plato = new GameObject("Plato").transform;
-            E.Bloque("Suelo", plato, new Vector3(0f, -0.5f, 0f), new Vector3(30f, 1f, 20f), suelo);
+            E.Bloque("Suelo", plato, new Vector3(0f, -0.5f, 0f), new Vector3(70f, 1f, 34f), suelo);
             E.Bloque("Escenario", plato, new Vector3(0f, 0.15f, 0.5f), new Vector3(10f, 0.3f, 4f), escenario);
-            E.Bloque("Fondo", plato, new Vector3(0f, 3f, 4f), new Vector3(18f, 6f, 0.4f), fondo);
-            for (int i = 0; i < 9; i++)
+            // Ancho y alto: el menú aleja la cámara para que quepan los bichos a la derecha de los botones.
+            E.Bloque("Fondo", plato, new Vector3(0f, 4.5f, 4f), new Vector3(44f, 9f, 0.4f), fondo);
+            for (int i = 0; i < 21; i++)
             {
-                float x = -8f + i * 2f;
+                float x = -20f + i * 2f;
                 M.Decorado(PrimitiveType.Cube, "Panel", plato, new Vector3(x, 3f, 3.75f), new Vector3(1.6f, 4.6f, 0.08f), i % 2 == 0 ? rojo : azul);
                 M.Decorado(PrimitiveType.Sphere, "Bombilla", plato, new Vector3(x, 5.7f, 3.7f), Vector3.one * 0.35f, foco);
             }

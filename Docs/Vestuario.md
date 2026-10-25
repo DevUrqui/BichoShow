@@ -16,7 +16,7 @@ La capa y la mochila van a la espalda. Con la cámara de las carreras, que va de
 
 ## Cómo se elige
 
-En **Vestuario**, cada jugador con su mando:
+En **Vestuario**, la cámara se acerca a los bichos y los pone grandes, arriba. Cada jugador tiene su panel justo debajo de su bicho, con un piquito que lo señala, así que se ve cómo le queda lo que elige. Cada uno lo maneja con su mando:
 
 - Arriba y abajo cambian de fila (bicho, gorro, cara, cuerpo).
 - Izquierda y derecha cambian el bicho o la prenda.

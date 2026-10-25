@@ -42,8 +42,10 @@ namespace BichoShow
         /// <summary>Las pruebas de este show, en orden (las elige EmpezarShow).</summary>
         readonly List<Prueba> programa = new List<Prueba>();
         public string escenaMenu = "Menu";
-        [Tooltip("Segundos del cartel de presentación antes de cada ronda.")]
-        public float duracionPresentacion = 2.5f;
+        [Tooltip("Segundos del cartel de presentación antes de cada ronda (al menos 4,5: hay que leer de qué va).")]
+        public float duracionPresentacion = 4.5f;
+
+        float DuracionPresentacion => Mathf.Max(duracionPresentacion, 4.5f);
         [Tooltip("Segundos que se ve el resultado de la ronda antes del marcador.")]
         public float duracionResultado = 3.5f;
 
@@ -205,7 +207,7 @@ namespace BichoShow
             switch (Estado)
             {
                 case EstadoShow.Presentando:
-                    if (Time.time - inicioEstado > duracionPresentacion && ronda != null)
+                    if (Time.time - inicioEstado > DuracionPresentacion && ronda != null)
                     {
                         ControladorBicho.EntradaBloqueada = false;
                         ronda.IniciarDesdeShow();
@@ -445,49 +447,104 @@ namespace BichoShow
             }
         }
 
-        /// <summary>Cartel de la siguiente prueba mientras carga y se presenta la ronda.</summary>
+        /// <summary>
+        /// Cartel de la siguiente prueba mientras carga y se presenta la ronda: qué ronda es (con un
+        /// punto por prueba del show), el nombre, el tipo de prueba, de qué va y un consejo, las
+        /// estrellas extra y el saboteador, y una barra que se llena. Con confeti cayendo.
+        /// </summary>
         void DibujarPresentacion(float w, float h)
         {
             EstiloShow.FondoPlato(0.97f);
+            EstiloShow.Confeti(46, 0.75f);
             var prueba = programa[RondaActual];
 
-            var cinta = new Rect(w * 0.5f - Px(250f), h * 0.2f, Px(500f), Px(74f));
-            EstiloShow.Panel(cinta, EstiloShow.Rosa, cinta.height * 0.5f);
-            EstiloShow.Texto(cinta, $"RONDA {RondaActual + 1} DE {programa.Count}", Tam(46f), Color.white);
+            // Cinta de la ronda y un punto por prueba del show (las jugadas en verde; la final, estrella).
+            var cinta = new Rect(w * 0.5f - Px(260f), h * 0.075f, Px(520f), Px(74f));
+            EstiloShow.Panel(cinta, prueba.esFinal ? EstiloShow.Oro : EstiloShow.Rosa, cinta.height * 0.5f);
+            EstiloShow.Texto(cinta, prueba.esFinal ? "¡LA GRAN FINAL!" : $"RONDA {RondaActual + 1} DE {programa.Count}", Tam(44f), Color.white);
+            float punto = Px(26f), separacion = Px(40f);
+            float px0 = w * 0.5f - (programa.Count - 1) * separacion * 0.5f;
+            for (int i = 0; i < programa.Count; i++)
+            {
+                var c = new Vector2(px0 + i * separacion, cinta.yMax + Px(30f));
+                bool actual = i == RondaActual;
+                float lado = actual ? punto * (1.25f + Mathf.Sin(Time.unscaledTime * 6f) * 0.08f) : punto;
+                var r = new Rect(c.x - lado * 0.5f, c.y - lado * 0.5f, lado, lado);
+                if (programa[i].esFinal)
+                    EstiloShow.Estrella(EstiloShow.Escalar(r, 1.3f), actual || i < RondaActual ? EstiloShow.Oro : EstiloShow.Morado, actual ? Time.unscaledTime * 80f : 0f);
+                else
+                    EstiloShow.Panel(r, i < RondaActual ? EstiloShow.Verde : actual ? EstiloShow.Oro : EstiloShow.Morado, lado * 0.5f, Px(2f), false);
+            }
 
+            // El nombre de la prueba.
             string nombre = prueba.nombre.ToUpper();
-            EstiloShow.TituloRebote(new Rect(0, h * 0.3f, w, Px(180f)), nombre, Ajustar(nombre, Tam(140f), w * 0.9f),
+            float yTitulo = cinta.yMax + Px(56f);
+            EstiloShow.TituloRebote(new Rect(0, yTitulo, w, Px(170f)), nombre, Ajustar(nombre, Tam(132f), w * 0.9f),
                                     new[] { Color.white, EstiloShow.Oro, EstiloShow.Cian, EstiloShow.Rosa });
+            float y = yTitulo + Px(176f);
 
-            float y = h * 0.3f + Px(210f);
+            // Tipo de prueba (en cuanto está cargada).
+            if (ronda != null)
+            {
+                string tipo = ronda is RondaRuta ? "CARRERA" : ronda.Individual ? "TODOS CONTRA TODOS" : prueba.esFinal ? "POR PAREJAS" : "POR EQUIPOS";
+                float anchoTipo = Px(36f) + EstiloShow.Ancho(tipo, Tam(28f));
+                var chip = new Rect(w * 0.5f - anchoTipo * 0.5f - Px(18f), y, anchoTipo + Px(36f), Px(46f));
+                EstiloShow.Panel(chip, EstiloShow.Cian, chip.height * 0.5f, -1f, false);
+                EstiloShow.Texto(chip, tipo, Tam(28f), Color.white);
+            }
+            y += Px(62f);
+
+            // Tarjeta: de qué va y un consejo.
+            var tarjeta = new Rect(w * 0.5f - Px(640f), y, Px(1280f), Px(226f));
+            EstiloShow.Panel(tarjeta, EstiloShow.MoradoOscuro.WithAlpha(0.88f), Px(34f));
+            if (ronda != null)
+            {
+                EstiloShow.Texto(new Rect(tarjeta.x + Px(40f), tarjeta.y + Px(14f), tarjeta.width - Px(80f), Px(128f)), ronda.TextoDescripcion, Tam(29f),
+                                 Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto, true);
+                string consejo = ronda.TextoConsejo;
+                if (!string.IsNullOrEmpty(consejo))
+                {
+                    var etiqueta = new Rect(tarjeta.x + Px(40f), tarjeta.yMax - Px(64f), Px(170f), Px(46f));
+                    EstiloShow.Panel(etiqueta, EstiloShow.Oro, etiqueta.height * 0.5f, -1f, false);
+                    EstiloShow.Texto(etiqueta, "CONSEJO", Tam(26f), Color.white);
+                    EstiloShow.Texto(new Rect(etiqueta.xMax + Px(18f), etiqueta.y, tarjeta.xMax - etiqueta.xMax - Px(58f), etiqueta.height), consejo, Tam(25f),
+                                     EstiloShow.Oro, TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
+                }
+            }
+            else
+            {
+                EstiloShow.Texto(tarjeta, "Montando el plató…", Tam(36f), new Color(1f, 1f, 1f, 0.7f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+            }
+            y = tarjeta.yMax + Px(18f);
+
             if (prueba.multiplicador > 1)
             {
-                var r = EstiloShow.Escalar(new Rect(w * 0.5f - Px(330f), y, Px(660f), Px(90f)), 1f + Mathf.Sin(Time.unscaledTime * 6f) * 0.03f);
+                var r = EstiloShow.Escalar(new Rect(w * 0.5f - Px(300f), y, Px(600f), Px(70f)), 1f + Mathf.Sin(Time.unscaledTime * 6f) * 0.03f);
                 EstiloShow.Panel(r, EstiloShow.Oro, r.height * 0.5f);
-                EstiloShow.Texto(r, $"¡ESTRELLAS x{prueba.multiplicador}!", Tam(54f), Color.white);
+                EstiloShow.Texto(r, $"¡ESTRELLAS x{prueba.multiplicador}!", Tam(44f), Color.white);
                 for (int s = -1; s <= 1; s += 2)
                 {
-                    float lado = Px(96f);
+                    float lado = Px(76f);
                     EstiloShow.Estrella(new Rect(r.center.x + s * (r.width * 0.5f + lado * 0.45f) - lado * 0.5f, r.center.y - lado * 0.5f, lado, lado),
                                         EstiloShow.Oro, Time.unscaledTime * 60f * s);
                 }
-                y += Px(120f);
+                y += Px(84f);
             }
             if (saboteadorSiguiente >= 0)
             {
-                var r = new Rect(w * 0.5f - Px(560f), y, Px(1120f), Px(78f));
+                var r = new Rect(w * 0.5f - Px(560f), y, Px(1120f), Px(66f));
                 EstiloShow.Panel(r, new Color(0.45f, 0.2f, 0.7f, 0.95f), r.height * 0.5f);
                 string texto = RolSabotaje(prueba.escena) == "VILLANO"
                     ? $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda es el VILLANO!"
                     : $"{NombreDe(saboteadorSiguiente)} va último: ¡esta ronda SABOTEA!";
-                EstiloShow.Texto(r, texto, Tam(42f), EstiloShow.Lila);
+                EstiloShow.Texto(r, texto, Tam(36f), EstiloShow.Lila);
             }
 
             // Barra que se llena hasta que empieza la prueba
-            float progreso = Estado == EstadoShow.Presentando ? Mathf.Clamp01((Time.time - inicioEstado) / Mathf.Max(0.1f, duracionPresentacion)) : 0f;
-            var barra = new Rect(w * 0.5f - Px(300f), h - Px(140f), Px(600f), Px(30f));
-            EstiloShow.Barra(barra, progreso, EstiloShow.Verde);
-            EstiloShow.Texto(new Rect(0, barra.y - Px(56f), w, Px(48f)), progreso < 1f ? "¡Preparados…!" : "¡YA!", Tam(40f), Color.white);
+            float progreso = Estado == EstadoShow.Presentando ? Mathf.Clamp01((Time.time - inicioEstado) / Mathf.Max(0.1f, DuracionPresentacion)) : 0f;
+            var barra = new Rect(w * 0.5f - Px(320f), h - Px(110f), Px(640f), Px(32f));
+            EstiloShow.BarraBrillo(barra, progreso, EstiloShow.Verde);
+            EstiloShow.Texto(new Rect(0, barra.y - Px(54f), w, Px(46f)), Estado == EstadoShow.Cargando ? "Cargando…" : progreso < 1f ? "¡Preparados…!" : "¡YA!", Tam(38f), Color.white);
         }
 
         /// <summary>Tabla de estrellas: una fila por jugador que entra deslizándose, con su puesto, barra y estrellas.</summary>

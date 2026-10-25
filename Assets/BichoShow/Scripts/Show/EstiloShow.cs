@@ -234,6 +234,73 @@ namespace BichoShow
             }
         }
 
+        /// <summary>
+        /// Botón de menú con su color: sin elegir, oscuro con una franja de su color a la izquierda;
+        /// elegido, de su color, más grande, asomado a la derecha y con una estrella que gira delante.
+        /// </summary>
+        public static void BotonMenu(Rect r, string texto, bool elegido, int tamano, Color acento)
+        {
+            if (!Pintando) return;
+            if (elegido)
+            {
+                float latido = 1.04f + Mathf.Sin(Time.unscaledTime * 6f) * 0.012f;
+                r = Escalar(new Rect(r.x + Px(16f), r.y, r.width, r.height), latido);
+                Panel(r, acento, r.height * 0.5f);
+                Texto(new Rect(r.x + r.height * 0.4f, r.y, r.width - r.height * 0.4f, r.height), texto, Mathf.RoundToInt(tamano * 1.06f), Color.white,
+                      TextAnchor.MiddleCenter, Fuente.Titulo, false, 1.1f);
+                float lado = r.height * 0.78f;
+                Estrella(new Rect(r.x - lado * 0.35f, r.center.y - lado * 0.5f + Mathf.Sin(Time.unscaledTime * 5f) * Px(3f), lado, lado), Oro, Time.unscaledTime * 90f);
+            }
+            else
+            {
+                Panel(r, MoradoOscuro.WithAlpha(0.82f), r.height * 0.5f);
+                float m = r.height * 0.2f;
+                var franja = new Rect(r.x + m, r.y + m, r.height * 0.28f, r.height - m * 2f);
+                DibujarTextura(franja, TexBlanca, ScaleMode.StretchToFill, acento, 0f, franja.width * 0.5f);
+                Texto(new Rect(r.x + r.height * 0.4f, r.y, r.width - r.height * 0.4f, r.height), texto, tamano, new Color(1f, 1f, 1f, 0.92f));
+            }
+        }
+
+        /// <summary>Barra de progreso con un brillo que la recorre (pantallas de carga).</summary>
+        public static void BarraBrillo(Rect r, float valor, Color color)
+        {
+            if (!Pintando) return;
+            Barra(r, valor, color);
+            float m = Mathf.Max(2f, r.height * 0.14f);
+            float lleno = (r.width - m * 2f) * Mathf.Clamp01(valor);
+            float ancho = r.height * 1.6f;
+            if (lleno < ancho) return;
+            float x = r.x + m + Mathf.Repeat(Time.unscaledTime * r.width * 0.45f, lleno + ancho) - ancho;
+            float x0 = Mathf.Max(x, r.x + m), x1 = Mathf.Min(x + ancho, r.x + m + lleno);
+            if (x1 - x0 > 2f)
+                DibujarTextura(new Rect(x0, r.y + m, x1 - x0, r.height - m * 2f), TexBlanca, ScaleMode.StretchToFill, new Color(1f, 1f, 1f, 0.35f), 0f, (r.height - m * 2f) * 0.5f);
+        }
+
+        /// <summary>
+        /// Confeti cayendo por toda la pantalla (papelitos de colores que giran). "cantidad" papelitos;
+        /// siempre los mismos (salen de su número), así que no hace falta guardar nada.
+        /// </summary>
+        public static void Confeti(int cantidad, float opacidad = 1f)
+        {
+            if (!Pintando) return;
+            Color[] colores = { Oro, Rosa, Cian, Verde, Lila, Color.white };
+            float w = Screen.width, h = Screen.height, t = Time.unscaledTime;
+            for (int i = 0; i < cantidad; i++)
+            {
+                float azar = Mathf.Abs(Mathf.Sin(i * 12.9898f) * 43758.5453f) % 1f;
+                float azar2 = Mathf.Abs(Mathf.Sin(i * 78.233f) * 12345.678f) % 1f;
+                float velocidad = Mathf.Lerp(0.06f, 0.14f, azar2);
+                float y = (Mathf.Repeat(t * velocidad + azar, 1.1f) - 0.05f) * h;
+                float x = (azar * 1.1f - 0.05f) * w + Mathf.Sin(t * (1f + azar2) + i) * Px(30f);
+                float tam = Px(Mathf.Lerp(10f, 18f, azar2));
+                var papel = new Rect(x, y, tam, tam * 0.55f);
+                var matriz = GUI.matrix;
+                GUIUtility.RotateAroundPivot(t * Mathf.Lerp(90f, 260f, azar) + i * 37f, papel.center);
+                DibujarTextura(papel, TexBlanca, ScaleMode.StretchToFill, colores[i % colores.Length].WithAlpha(0.85f * opacidad), 0f, tam * 0.12f);
+                GUI.matrix = matriz;
+            }
+        }
+
         /// <summary>Botón de mando redondo con su letra (A verde, X azul…).</summary>
         public static void Glifo(Rect r, string letra, Color color)
         {
