@@ -10,6 +10,15 @@ namespace BichoShow
     /// </summary>
     public class RondaMudanza : RondaBase
     {
+        /// <summary>Placa que ayuda al que lleva el objeto en un tramo (para la cinta, frena la puerta...).</summary>
+        [System.Serializable]
+        public class Ayuda
+        {
+            public PlacaPresion placa;
+            [Tooltip("Tramo (en Z) en el que tiene que estar el objeto para que sirva pisarla.")]
+            public float desdeZ, hastaZ;
+        }
+
         [System.Serializable]
         public class Equipo
         {
@@ -20,6 +29,8 @@ namespace BichoShow
             public ZonaEntrega casa;
             [Tooltip("Puntos que siguen los bots con el objeto, en orden desde el camión hasta la casa.")]
             public Transform[] rutaBots;
+            [Tooltip("Placas de este equipo. Los bots mandan a uno a pisarlas cuando el objeto está en su tramo.")]
+            public Ayuda[] ayudas;
 
             [HideInInspector] public int puntos;
             [HideInInspector] public int entregas;
@@ -47,7 +58,7 @@ namespace BichoShow
 
         public override string Titulo => "MUDANZA FRÁGIL";
         protected override string Descripcion => "Llevad cada objeto de vuestro camión a vuestra casa… sin romperlo";
-        protected override string ConsejoInicio => "Mantén el GATILLO (o E) para agarrar · ¡Llevadlo entre dos y sin golpes!";
+        protected override string ConsejoInicio => "GATILLO (o E) para agarrar · La tele y el sofá, entre dos · Las placas de tu color paran la cinta y frenan la puerta";
         public override string NombreEquipo(int equipo) => equipos[equipo].nombre;
         public override Color ColorEquipo(int equipo) => equipos[equipo].color;
         public override int PuntosEquipo(int equipo) => equipos[equipo].puntos;
@@ -175,6 +186,8 @@ namespace BichoShow
             }
             var objeto = Instantiate(prefab, e.aparicionObjeto.position, e.aparicionObjeto.rotation);
             objeto.AsignarEquipo(indiceEquipo, e.color);
+            // Si el equipo es de uno, lo pesado lo puede llevar solo.
+            objeto.NecesariosAhora = Mathf.Clamp(JugadoresEn(indiceEquipo), 1, objeto.portadoresNecesarios);
             objeto.AlRomperse += (o, motivo) => AlRomperse(indiceEquipo, o, motivo);
             objeto.AlRecibirDano += AlDanarObjeto;
             e.objetoActual = objeto;

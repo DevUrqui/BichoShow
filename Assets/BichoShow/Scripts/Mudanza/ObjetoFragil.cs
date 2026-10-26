@@ -34,6 +34,12 @@ namespace BichoShow
         [Header("Física")]
         public float rozamiento = 0.35f;
 
+        [Header("Peso")]
+        [Tooltip("Bichos que hacen falta para llevarlo a buen paso. Con menos, se arrastra despacio.")]
+        [Range(1, 2)] public int portadoresNecesarios = 1;
+        [Tooltip("Velocidad máxima (m/s) mientras lo llevan menos bichos de los necesarios.")]
+        public float velocidadPocosPortadores = 1.2f;
+
         [Header("Aspecto")]
         [Tooltip("Parte visual que tiembla con los golpes. Si está vacío, se usa este objeto.")]
         public Transform modelo;
@@ -49,6 +55,12 @@ namespace BichoShow
         public bool Roto { get; private set; }
         public bool Entregado { get; private set; }
         public Rigidbody Cuerpo => rb;
+        /// <summary>Los que hacen falta en esta partida (la ronda lo baja si el equipo tiene menos jugadores).</summary>
+        public int NecesariosAhora { get; set; }
+        /// <summary>Bichos que lo tienen agarrado ahora mismo.</summary>
+        public int Portadores { get; private set; }
+        /// <summary>Lo llevan, pero menos bichos de los que hacen falta: va despacio.</summary>
+        public bool Pesado => Portadores > 0 && Portadores < NecesariosAhora;
 
         public event System.Action<ObjetoFragil, float> AlRecibirDano;
         public event System.Action<ObjetoFragil, string> AlRomperse;
@@ -63,6 +75,7 @@ namespace BichoShow
         Vector3 escalaModelo = Vector3.one;
         Vector3 posicionModelo;
         Material materialGrieta;
+        TextMesh cartelPeso;
         readonly List<Material> materiales = new List<Material>();
         readonly List<Color> coloresBase = new List<Color>();
 
@@ -102,6 +115,47 @@ namespace BichoShow
             }
 
             invulnerableHasta = Time.time + invulnerableAlAparecer;
+            NecesariosAhora = portadoresNecesarios;
+            CrearCartelPeso();
+        }
+
+        /// <summary>"¡ENTRE DOS!" flotando encima de los objetos que pesan.</summary>
+        void CrearCartelPeso()
+        {
+            if (portadoresNecesarios < 2) return;
+            var go = new GameObject("CartelPeso");
+            go.transform.SetParent(transform, false);
+            cartelPeso = go.AddComponent<TextMesh>();
+            var fuente = Resources.Load<Font>("Fuentes/LilitaOne");
+            if (fuente != null)
+            {
+                cartelPeso.font = fuente;
+                go.GetComponent<MeshRenderer>().sharedMaterial = fuente.material;
+            }
+            cartelPeso.text = "¡ENTRE DOS!";
+            cartelPeso.fontSize = 64;
+            cartelPeso.characterSize = 0.05f;
+            cartelPeso.anchor = TextAnchor.MiddleCenter;
+            cartelPeso.alignment = TextAlignment.Center;
+            cartelPeso.fontStyle = FontStyle.Bold;
+        }
+
+        void FixedUpdate()
+        {
+            int n = 0;
+            foreach (var b in ControladorBicho.Todos)
+                if (b != null && b.CuerpoAgarrado == rb) n++;
+            Portadores = n;
+            if (!Pesado || Roto || Entregado) return;
+
+            // Pesa demasiado para uno solo: se arrastra despacio (y quien tira de él, también).
+            Vector3 v = rb.linearVelocity;
+            var plano = new Vector3(v.x, 0f, v.z);
+            if (plano.magnitude > velocidadPocosPortadores)
+            {
+                plano = plano.normalized * velocidadPocosPortadores;
+                rb.linearVelocity = new Vector3(plano.x, v.y, plano.z);
+            }
         }
 
         /// <summary>Lo asigna la ronda al crearlo.</summary>
@@ -140,7 +194,24 @@ namespace BichoShow
                 marcador.transform.rotation = Quaternion.Euler(45f, Time.time * 90f, 45f);
             }
 
+            if (cartelPeso != null) ActualizarCartelPeso();
+
             if (transform.position.y < -30f) Romper("se ha perdido en el vacío");
+        }
+
+        void ActualizarCartelPeso()
+        {
+            bool ver = !Roto && !Entregado && NecesariosAhora >= 2 && Portadores < NecesariosAhora;
+            if (cartelPeso.gameObject.activeSelf != ver) cartelPeso.gameObject.SetActive(ver);
+            if (!ver) return;
+            var t = cartelPeso.transform;
+            t.position = transform.position + Vector3.up * (alturaMarcador + 0.75f);
+            var camara = Camera.main;
+            if (camara != null) t.rotation = camara.transform.rotation;
+            // Si uno lo arrastra solo, late en naranja; si nadie lo lleva, quieto en blanco.
+            float latido = Pesado ? 1f + Mathf.Abs(Mathf.Sin(Time.time * 6f)) * 0.25f : 1f;
+            t.localScale = Vector3.one * latido;
+            cartelPeso.color = Pesado ? new Color(1f, 0.6f, 0.15f) : Color.white;
         }
 
         void OnCollisionEnter(Collision choque)

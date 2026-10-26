@@ -27,11 +27,17 @@ namespace BichoShow
             rb.interpolation = RigidbodyInterpolation.Interpolate;
         }
 
+        [Tooltip("Placa que la frena mientras alguien la pisa (opcional).")]
+        public PlacaPresion freno;
+        [Tooltip("Velocidad que le queda mientras la frenan (fracción).")]
+        [Range(0f, 1f)] public float factorFreno = 0.3f;
+
         protected override void AlActivar() => finTurbo = Time.time + duracionTurbo;
 
         void FixedUpdate()
         {
             float velocidad = velocidadGiro * (Time.time < finTurbo ? multiplicadorTurbo : 1f);
+            if (freno != null && freno.Pulsada) velocidad *= factorFreno;
             Quaternion paso = Quaternion.Euler(0f, velocidad * Time.fixedDeltaTime, 0f);
             rb.MoveRotation(paso * rb.rotation);
         }

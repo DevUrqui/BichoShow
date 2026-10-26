@@ -6,8 +6,17 @@ Dos equipos, rojos (jugadores 1 y 3) contra azules (2 y 4), llevan objetos frág
 
 En Unity: **BichoShow → Crear escena: Mudanza frágil**.
 
-- Si ya la tenías creada, al darle a Play sale un aviso para rehacerla con la versión nueva (versión 3).
+- Si ya la tenías creada, al darle a Play sale un aviso para rehacerla con la versión nueva (versión 4).
 - Dura al menos **2 minutos y medio**, aunque el show pida rondas más cortas: el recorrido es largo.
+
+## Por qué es cooperativa
+
+- **Peso**: la tele y el sofá necesitan a **dos** bichos. Si los lleva uno solo, se arrastran a 1,2 m/s (andando se va a 6) y encima sale **«¡ENTRE DOS!»**: late en naranja mientras uno tira solo y se ve en blanco si no lo lleva nadie. El jarrón lo lleva uno, pero es el más frágil.
+- **Placas de ayuda**: cada equipo tiene dos placas de su color, con un letrero encima. Solo cuentan los bichos de ese equipo.
+  - **PARA LA CINTA**, al lado de su cinta del almacén: mientras alguien la pisa, la cinta se para.
+  - **FRENA LA PUERTA**, en el jardín junto a su casa: mientras alguien la pisa, la puerta giratoria va a un cuarto de su velocidad.
+  - Sirven sobre todo con el jarrón: uno lo lleva y el otro le abre paso desde la placa.
+- Si un equipo tiene un solo jugador, puede llevar lo pesado él solo.
 
 ## El recorrido (del camión a la casa, unos 90 m)
 
@@ -25,6 +34,13 @@ En Unity: **BichoShow → Crear escena: Mudanza frágil**.
 - Las barredoras, los empujadores, las plataformas y las puertas son trampas: con saboteador se mueven solo cuando él las activa. Los ventiladores y las cintas van siempre solos.
 
 ## Aspecto
+
+Tiene el plató de las demás pruebas, con piezas del kit del plató:
+- 10 gradas con público animado, en islas a los dos lados.
+- Torres de focos en las islas de árboles.
+- La pantalla gigante detrás de las casas.
+- Una cámara de tele enfocando cada puerta.
+- Cañones de confeti en el jardín.
 
 Las piezas nuevas están en el kit del barrio: `Arte/Blender/crear_kit_barrio.py` genera `KitBarrio.fbx` sin abrir Blender. Las colisiones son las de siempre, invisibles; encima va el dibujo de Blender.
 
@@ -51,5 +67,7 @@ Las piezas nuevas están en el kit del barrio: `Arte/Blender/crear_kit_barrio.py
   2. Cruzan el río por el centro de su plataforma.
   3. Recorren la calle y el almacén por su carril, entre las pilas de cajas.
   4. Entran por el lado de la puerta en el que las hojas van hacia dentro.
+- Con la tele y el sofá, los dos lo llevan.
+- Con el jarrón, si ya lo lleva uno y el jarrón está en el tramo de una placa (la cinta o la puerta), el otro va a pisarla. Si lo llevaban los dos, suelta el de número más alto.
 - El que tira del objeto mira el siguiente punto de la ruta desde él mismo cuando va por delante. Antes se quedaban parados en un punto con el objeto justo detrás.
 - En una partida de prueba solo con bots (150 s), los rojos entregaron 4 objetos y los azules 1. La mayoría llegan con la mitad de vida, y se rompen bastantes por el camino.

@@ -16,10 +16,15 @@ namespace BichoShow
         public Vector2 tamano = new Vector2(6f, 19f);
         [Tooltip("Marcas que se mueven con la cinta (se dan la vuelta al llegar al final).")]
         public Transform[] marcas;
+        [Tooltip("Placa que la para mientras alguien la pisa (opcional).")]
+        public PlacaPresion interruptor;
+
+        public bool Parada => interruptor != null && interruptor.Pulsada;
 
         readonly Collider[] encima = new Collider[16];
         readonly HashSet<Rigidbody> movidos = new HashSet<Rigidbody>();
         Vector3[] inicioMarcas;
+        float recorrido; // lo que ha avanzado la cinta (para mover las marcas)
 
         void Awake()
         {
@@ -30,6 +35,7 @@ namespace BichoShow
 
         void FixedUpdate()
         {
+            if (Parada) return;
             Vector3 paso = direccion.normalized * velocidad * Time.fixedDeltaTime;
             var medio = new Vector3(tamano.x * 0.5f, 0.5f, tamano.y * 0.5f);
             int n = Physics.OverlapBoxNonAlloc(transform.position + Vector3.up * 0.5f, medio, encima, transform.rotation, ~0, QueryTriggerInteraction.Ignore);
@@ -48,7 +54,7 @@ namespace BichoShow
             if (marcas == null || inicioMarcas == null) return;
             // Las marcas avanzan con la cinta y, al salir por un extremo, vuelven por el otro.
             Vector3 local = transform.InverseTransformDirection(direccion.normalized);
-            float recorrido = Time.time * velocidad;
+            if (!Parada) recorrido += velocidad * Time.deltaTime;
             for (int i = 0; i < marcas.Length; i++)
             {
                 if (marcas[i] == null) continue;

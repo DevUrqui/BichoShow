@@ -22,7 +22,7 @@ namespace BichoShow.Herramientas
         const string CarpetaObjetos = E.CarpetaPrefabs + "/Objetos";
         public const string RutaEscena = E.CarpetaEscenas + "/Mudanza.unity";
         /// <summary>Súbelo al cambiar el recorrido: la escena guardada se marca como anticuada.</summary>
-        public const int Version = 3;
+        public const int Version = 4;
 
         // Las casas: centro de cada una (en X, a cada lado), su fachada y la alfombra de entrega.
         const float XCasa = 6.2f, FrenteCasa = 54f, ZAlfombra = 60.2f;
@@ -142,7 +142,7 @@ namespace BichoShow.Herramientas
 
             KitObjetos.Poner("Tele", modelo, Vector3.zero, local: true);
 
-            return GuardarObjeto(raiz, modelo, m, "la tele", puntos: 100, fragilidad: 1f, alturaMarcador: 2f);
+            return GuardarObjeto(raiz, modelo, m, "la tele", puntos: 100, fragilidad: 1f, alturaMarcador: 2f, portadores: 2);
         }
 
         static ObjetoFragil CrearJarron(Mats m)
@@ -167,7 +167,7 @@ namespace BichoShow.Herramientas
 
             KitObjetos.Poner("Sofa", modelo, Vector3.zero, local: true);
 
-            return GuardarObjeto(raiz, modelo, m, "el sofá", puntos: 150, fragilidad: 0.6f, alturaMarcador: 1.9f);
+            return GuardarObjeto(raiz, modelo, m, "el sofá", puntos: 150, fragilidad: 0.6f, alturaMarcador: 1.9f, portadores: 2);
         }
 
         static GameObject RaizObjeto(string nombre, float masa, out Transform modelo)
@@ -185,7 +185,7 @@ namespace BichoShow.Herramientas
         }
 
         static ObjetoFragil GuardarObjeto(GameObject raiz, Transform modelo, Mats m, string nombreObjeto,
-                                          int puntos, float fragilidad, float alturaMarcador)
+                                          int puntos, float fragilidad, float alturaMarcador, int portadores = 1)
         {
             var marcador = E.Pieza(PrimitiveType.Cube, "Marcador", raiz.transform,
                 new Vector3(0f, alturaMarcador, 0f), Vector3.one * 0.3f, m.marcador);
@@ -198,6 +198,7 @@ namespace BichoShow.Herramientas
             fragil.renderersDano = modelo.GetComponentsInChildren<Renderer>();
             fragil.marcador = marcador.GetComponent<Renderer>();
             fragil.alturaMarcador = alturaMarcador;
+            fragil.portadoresNecesarios = portadores; // la tele y el sofá pesan: entre dos
 
             string ruta = $"{CarpetaObjetos}/{raiz.name}.prefab";
             PrefabUtility.SaveAsPrefabAsset(raiz, ruta);
@@ -259,10 +260,11 @@ namespace BichoShow.Herramientas
             CrearBarredora(mapa, m);
             var zonasMortales = CrearRio(mapa, m);
             CrearEmpujadores(mapa, m);
-            CrearAlmacen(mapa, m);
+            var placasCinta = CrearAlmacen(mapa, m);
             CrearPatio(mapa, m);
-            var casaRoja = CrearCasa(mapa, m, 0, -XCasa, "CASA ROJA", m.rojo, m.paredRoja, ColorRojo, 24f);
-            var casaAzul = CrearCasa(mapa, m, 1, XCasa, "CASA AZUL", m.azul, m.paredAzul, ColorAzul, -24f);
+            var casaRoja = CrearCasa(mapa, m, 0, -XCasa, "CASA ROJA", m.rojo, m.paredRoja, ColorRojo, 24f, out var frenoRojo);
+            var casaAzul = CrearCasa(mapa, m, 1, XCasa, "CASA AZUL", m.azul, m.paredAzul, ColorAzul, -24f, out var frenoAzul);
+            CrearPlato(mapa, m);
 
             CrearDecorado(mapa);
             Cartel(mapa, "MUDANZA FRÁGIL", new Vector3(0f, 9f, 70f), 3f, Color.white);
@@ -312,8 +314,8 @@ namespace BichoShow.Herramientas
             ronda.zonaSaboteadores = zonaSaboteadores;
             ronda.equipos = new[]
             {
-                new RondaMudanza.Equipo { nombre = "Rojo", color = ColorRojo, casa = casaRoja, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoRojo", -5f), rutaBots = RutaBots(rondaGo.transform, "RutaRojo", -1f) },
-                new RondaMudanza.Equipo { nombre = "Azul", color = ColorAzul, casa = casaAzul, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoAzul", 5f), rutaBots = RutaBots(rondaGo.transform, "RutaAzul", 1f) },
+                new RondaMudanza.Equipo { nombre = "Rojo", color = ColorRojo, casa = casaRoja, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoRojo", -5f), rutaBots = RutaBots(rondaGo.transform, "RutaRojo", -1f), ayudas = Ayudas(placasCinta[0], frenoRojo) },
+                new RondaMudanza.Equipo { nombre = "Azul", color = ColorAzul, casa = casaAzul, aparicionObjeto = PuntoObjeto(rondaGo.transform, "ObjetoAzul", 5f), rutaBots = RutaBots(rondaGo.transform, "RutaAzul", 1f), ayudas = Ayudas(placasCinta[1], frenoAzul) },
             };
 
             Ambientes.Aplicar(Ambientes.Tema.Barrio);
@@ -355,6 +357,13 @@ namespace BichoShow.Herramientas
             }
             return ruta;
         }
+
+        /// <summary>Las placas de un equipo y el tramo en el que sirven (los bots las pisan ahí).</summary>
+        static RondaMudanza.Ayuda[] Ayudas(PlacaPresion cinta, PlacaPresion puerta) => new[]
+        {
+            new RondaMudanza.Ayuda { placa = cinta, desdeZ = 17f, hastaZ = 31f },
+            new RondaMudanza.Ayuda { placa = puerta, desdeZ = 45f, hastaZ = FrenteCasa + 3f },
+        };
 
         static Transform PuntoObjeto(Transform padre, string nombre, float x)
         {
@@ -455,18 +464,17 @@ namespace BichoShow.Herramientas
             }
 
             // Islas flotantes con árboles, arbustos y algún banco, a los lados del recorrido.
-            float[] zs = { -34f, -19f, -3f, 12f, 27f, 41f, 56f };
+            float[] zs = { -36f, -16.5f, 0.5f, 17.5f, 34.5f, 57f }; // entre las islas de las gradas
             for (int i = 0; i < zs.Length; i++)
             foreach (float lado in new[] { -1f, 1f })
             {
-                float z = zs[i] + (lado < 0 ? 0f : 4f);
+                float z = zs[i];
                 var centro = new Vector3((z > 44f ? 20.5f : 16.5f) * lado, 0f, z); // junto a las casas el suelo es más ancho
                 E.Bloque("Isla", decorado, centro + new Vector3(0f, -2.6f, 0f), new Vector3(6f, 4f, 6f), tierra);
                 E.Bloque("Cesped", decorado, centro + new Vector3(0f, -0.65f, 0f), new Vector3(6.2f, 0.3f, 6.2f), cesped);
                 KitObjetos.Poner("Arbol", decorado, centro + new Vector3(0.8f * lado, -0.5f, -0.6f), i * 47f, escala: 1f + 0.15f * (i % 3));
                 KitObjetos.Poner("Arbusto", decorado, centro + new Vector3(-1.4f * lado, -0.5f, 1.4f), i * 31f);
-                if (i % 2 == 0)
-                    KitObjetos.Poner("Banco", decorado, centro + new Vector3(-1.2f * lado, -0.5f, -1.6f), lado < 0 ? 90f : -90f);
+                KitObjetos.Poner("TorreFocos", decorado, centro + new Vector3(-1.6f * lado, -0.5f, 1.4f), -lado * 90f, kit: KitObjetos.KitPlato);
             }
 
             // Edificios de fondo sobre islas grandes, lejos, entre la niebla.
@@ -484,6 +492,61 @@ namespace BichoShow.Herramientas
                 E.Bloque("IslaGrande", decorado, pos + new Vector3(0f, -5f, 0f), new Vector3(11f, 6f, 11f), tierra);
                 E.Bloque("CespedGrande", decorado, pos + new Vector3(0f, -1.85f, 0f), new Vector3(11.2f, 0.3f, 11.2f), cesped);
                 KitObjetos.Poner(edificios[i % edificios.Length], decorado, pos + new Vector3(0f, -1.7f, 0f), giro, escala: 1f + 0.12f * (i % 2));
+            }
+        }
+
+        /// <summary>
+        /// El plató, como en las demás pruebas: gradas con público en islas a los dos lados, la
+        /// pantalla gigante detrás de las casas, cámaras de tele y cañones de confeti en el jardín.
+        /// </summary>
+        static void CrearPlato(Transform mapa, Mats m)
+        {
+            var plato = Grupo(mapa, "Plato");
+            var gradas = Grupo(plato, "Gradas");
+            gradas.gameObject.AddComponent<PublicoAnimado>();
+
+            Color[] coloresPublico =
+            {
+                new Color(1f, 0.45f, 0.45f), new Color(0.4f, 0.65f, 1f), new Color(1f, 0.8f, 0.3f),
+                new Color(0.5f, 0.9f, 0.5f), new Color(0.85f, 0.55f, 1f), new Color(1f, 0.6f, 0.85f),
+            };
+            var materialesPublico = new Material[coloresPublico.Length];
+            for (int i = 0; i < coloresPublico.Length; i++)
+                materialesPublico[i] = E.CrearMaterial($"Publico{i}", coloresPublico[i], 0.3f);
+
+            var azar = new System.Random(11);
+            foreach (float lado in new[] { -1f, 1f })
+            foreach (float z in new[] { -25f, -8f, 9f, 26f, 43f })
+            {
+                var isla = new Vector3(18.2f * lado, 0f, z);
+                E.Bloque("IslaGrada", plato, isla + new Vector3(0f, -2.6f, 0f), new Vector3(6.6f, 4f, 10f), m.tierra);
+                E.Bloque("CespedGrada", plato, isla + new Vector3(0f, -0.65f, 0f), new Vector3(6.8f, 0.3f, 10.2f), m.cesped);
+                var grada = KitObjetos.Poner("Grada", gradas, new Vector3(17.6f * lado, -0.5f, z), -lado * 90f, kit: KitObjetos.KitPlato);
+
+                // Público sentado en las cuatro filas (asientos en local: y = 0.5·(i+1)+0.1, z = 1.35 − 1.1·i).
+                for (int fila = 0; fila < 4; fila++)
+                for (int s = 0; s < 5; s++)
+                {
+                    if (azar.NextDouble() < 0.15) continue; // algún hueco libre
+                    float px = -3.2f + 1.6f * s + (float)(azar.NextDouble() - 0.5) * 0.5f;
+                    string pieza = azar.NextDouble() < 0.3 ? "PublicoBrazos" : "Publico";
+                    KitObjetos.Poner(pieza, grada.transform, new Vector3(px, 0.5f * (fila + 1) + 0.1f, 1.35f - 1.1f * fila),
+                        (float)(azar.NextDouble() - 0.5) * 30f, materialesPublico[azar.Next(materialesPublico.Length)],
+                        1f + (float)(azar.NextDouble() - 0.5) * 0.2f, true, KitObjetos.KitPlato);
+                }
+            }
+
+            // Pantalla gigante detrás de las casas (el cartel de "MUDANZA FRÁGIL" va delante).
+            E.Bloque("IslaPantalla", plato, new Vector3(0f, -3f, 76.5f), new Vector3(20f, 6f, 5f), m.tierra);
+            E.Bloque("CespedPantalla", plato, new Vector3(0f, -0.15f, 76.5f), new Vector3(20.2f, 0.3f, 5.2f), m.cesped);
+            KitObjetos.Poner("Pantalla", plato, new Vector3(0f, 6f, 76.5f), 180f, kit: KitObjetos.KitPlato);
+
+            // En el jardín: una cámara de tele enfocando cada puerta y cañones de confeti a los lados.
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                var pos = new Vector3(12.8f * lado, 0f, 47.2f);
+                KitObjetos.Poner("CamaraTV", plato, pos, KitObjetos.GiroMirando(pos, new Vector3(XCasa * lado, 0f, FrenteCasa)), kit: KitObjetos.KitPlato);
+                KitObjetos.Poner("CanonConfeti", plato, new Vector3(13.3f * lado, 0f, FrenteCasa - 0.8f), 180f - lado * 25f, kit: KitObjetos.KitPlato);
             }
         }
 
@@ -639,21 +702,50 @@ namespace BichoShow.Herramientas
         }
 
         // --- Zona 5: almacén con cintas que van hacia atrás y pilas de cajas en medio ---
-        static void CrearAlmacen(Transform mapa, Mats m)
+        static PlacaPresion[] CrearAlmacen(Transform mapa, Mats m)
         {
             var almacen = Grupo(mapa, "Almacen");
+            var placas = new PlacaPresion[2];
             foreach (float lado in new[] { -1f, 1f })
             {
-                Cinta(almacen, m, 4.5f * lado, 7f, 19f, 31f);
+                // Cada equipo tiene su cinta y, al lado, la placa que la para mientras alguien la pisa.
+                int equipo = lado < 0 ? 0 : 1;
+                var cinta = Cinta(almacen, m, 4.5f * lado, 7f, 19f, 31f);
+                placas[equipo] = PlacaAyuda(almacen, equipo == 0 ? "PlacaCintaRoja" : "PlacaCintaAzul", new Vector3(9f * lado, 0f, 20.6f),
+                                            equipo, m, "PARA\nLA CINTA");
+                cinta.interruptor = placas[equipo];
                 PilaCajas(almacen, new Vector3(6.8f * lado, 0f, 23f), 15f * lado);
                 PilaCajas(almacen, new Vector3(8.9f * lado, 0f, 29.5f), -10f * lado);
             }
             PilaCajas(almacen, new Vector3(0f, 0f, 27.5f), 30f);
             Cartel(almacen, "ALMACÉN", new Vector3(0f, 3.2f, 31.5f), 0.9f, Color.white);
+            return placas;
+        }
+
+        /// <summary>Placa de ayuda de un equipo, con su letrero: la pisa uno mientras el otro lleva el objeto.</summary>
+        static PlacaPresion PlacaAyuda(Transform padre, string nombre, Vector3 posicion, int equipo, Mats m, string letrero)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(padre, false);
+            go.transform.position = posicion;
+            Decorado(PrimitiveType.Cube, "Borde", go.transform, new Vector3(0f, 0.025f, 0f), new Vector3(2.1f, 0.05f, 2.1f), m.peligro, local: true);
+            var disco = E.Pieza(PrimitiveType.Cube, "Disco", go.transform, new Vector3(0f, 0.07f, 0f), new Vector3(1.7f, 0.12f, 1.7f), equipo == 0 ? m.rojo : m.azul);
+            var placa = go.AddComponent<PlacaPresion>();
+            placa.equipo = equipo;
+            placa.tamano = new Vector3(1.9f, 1.6f, 1.9f);
+            placa.visual = disco.GetComponent<Renderer>();
+            Color color = equipo == 0 ? ColorRojo : ColorAzul;
+            placa.colorLibre = color;
+            placa.colorPulsada = new Color(0.45f, 1f, 0.5f);
+            // Letrero en un panel oscuro sobre un poste, para que se lea desde lejos.
+            Decorado(PrimitiveType.Cube, "Poste", go.transform, new Vector3(0f, 0.9f, 1.05f), new Vector3(0.1f, 1.8f, 0.1f), m.rueda, local: true);
+            Decorado(PrimitiveType.Cube, "Panel", go.transform, new Vector3(0f, 1.95f, 1.05f), new Vector3(2.3f, 1.05f, 0.1f), m.rueda, local: true);
+            Cartel(go.transform, letrero, posicion + new Vector3(0f, 1.95f, 0.98f), 0.42f, Color.white);
+            return placa;
         }
 
         /// <summary>Cinta transportadora a ras de suelo: lleva hacia atrás (-Z) todo lo que la pisa.</summary>
-        static void Cinta(Transform padre, Mats m, float x, float ancho, float z0, float z1)
+        static CintaTransportadora Cinta(Transform padre, Mats m, float x, float ancho, float z0, float z1)
         {
             float largo = z1 - z0;
             var go = new GameObject("Cinta");
@@ -679,6 +771,7 @@ namespace BichoShow.Herramientas
             cinta.velocidad = 1.8f;
             cinta.tamano = new Vector2(ancho, largo);
             cinta.marcas = marcas.ToArray();
+            return cinta;
         }
 
         /// <summary>Pila fija de cajas de cartón (una sola colisión, para no llenar la cinta de piezas).</summary>
@@ -752,7 +845,7 @@ namespace BichoShow.Herramientas
 
         // --- Zona 7: casa de cada equipo con puerta giratoria ---
         static ZonaEntrega CrearCasa(Transform mapa, Mats m, int equipo, float cx, string titulo,
-                                     Material colorEquipo, Material pared, Color color, float giroPuerta)
+                                     Material colorEquipo, Material pared, Color color, float giroPuerta, out PlacaPresion freno)
         {
             var casa = Grupo(mapa, equipo == 0 ? "CasaRoja" : "CasaAzul");
             const float frente = FrenteCasa, fondo = FrenteCasa + 9f, alto = 3.6f, medio = 6f, hueco = 3.4f;
@@ -818,6 +911,11 @@ namespace BichoShow.Herramientas
                 E.Pieza(PrimitiveType.Cylinder, "Rulo", puerta.transform, rot * new Vector3(radioColumna + largoHoja, 1.35f, 0f), new Vector3(0.36f, 1.3f, 0.36f), colorEquipo, conCollider: true);
             }
             giro.renderersAviso = hojas;
+
+            // Placa en el jardín, por fuera del camino: mientras alguien del equipo la pisa, la puerta va muy despacio.
+            freno = PlacaAyuda(casa, "PlacaFreno", new Vector3(cx + 4.7f * fuera, 0f, frente - 3.8f), equipo, m, "FRENA\nLA PUERTA");
+            giro.freno = freno;
+            giro.factorFreno = 0.25f;
 
             // Zona de entrega dentro de la casa
             Decorado(PrimitiveType.Cube, "Alfombra", casa, new Vector3(cx, 0.02f, ZAlfombra), new Vector3(9f, 0.04f, 5f), colorEquipo);

@@ -108,8 +108,19 @@ namespace BichoShow
             Vector3 posObjeto = objeto.transform.position;
             Rigidbody agarrado = bicho.CuerpoAgarrado;
 
+            // Si con uno basta y ya lo lleva otro, el segundo ayuda desde la placa del tramo
+            // (para la cinta, frena la puerta) en vez de llevarlo también.
+            var placa = objeto.NecesariosAhora <= 1 ? PlacaUtil(equipo, posObjeto) : null;
+            bool loLlevoYo = agarrado != null && agarrado == objeto.Cuerpo;
+            if (placa != null && AlguienMasLoLleva(objeto) && (!loLlevoYo || SoyElUltimo(objeto)))
+            {
+                quiereAgarrar = false;
+                objetivo = placa.transform.position;
+                return;
+            }
+
             // Llevándolo: seguir la ruta.
-            if (agarrado != null && agarrado == objeto.Cuerpo)
+            if (loLlevoYo)
             {
                 llevandoObjeto = true;
                 quiereAgarrar = true;
@@ -153,6 +164,22 @@ namespace BichoShow
                 objetivo = posObjeto + lado * 1.2f;
                 quiereAgarrar = false;
             }
+        }
+
+        static PlacaPresion PlacaUtil(RondaMudanza.Equipo equipo, Vector3 posObjeto)
+        {
+            if (equipo.ayudas == null) return null;
+            foreach (var a in equipo.ayudas)
+                if (a != null && a.placa != null && posObjeto.z >= a.desdeZ && posObjeto.z <= a.hastaZ) return a.placa;
+            return null;
+        }
+
+        /// <summary>De los que lo llevan, soy el de número más alto (el que suelta para ayudar).</summary>
+        bool SoyElUltimo(ObjetoFragil objeto)
+        {
+            foreach (var otro in ControladorBicho.Todos)
+                if (otro != bicho && otro.CuerpoAgarrado == objeto.Cuerpo && otro.IndiceJugador > bicho.IndiceJugador) return false;
+            return true;
         }
 
         bool AlguienMasLoLleva(ObjetoFragil objeto)
