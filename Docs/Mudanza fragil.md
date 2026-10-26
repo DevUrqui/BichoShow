@@ -6,7 +6,7 @@ Dos equipos, rojos (jugadores 1 y 3) contra azules (2 y 4), llevan objetos frág
 
 En Unity: **BichoShow → Crear escena: Mudanza frágil**.
 
-- Si ya la tenías creada, al darle a Play sale un aviso para rehacerla con la versión nueva (versión 2).
+- Si ya la tenías creada, al darle a Play sale un aviso para rehacerla con la versión nueva (versión 3).
 - Dura al menos **2 minutos y medio**, aunque el show pida rondas más cortas: el recorrido es largo.
 
 ## El recorrido (del camión a la casa, unos 90 m)
@@ -23,6 +23,26 @@ En Unity: **BichoShow → Crear escena: Mudanza frágil**.
 
 - La alfombra de dentro de la casa es la zona de entrega.
 - Las barredoras, los empujadores, las plataformas y las puertas son trampas: con saboteador se mueven solo cuando él las activa. Los ventiladores y las cintas van siempre solos.
+
+## Aspecto
+
+Las piezas nuevas están en el kit del barrio: `Arte/Blender/crear_kit_barrio.py` genera `KitBarrio.fbx` sin abrir Blender. Las colisiones son las de siempre, invisibles; encima va el dibujo de Blender.
+
+- **Suelos de cada zona**:
+  - **Salida**: pavimento, con las plazas de los camiones pintadas y una zona rayada donde sale cada objeto.
+  - **Calle**: asfalto, aceras, bordillos, pasos de cebra y alcantarillas.
+  - **Almacén**: hormigón, con una franja de cinta de peligro a la entrada y a la salida.
+  - **Patio**: baldosas a cuadros.
+  - **Casas**: césped con caminos hasta cada puerta, y parquet por dentro.
+  - Por los lados de las losas se ve tierra, como en las islas.
+- **Barredora**: brazo a rayas rojas y blancas con topes de goma, y un eje con baliza naranja.
+- **Empujadores**: prensas hidráulicas amarillas, con rayas de peligro en la cara que empuja y una baliza encima. Salen de un garaje con luz roja.
+- **Río**: el puente central es de tablas y las plataformas son balsas de tablones con los bordes de aviso. Hay juncos en las orillas, rocas y nenúfares.
+- **Almacén**: rodillos en los extremos de las cintas, y las pilas de cajas van sobre palés.
+- **Patio**: valla de piquetes blancos.
+- **Casas**:
+  - Por fuera: remate del color del equipo encima de las paredes, toldo a rayas sobre la puerta, ventanas con contraventanas y geranios, y una maceta junto a la puerta.
+  - La puerta giratoria: hojas de cristal con marco y barras para empujar.
 
 ## Bots
 

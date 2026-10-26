@@ -24,7 +24,7 @@ namespace BichoShow.Herramientas
         /// <summary>Materiales que brillan, con su intensidad (la pantalla, poco: encima va texto).</summary>
         static readonly Dictionary<string, float> Emisivos = new Dictionary<string, float>
         {
-            { "Faro", 2.5f }, { "Luz", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f }, { "Chispa", 4f }, { "Llama", 3f }, { "Estrella", 1.5f }, { "Bombilla", 2f }, { "PantallaCocina", 0.8f },
+            { "Faro", 2.5f }, { "Luz", 2.5f }, { "Baliza", 2.5f }, { "LuzRoja", 2.5f }, { "PantallaPlato", 0.6f }, { "Chispa", 4f }, { "Llama", 3f }, { "Estrella", 1.5f }, { "Bombilla", 2f }, { "PantallaCocina", 0.8f },
         };
         static readonly HashSet<string> Brillantes = new HashSet<string>
         {

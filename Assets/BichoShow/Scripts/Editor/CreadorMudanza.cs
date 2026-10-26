@@ -22,7 +22,7 @@ namespace BichoShow.Herramientas
         const string CarpetaObjetos = E.CarpetaPrefabs + "/Objetos";
         public const string RutaEscena = E.CarpetaEscenas + "/Mudanza.unity";
         /// <summary>Súbelo al cambiar el recorrido: la escena guardada se marca como anticuada.</summary>
-        public const int Version = 2;
+        public const int Version = 3;
 
         // Las casas: centro de cada una (en X, a cada lado), su fachada y la alfombra de entrega.
         const float XCasa = 6.2f, FrenteCasa = 54f, ZAlfombra = 60.2f;
@@ -35,7 +35,8 @@ namespace BichoShow.Herramientas
             public E.Materiales basicos;
             public Material agua, madera, camion, rueda, sabotaje, cono, peligro, linea, cristal, marcador,
                 tele, pantalla, jarron, tallo, flor, sofa, cojin, particula,
-                rojo, azul, paredRoja, paredAzul;
+                rojo, azul, paredRoja, paredAzul,
+                tierra, pavimento, asfalto, acera, bordillo, hormigon, baldosaA, baldosaB, cesped, camino, parquet;
         }
 
         [MenuItem("BichoShow/Crear escena: Mudanza frágil")]
@@ -102,6 +103,18 @@ namespace BichoShow.Herramientas
                 azul = E.CrearMaterial("EquipoAzul", ColorAzul, 0.3f),
                 paredRoja = E.CrearMaterial("ParedRoja", Color.Lerp(ColorRojo, Color.white, 0.55f), 0.1f),
                 paredAzul = E.CrearMaterial("ParedAzul", Color.Lerp(ColorAzul, Color.white, 0.55f), 0.1f),
+                // Suelos: cada zona con el suyo (la tierra es lo que se ve por los lados de las losas).
+                tierra = E.CrearMaterial("IslaTierra", new Color(0.62f, 0.5f, 0.42f), 0.1f),
+                pavimento = E.CrearMaterial("MudanzaPavimento", new Color(0.84f, 0.8f, 0.74f), 0.1f),
+                asfalto = E.CrearMaterial("MudanzaAsfalto", new Color(0.4f, 0.42f, 0.5f), 0.15f),
+                acera = E.CrearMaterial("MudanzaAcera", new Color(0.9f, 0.85f, 0.76f), 0.1f),
+                bordillo = E.CrearMaterial("MudanzaBordillo", new Color(0.97f, 0.96f, 0.93f), 0.1f),
+                hormigon = E.CrearMaterial("MudanzaHormigon", new Color(0.72f, 0.74f, 0.77f), 0.1f),
+                baldosaA = E.CrearMaterial("MudanzaBaldosaA", new Color(0.96f, 0.9f, 0.8f), 0.2f),
+                baldosaB = E.CrearMaterial("MudanzaBaldosaB", new Color(0.9f, 0.66f, 0.54f), 0.2f),
+                cesped = E.CrearMaterial("Cesped", new Color(0.45f, 0.75f, 0.38f), 0.1f),
+                camino = E.CrearMaterial("MudanzaCamino", new Color(0.88f, 0.8f, 0.66f), 0.1f),
+                parquet = E.CrearMaterial("MudanzaParquet", new Color(0.8f, 0.6f, 0.42f), 0.25f),
             };
 
             // Material para partículas (confeti y salpicaduras): sin luz, colores de vértice.
@@ -236,11 +249,10 @@ namespace BichoShow.Herramientas
             new GameObject(EscenasAnticuadas.Marca + Version);
 
             // --- Suelos (arriba en y=0, 3 m de grosor para que parezcan orillas) ---
-            E.Bloque("SueloSalida", mapa, new Vector3(0f, -1.5f, -27f), new Vector3(20f, 3f, 22f), b.suelo);
-            E.Bloque("SueloPrincipal", mapa, new Vector3(0f, -1.5f, 19f), new Vector3(20f, 3f, 54f), b.suelo);
-            E.Bloque("SueloCasas", mapa, new Vector3(0f, -1.5f, 56f), new Vector3(28f, 3f, 20f), b.suelo);
-            for (float z = -6f; z <= 15f; z += 2.5f)
-                Decorado(PrimitiveType.Cube, "Linea", mapa, new Vector3(0f, 0.01f, z), new Vector3(0.25f, 0.02f, 1.2f), m.linea);
+            E.Bloque("SueloSalida", mapa, new Vector3(0f, -1.5f, -27f), new Vector3(20f, 3f, 22f), m.tierra);
+            E.Bloque("SueloPrincipal", mapa, new Vector3(0f, -1.5f, 19f), new Vector3(20f, 3f, 54f), m.tierra);
+            E.Bloque("SueloCasas", mapa, new Vector3(0f, -1.5f, 56f), new Vector3(28f, 3f, 20f), m.tierra);
+            CrearSuelos(mapa, m);
 
             CrearSalida(mapa, m);
             var zonaSaboteadores = CrearCabinaSaboteador(mapa, m);
@@ -484,14 +496,17 @@ namespace BichoShow.Herramientas
             barredora.AddComponent<Rigidbody>().isKinematic = true;
             var giro = barredora.AddComponent<BarraGiratoria>();
             giro.velocidadGiro = 75f;
-            E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.8f, 0.6f, 0.8f), m.peligro, conCollider: true);
-            var brazo = E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(14f, 0.4f, 0.4f), m.basicos.obstaculo, local: true);
+            // Colisiones de siempre (invisibles) y encima el brazo a rayas y el eje con baliza, de Blender.
+            Ocultar(E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.8f, 0.6f, 0.8f), m.peligro, conCollider: true));
+            Ocultar(E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(14f, 0.4f, 0.4f), m.basicos.obstaculo, local: true));
+            KitObjetos.Poner("BarredoraEje", barredora.transform, Vector3.zero, local: true);
+            var brazo = KitObjetos.Poner("BarredoraBrazo", barredora.transform, Vector3.zero, local: true);
 
             giro.nombreTrampa = "Barredora";
             giro.enfriamiento = 8f;
             giro.radioEfecto = 8f;
             giro.alturaMarcador = 3.5f;
-            giro.renderersAviso = new[] { brazo.GetComponent<Renderer>() };
+            giro.renderersAviso = brazo.GetComponentsInChildren<Renderer>();
         }
 
         // --- Plataforma de saboteadores, entre los camiones ---
@@ -519,14 +534,18 @@ namespace BichoShow.Herramientas
             Decorado(PrimitiveType.Cube, "Agua", rio, new Vector3(0f, -3f, -12f), new Vector3(26f, 0.3f, 8f), m.agua);
 
             // Puente central: estrecho y fijo. El camino seguro… por el que van todos.
-            E.Bloque("PuenteCentral", rio, new Vector3(0f, -0.2f, -12f), new Vector3(1.8f, 0.4f, 8.1f), m.madera);
+            Ocultar(E.Bloque("PuenteCentral", rio, new Vector3(0f, -0.2f, -12f), new Vector3(1.8f, 0.4f, 8.1f), m.madera));
+            KitObjetos.Poner("PuenteTablas", rio, new Vector3(0f, -0.4f, -12f));
 
             // Plataformas basculantes a los lados: anchas, pero se inclinan según dónde piséis.
+            // (Balsas de tablas con los bordes de aviso; la raíz no tiene escala para que el dibujo no se deforme.)
             foreach (float x in new[] { -6f, 6f })
             {
-                var plataforma = E.Bloque(x < 0 ? "BasculanteIzq" : "BasculanteDer", rio, new Vector3(x, -0.2f, -12f), new Vector3(5f, 0.4f, 7.9f), m.madera);
-                Decorado(PrimitiveType.Cube, "BordeAviso", plataforma.transform, new Vector3(-0.47f, 0.52f, 0f), new Vector3(0.04f, 0.05f, 1f), m.peligro, local: true);
-                Decorado(PrimitiveType.Cube, "BordeAviso", plataforma.transform, new Vector3(0.47f, 0.52f, 0f), new Vector3(0.04f, 0.05f, 1f), m.peligro, local: true);
+                var plataforma = new GameObject(x < 0 ? "BasculanteIzq" : "BasculanteDer");
+                plataforma.transform.SetParent(rio, false);
+                plataforma.transform.position = new Vector3(x, -0.2f, -12f);
+                plataforma.AddComponent<BoxCollider>().size = new Vector3(5f, 0.4f, 7.9f);
+                var balsa = KitObjetos.Poner("BalsaTablas", plataforma.transform, Vector3.zero, local: true);
                 var tronco = Decorado(PrimitiveType.Cylinder, "Eje", rio, new Vector3(x, -0.6f, -12f), new Vector3(0.5f, 4f, 0.5f), m.rueda);
                 tronco.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
@@ -547,7 +566,23 @@ namespace BichoShow.Herramientas
                 basculante.enfriamiento = 7f;
                 basculante.radioEfecto = 5f;
                 basculante.alturaMarcador = 2.5f;
-                basculante.renderersAviso = new[] { plataforma.GetComponent<Renderer>() };
+                basculante.renderersAviso = balsa.GetComponentsInChildren<Renderer>();
+            }
+
+            // Orillas: juncos pegados a cada orilla, rocas y nenúfares en el agua (fuera de los caminos).
+            const float superficie = -2.85f;
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                foreach (float z in new[] { -15.5f, -8.5f })
+                {
+                    KitObjetos.Poner("Juncos", rio, new Vector3(2.2f * lado, superficie, z + (z < -12f ? 0.1f : -0.1f)), 40f * lado);
+                    KitObjetos.Poner("Juncos", rio, new Vector3(11.6f * lado, superficie, z), -25f * lado, escala: 1.2f);
+                }
+                KitObjetos.Poner("RocasRio", rio, new Vector3(11.4f * lado, superficie - 0.25f, -12.3f), 70f * lado);
+                KitObjetos.Poner("RocasRio", rio, new Vector3(2.2f * lado, superficie - 0.3f, -11.2f), 150f * lado, escala: 0.75f);
+                KitObjetos.Poner("Nenufar", rio, new Vector3(10.3f * lado, superficie, -13.6f), 30f * lado);
+                KitObjetos.Poner("Nenufar", rio, new Vector3(2.4f * lado, superficie, -13.4f), 200f * lado, escala: 0.8f);
+                KitObjetos.Poner("Nenufar", rio, new Vector3(12f * lado, superficie, -9.8f), 110f * lado, escala: 0.9f);
             }
 
             var salpicadura = Particulas("Salpicadura", rio, new Vector3(0f, -3f, -12f),
@@ -580,20 +615,26 @@ namespace BichoShow.Herramientas
             foreach (var e in empujadores)
             {
                 numero++;
-                var go = E.Bloque(e.lado < 0 ? "EmpujadorIzq" : "EmpujadorDer", calle,
-                    new Vector3(9f * e.lado, 0.7f, e.z), new Vector3(2f, 1.4f, 2.5f), m.peligro);
+                // Raíz sin escala con la colisión de siempre; el dibujo (de Blender) mira hacia la calle.
+                float haciaCalle = e.lado < 0 ? 90f : -90f;
+                var go = new GameObject(e.lado < 0 ? "EmpujadorIzq" : "EmpujadorDer");
+                go.transform.SetParent(calle, false);
+                go.transform.position = new Vector3(9f * e.lado, 0.7f, e.z);
+                go.AddComponent<BoxCollider>().size = new Vector3(2f, 1.4f, 2.5f);
+                var cuerpo = KitObjetos.Poner("Empujador", go.transform, new Vector3(0f, -0.7f, 0f), haciaCalle, local: true);
                 go.AddComponent<Rigidbody>().isKinematic = true;
                 var empujador = go.AddComponent<Empujador>();
                 empujador.recorrido = new Vector3(-5f * e.lado, 0f, 0f);
                 empujador.periodo = 4f;
                 empujador.desfase = e.desfase;
-                empujador.cuerpoVisible = go.GetComponent<Renderer>();
+                empujador.cuerpoVisible = cuerpo.GetComponentInChildren<Renderer>();
                 empujador.nombreTrampa = $"Empujador {numero}";
                 empujador.enfriamiento = 4f;
                 empujador.radioEfecto = 4.5f;
                 empujador.alturaMarcador = 2.5f;
                 // Carcasa detrás, para que se vea de dónde sale.
-                E.Bloque("Carcasa", calle, new Vector3(10.4f * e.lado, 0.9f, e.z), new Vector3(0.8f, 1.8f, 3f), m.rueda);
+                Ocultar(E.Bloque("Carcasa", calle, new Vector3(10.4f * e.lado, 0.9f, e.z), new Vector3(0.8f, 1.8f, 3f), m.rueda));
+                KitObjetos.Poner("CarcasaEmpujador", calle, new Vector3(10.4f * e.lado, 0f, e.z), haciaCalle);
             }
         }
 
@@ -630,6 +671,9 @@ namespace BichoShow.Herramientas
                 marcas.Add(KitObjetos.Poner("Flecha", go.transform, new Vector3(0f, 0.03f, -largo * 0.5f + largo * (i + 0.5f) / 3f), 180f,
                                             m.peligro, 1.4f, true, KitObjetos.KitCostura).transform);
 
+            foreach (float extremo in new[] { -1f, 1f })
+                KitObjetos.Poner("RodilloCinta", go.transform, new Vector3(0f, 0f, extremo * (largo * 0.5f + 0.1f)), local: true);
+
             var cinta = go.AddComponent<CintaTransportadora>();
             cinta.direccion = Vector3.back;
             cinta.velocidad = 1.8f;
@@ -644,15 +688,16 @@ namespace BichoShow.Herramientas
             pila.transform.SetParent(padre, false);
             pila.transform.SetPositionAndRotation(posicion, Quaternion.Euler(0f, giro, 0f));
             var col = pila.AddComponent<BoxCollider>();
-            col.size = new Vector3(1.5f, 2.1f, 1.5f);
-            col.center = new Vector3(0f, 1.05f, 0f);
+            col.size = new Vector3(1.6f, 2.25f, 1.6f);
+            col.center = new Vector3(0f, 1.12f, 0f);
+            KitObjetos.Poner("Palet", pila.transform, Vector3.zero, local: true);
             (Vector3 p, float g)[] cajas =
             {
                 (new Vector3(-0.38f, 0f, -0.38f), 4f), (new Vector3(0.38f, 0f, -0.36f), -6f),
                 (new Vector3(-0.36f, 0f, 0.38f), 10f), (new Vector3(0.38f, 0f, 0.4f), -3f),
                 (new Vector3(-0.2f, 0.7f, 0f), 20f), (new Vector3(0.25f, 0.7f, 0.1f), -8f), (new Vector3(0.05f, 1.4f, 0.05f), -15f),
             };
-            foreach (var c in cajas) KitObjetos.Poner("CajaCarton", pila.transform, c.p, c.g, local: true);
+            foreach (var c in cajas) KitObjetos.Poner("CajaCarton", pila.transform, c.p + Vector3.up * 0.14f, c.g, local: true);
         }
 
         // --- Zona 6: patio de los ventiladores: ráfagas de lado y huecos en la valla ---
@@ -698,7 +743,11 @@ namespace BichoShow.Herramientas
         static void Valla(Transform padre, Mats m, float lado, float z0, float z1)
         {
             if (z1 - z0 < 0.5f) return;
-            E.Bloque("Valla", padre, new Vector3(9.85f * lado, 0.35f, (z0 + z1) * 0.5f), new Vector3(0.3f, 0.7f, z1 - z0), m.madera);
+            Ocultar(E.Bloque("Valla", padre, new Vector3(9.85f * lado, 0.35f, (z0 + z1) * 0.5f), new Vector3(0.3f, 0.7f, z1 - z0), m.madera));
+            // Tramos de 2 m de la valla de Blender, repartidos a lo largo.
+            int tramos = Mathf.Max(1, Mathf.RoundToInt((z1 - z0) / 2f));
+            for (int i = 0; i < tramos; i++)
+                KitObjetos.Poner("Valla", padre, new Vector3(9.85f * lado, 0f, z0 + (z1 - z0) * (i + 0.5f) / tramos), 90f, escala: 1f);
         }
 
         // --- Zona 7: casa de cada equipo con puerta giratoria ---
@@ -717,6 +766,27 @@ namespace BichoShow.Herramientas
             E.Bloque("FrenteDer", casa, new Vector3(cx + hueco + anchoFrente / 2f, alto / 2f, frente), new Vector3(anchoFrente, alto, 0.3f), pared);
             E.Bloque("Dintel", casa, new Vector3(cx, alto - 0.3f, frente), new Vector3(hueco * 2f, 0.6f, 0.3f), pared);
             E.Bloque("Letrero", casa, new Vector3(cx, alto + 0.9f, frente), new Vector3(7f, 1.2f, 0.25f), colorEquipo);
+
+            // Remate de color encima de las paredes (desde arriba se ve el contorno de la casa).
+            Decorado(PrimitiveType.Cube, "Remate", casa, new Vector3(cx, alto + 0.06f, fondo), new Vector3(medio * 2f + 0.45f, 0.14f, 0.45f), colorEquipo);
+            foreach (float s in new[] { -1f, 1f })
+            {
+                Decorado(PrimitiveType.Cube, "Remate", casa, new Vector3(cx + medio * s, alto + 0.06f, centroZ), new Vector3(0.45f, 0.14f, fondo - frente + 0.45f), colorEquipo);
+                Decorado(PrimitiveType.Cube, "Remate", casa, new Vector3(cx + (hueco + anchoFrente / 2f) * s, alto + 0.06f, frente), new Vector3(anchoFrente + 0.2f, 0.14f, 0.45f), colorEquipo);
+                // Ventanas con contraventanas y geranios en la fachada.
+                KitObjetos.Poner("VentanaCasa", casa, new Vector3(cx + (hueco + anchoFrente / 2f) * s, 0f, frente - 0.16f), 180f, colorEquipo);
+            }
+            float fuera = Mathf.Sign(cx);
+            foreach (float z in new[] { frente + 2.6f, frente + 6.4f })
+                KitObjetos.Poner("VentanaCasa", casa, new Vector3(cx + (medio + 0.16f) * fuera, 0f, z), 90f * fuera, colorEquipo);
+            KitObjetos.Poner("Toldo", casa, new Vector3(cx, alto + 0.25f, frente - 0.16f), 180f, colorEquipo);
+
+            // Maceta junto a la puerta, por el lado de dentro (al otro lado está el buzón).
+            var maceta = KitObjetos.Poner("Maceta", casa, new Vector3(cx - 3.9f * fuera, 0f, frente - 0.9f), 0f);
+            var colMaceta = maceta.AddComponent<CapsuleCollider>();
+            colMaceta.radius = 0.42f;
+            colMaceta.height = 1.4f;
+            colMaceta.center = new Vector3(0f, 0.7f, 0f);
             Cartel(casa, titulo, new Vector3(cx, alto + 0.9f, frente - 0.2f), 0.8f, Color.white);
 
             // Puerta giratoria: tres hojas de cristal grandes y lentas, con un rulo blando en la punta.
@@ -741,7 +811,10 @@ namespace BichoShow.Herramientas
                 var rot = Quaternion.Euler(0f, 120f * i, 0f);
                 var hoja = E.Pieza(PrimitiveType.Cube, "Hoja", puerta.transform, rot * new Vector3(radioColumna + largoHoja / 2f, 1.35f, 0f), new Vector3(largoHoja, 2.6f, 0.12f), m.cristal, conCollider: true);
                 hoja.transform.localRotation = rot;
-                hojas[i] = hoja.GetComponent<Renderer>();
+                Ocultar(hoja);
+                // La hoja de Blender: cristal con marco y barras para empujar.
+                var dibujo = KitObjetos.Poner("HojaPuerta", puerta.transform, rot * new Vector3(radioColumna + largoHoja / 2f, 0.05f, 0f), 120f * i, local: true);
+                hojas[i] = dibujo.GetComponentInChildren<Renderer>();
                 E.Pieza(PrimitiveType.Cylinder, "Rulo", puerta.transform, rot * new Vector3(radioColumna + largoHoja, 1.35f, 0f), new Vector3(0.36f, 1.3f, 0.36f), colorEquipo, conCollider: true);
             }
             giro.renderersAviso = hojas;
@@ -758,6 +831,88 @@ namespace BichoShow.Herramientas
         // ------------------------------------------------------------------
         // Utilidades
         // ------------------------------------------------------------------
+
+        /// <summary>Deja la pieza solo como colisión: su dibujo lo pone una pieza del kit.</summary>
+        static void Ocultar(GameObject go)
+        {
+            if (go != null && go.TryGetComponent(out Renderer r)) r.enabled = false;
+        }
+
+        /// <summary>Losa fina de suelo encima de la tierra; arriba queda en y = arriba.</summary>
+        static void Losa(Transform padre, string nombre, float x0, float x1, float z0, float z1, Material material, float arriba = 0.01f, float giro = 0f)
+        {
+            var go = Decorado(PrimitiveType.Cube, nombre, padre, new Vector3((x0 + x1) * 0.5f, arriba - 0.02f, (z0 + z1) * 0.5f),
+                              new Vector3(x1 - x0, 0.04f, z1 - z0), material);
+            if (go != null && giro != 0f) go.transform.rotation = Quaternion.Euler(0f, giro, 0f);
+        }
+
+        /// <summary>
+        /// Lo que se pisa en cada zona: patio de carga con plazas pintadas, calle de asfalto con aceras
+        /// y pasos de cebra, hormigón con cinta de peligro en el almacén, baldosas en el patio y césped
+        /// con caminos (y parquet dentro de las casas).
+        /// </summary>
+        static void CrearSuelos(Transform mapa, Mats m)
+        {
+            var suelos = Grupo(mapa, "Suelos");
+
+            // Salida: pavimento, plaza pintada de cada camión y zona rayada donde sale cada objeto.
+            Losa(suelos, "Pavimento", -10f, 10f, -38f, -16f, m.pavimento);
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                float x = 5f * lado;
+                foreach (float s in new[] { -1f, 1f })
+                    Losa(suelos, "Plaza", x + 2.2f * s - 0.075f, x + 2.2f * s + 0.075f, -38f, -31.6f, m.linea, 0.02f);
+                Losa(suelos, "Plaza", x - 2.275f, x + 2.275f, -31.75f, -31.6f, m.linea, 0.02f);
+                Losa(suelos, "ZonaCarga", x - 1.6f, x + 1.6f, -31.2f, -29.2f, m.peligro, 0.015f);
+                for (int i = 0; i < 6; i++)
+                {
+                    float cx = x - 1.35f + i * 0.54f;
+                    Losa(suelos, "RayaCarga", cx - 0.1f, cx + 0.1f, -31.1f, -29.3f, m.rueda, 0.02f, 35f);
+                }
+            }
+
+            // Calle: aceras de lado a lado, asfalto en medio, bordillos y pasos de cebra.
+            const float c0 = -8f, c1 = 17.6f;
+            Losa(suelos, "Acera", -10f, 10f, c0, c1, m.acera);
+            Losa(suelos, "Asfalto", -7f, 7f, c0, c1, m.asfalto, 0.015f);
+            foreach (float s in new[] { -1f, 1f })
+                Losa(suelos, "Bordillo", 7f * s - 0.15f, 7f * s + 0.15f, c0, c1, m.bordillo, 0.02f);
+            for (float z = -2.5f; z <= 12.5f; z += 2.5f)
+                Losa(suelos, "Linea", -0.12f, 0.12f, z - 0.6f, z + 0.6f, m.linea, 0.02f);
+            foreach (float zPaso in new[] { -6.6f, 14.6f })
+                for (float x = -6.25f; x <= 6.3f; x += 1.25f)
+                    Losa(suelos, "PasoCebra", x - 0.35f, x + 0.35f, zPaso, zPaso + 1.6f, m.linea, 0.02f);
+            foreach (var p in new[] { new Vector3(-4.6f, 0.012f, 2.6f), new Vector3(5f, 0.012f, 7.4f), new Vector3(-5f, 0.012f, 11.6f) })
+                KitObjetos.Poner("Alcantarilla", suelos, p, 20f);
+
+            // Almacén: hormigón con una franja de cinta de peligro a la entrada y a la salida.
+            const float a0 = 17.6f, a1 = 32.6f;
+            Losa(suelos, "Hormigon", -10f, 10f, a0, a1, m.hormigon);
+            foreach (float zFranja in new[] { a0 + 0.35f, a1 - 0.35f })
+                for (int i = 0; i < 20; i++)
+                    Losa(suelos, "Franja", -10f + i, -9f + i, zFranja - 0.25f, zFranja + 0.25f, i % 2 == 0 ? m.peligro : m.rueda, 0.02f);
+
+            // Patio: baldosas a cuadros.
+            const float p0 = 32.6f, p1 = 46f;
+            Losa(suelos, "Baldosas", -10f, 10f, p0, p1, m.baldosaA);
+            int filas = 6;
+            float altoFila = (p1 - p0) / filas;
+            for (int fila = 0; fila < filas; fila++)
+                for (int col = 0; col < 10; col++)
+                    if ((fila + col) % 2 == 1)
+                        Losa(suelos, "Baldosa", -10f + col * 2f + 0.04f, -8f + col * 2f - 0.04f, p0 + fila * altoFila + 0.04f, p0 + (fila + 1) * altoFila - 0.04f, m.baldosaB, 0.015f);
+
+            // Jardín de las casas: césped, una plazoleta de entrada, un camino a cada puerta y parquet dentro.
+            Losa(suelos, "Cesped", -14f, 14f, 46f, 66f, m.cesped);
+            Losa(suelos, "Plazoleta", -10f, 10f, 46f, 48.5f, m.camino, 0.015f);
+            foreach (float cx in new[] { -XCasa, XCasa })
+            {
+                Losa(suelos, "Camino", cx - 3.6f, cx + 3.6f, 48.5f, FrenteCasa, m.camino, 0.015f);
+                Losa(suelos, "Parquet", cx - 5.85f, cx + 5.85f, FrenteCasa, FrenteCasa + 9f, m.parquet, 0.015f);
+                for (float z = FrenteCasa + 0.6f; z < FrenteCasa + 9f; z += 1.2f)
+                    Losa(suelos, "Tablon", cx - 5.85f, cx + 5.85f, z - 0.02f, z + 0.02f, m.madera, 0.018f);
+            }
+        }
 
         internal static Transform Grupo(Transform padre, string nombre)
         {
