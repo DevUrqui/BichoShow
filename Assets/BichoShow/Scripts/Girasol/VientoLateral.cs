@@ -17,6 +17,8 @@ namespace BichoShow
         public float aviso = 1f;
         [Range(0f, 1f)] public float desfase;
         public float fuerza = 16f;
+        [Tooltip("Aceleración que reciben los objetos sueltos (los frágiles de la mudanza). 0 = no los mueve.")]
+        public float fuerzaObjetos;
         public Transform aspas;
 
         readonly Collider[] encontrados = new Collider[24];
@@ -39,7 +41,12 @@ namespace BichoShow
             {
                 var rb = encontrados[i].attachedRigidbody;
                 if (rb == null || rb.isKinematic || !empujados.Add(rb)) continue;
-                if (!rb.TryGetComponent(out ControladorBicho bicho) || bicho.Retirado) continue;
+                if (!rb.TryGetComponent(out ControladorBicho bicho))
+                {
+                    if (fuerzaObjetos > 0f && rb.GetComponent<ObjetoFragil>() != null) rb.AddForce(dir * fuerzaObjetos, ForceMode.Acceleration);
+                    continue;
+                }
+                if (bicho.Retirado) continue;
                 bicho.Resbalar(0.4f, 0.15f);
                 rb.AddForce(dir * fuerza, ForceMode.Acceleration);
             }

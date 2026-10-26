@@ -157,6 +157,8 @@ namespace BichoShow
 
             ultimoGolpe = Time.time;
             float dano = Mathf.Min((cambioVelocidad - umbralGolpe) * danoPorVelocidad, danoMaximoPorGolpe) * fragilidad;
+            var acolchado = choque.collider != null ? choque.collider.GetComponentInParent<Acolchado>() : null;
+            if (acolchado != null) dano *= acolchado.factorDano;
             RecibirDano(dano);
         }
 

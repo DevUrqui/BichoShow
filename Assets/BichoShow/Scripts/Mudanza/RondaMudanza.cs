@@ -37,6 +37,8 @@ namespace BichoShow
         public int puntosRotura = 40;
         [Tooltip("Si un objeto se rompe (o se acaba el tiempo) a medio camino, el equipo gana esta fracción de sus puntos multiplicada por lo que avanzó.")]
         [Range(0f, 1f)] public float fraccionEsfuerzo = 0.4f;
+        [Tooltip("La mudanza dura al menos esto, aunque el show pida rondas más cortas (s): el recorrido es largo.")]
+        public float duracionMinima = 150f;
 
         [Header("Equipos y objetos")]
         public Equipo[] equipos = new Equipo[2];
@@ -101,6 +103,7 @@ namespace BichoShow
 
         protected override void AlEmpezarRonda()
         {
+            TiempoRestante = Mathf.Max(TiempoRestante, duracionMinima);
             for (int i = 0; i < equipos.Length; i++)
                 if (JugadoresEn(i) > 0) CrearObjeto(i);
             Mensaje("¡A MUDARSE!", Color.white, 1.5f);

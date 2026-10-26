@@ -13,13 +13,19 @@ namespace BichoShow.Herramientas
     ///
     /// Recorrido (de atrás hacia delante, eje +Z):
     ///   Salida con camiones → Barredora y conos → El río (puente estrecho o plataformas que se
-    ///   inclinan) → Calle de los empujadores y badenes → Casas con puerta giratoria.
+    ///   inclinan) → Calle de los empujadores y badenes → Almacén con cintas que van hacia atrás →
+    ///   Patio de los ventiladores → Casas con puerta giratoria (grande, lenta y acolchada).
     /// Todo con primitivas: es el prototipo para ver si divierte.
     /// </summary>
     public static class CreadorMudanza
     {
         const string CarpetaObjetos = E.CarpetaPrefabs + "/Objetos";
-        const string RutaEscena = E.CarpetaEscenas + "/Mudanza.unity";
+        public const string RutaEscena = E.CarpetaEscenas + "/Mudanza.unity";
+        /// <summary>Súbelo al cambiar el recorrido: la escena guardada se marca como anticuada.</summary>
+        public const int Version = 2;
+
+        // Las casas: centro de cada una (en X, a cada lado), su fachada y la alfombra de entrega.
+        const float XCasa = 6.2f, FrenteCasa = 54f, ZAlfombra = 60.2f;
 
         static readonly Color ColorRojo = new Color(1f, 0.38f, 0.35f);
         static readonly Color ColorAzul = new Color(0.3f, 0.6f, 1f);
@@ -41,12 +47,6 @@ namespace BichoShow.Herramientas
                 EditorUtility.DisplayDialog("Bicho Show", $"No encuentro los controles en:\n{E.RutaControles}", "Vale");
                 return;
             }
-
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(RutaEscena) != null &&
-                !EditorUtility.DisplayDialog("Bicho Show",
-                    "La escena de la Mudanza ya existe. ¿Rehacerla? Se perderán los cambios hechos en ella (el prefab del bicho no se toca).",
-                    "Rehacer", "Cancelar"))
-                return;
 
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
@@ -228,16 +228,18 @@ namespace BichoShow.Herramientas
             var camara = camGo.AddComponent<CamaraGrupo>();
             camara.direccion = new Vector3(0f, 1.25f, -1f);
             camara.distanciaMinima = 13f;
-            camara.distanciaMaxima = 45f;
+            camara.distanciaMaxima = 58f; // el recorrido es largo: un equipo puede ir muy por delante
             camara.centroSinJugadores = new Vector3(0f, 0f, -27f);
             camara.ColocarAlInstante();
 
             var mapa = new GameObject("Mapa").transform;
+            new GameObject(EscenasAnticuadas.Marca + Version);
 
             // --- Suelos (arriba en y=0, 3 m de grosor para que parezcan orillas) ---
             E.Bloque("SueloSalida", mapa, new Vector3(0f, -1.5f, -27f), new Vector3(20f, 3f, 22f), b.suelo);
-            E.Bloque("SueloPrincipal", mapa, new Vector3(0f, -1.5f, 13f), new Vector3(20f, 3f, 42f), b.suelo);
-            for (float z = -6f; z <= 22f; z += 2.5f)
+            E.Bloque("SueloPrincipal", mapa, new Vector3(0f, -1.5f, 19f), new Vector3(20f, 3f, 54f), b.suelo);
+            E.Bloque("SueloCasas", mapa, new Vector3(0f, -1.5f, 56f), new Vector3(28f, 3f, 20f), b.suelo);
+            for (float z = -6f; z <= 15f; z += 2.5f)
                 Decorado(PrimitiveType.Cube, "Linea", mapa, new Vector3(0f, 0.01f, z), new Vector3(0.25f, 0.02f, 1.2f), m.linea);
 
             CrearSalida(mapa, m);
@@ -245,11 +247,13 @@ namespace BichoShow.Herramientas
             CrearBarredora(mapa, m);
             var zonasMortales = CrearRio(mapa, m);
             CrearEmpujadores(mapa, m);
-            var casaRoja = CrearCasa(mapa, m, 0, -5f, "CASA ROJA", m.rojo, m.paredRoja, ColorRojo, 35f);
-            var casaAzul = CrearCasa(mapa, m, 1, 5f, "CASA AZUL", m.azul, m.paredAzul, ColorAzul, -35f);
+            CrearAlmacen(mapa, m);
+            CrearPatio(mapa, m);
+            var casaRoja = CrearCasa(mapa, m, 0, -XCasa, "CASA ROJA", m.rojo, m.paredRoja, ColorRojo, 24f);
+            var casaAzul = CrearCasa(mapa, m, 1, XCasa, "CASA AZUL", m.azul, m.paredAzul, ColorAzul, -24f);
 
             CrearDecorado(mapa);
-            Cartel(mapa, "MUDANZA FRÁGIL", new Vector3(0f, 9f, 40f), 3f, Color.white);
+            Cartel(mapa, "MUDANZA FRÁGIL", new Vector3(0f, 9f, 70f), 3f, Color.white);
             Cartel(mapa, "SALIDA", new Vector3(0f, 5f, -39f), 1.5f, Color.white);
 
             // --- Jugadores ---
@@ -314,16 +318,19 @@ namespace BichoShow.Herramientas
 
         /// <summary>
         /// Ruta de los bots para un equipo (lado = -1 rojo, +1 azul). Siempre avanza en +Z:
-        /// salida → su plataforma basculante (por el centro, donde menos se inclina) →
-        /// calle de empujadores (cerca del centro, donde casi no llegan) → puerta → alfombra.
+        /// salida → la barredora por fuera de su brazo (en un lado barre hacia atrás) → su plataforma basculante (por el centro, donde menos se inclina) →
+        /// calle de empujadores (cerca del centro, donde casi no llegan) → almacén y patio (por su
+        /// carril, entre las pilas de cajas) → la puerta por el lado en el que las hojas van hacia
+        /// dentro → alfombra.
         /// </summary>
         static Transform[] RutaBots(Transform padre, string nombre, float lado)
         {
             Vector2[] puntos =
             {
-                new Vector2(5f, -24f), new Vector2(6f, -17.3f), new Vector2(6f, -12f), new Vector2(6f, -6.8f),
-                new Vector2(2.5f, -3f), new Vector2(2.5f, 6f), new Vector2(2.5f, 16f),
-                new Vector2(5f, 21f), new Vector2(5f, 28.6f),
+                new Vector2(7.8f, -25f), new Vector2(7.8f, -17.6f), new Vector2(6f, -14f), new Vector2(6f, -12f), new Vector2(6f, -6.8f),
+                new Vector2(2.5f, -3f), new Vector2(2.5f, 6f), new Vector2(2.5f, 15f),
+                new Vector2(3.5f, 19f), new Vector2(3.5f, 31f), new Vector2(3.5f, 45f),
+                new Vector2(XCasa + 1.8f, 50f), new Vector2(XCasa + 1.8f, 57f), new Vector2(XCasa, ZAlfombra),
             };
             var grupo = new GameObject(nombre).transform;
             grupo.SetParent(padre, false);
@@ -416,7 +423,7 @@ namespace BichoShow.Herramientas
             var tierra = E.CrearMaterial("IslaTierra", new Color(0.62f, 0.5f, 0.42f), 0.1f);
 
             // Farolas en los bordes, con el brazo hacia el recorrido (lejos de los empujadores).
-            foreach (float z in new[] { -36f, -24f, -6f, 18f })
+            foreach (float z in new[] { -36f, -28.5f, -6f, 18f, 32.5f })
             foreach (float lado in new[] { -1f, 1f })
             {
                 var farola = KitObjetos.Poner("Farola", decorado, new Vector3(9.5f * lado, 0f, z), lado < 0 ? 90f : -90f);
@@ -427,21 +434,21 @@ namespace BichoShow.Herramientas
             }
 
             // Un buzón junto a la puerta de cada casa.
-            foreach (float cx in new[] { -5f, 5f })
+            foreach (float cx in new[] { -XCasa, XCasa })
             {
-                var buzon = KitObjetos.Poner("Buzon", decorado, new Vector3(cx - 3.4f, 0f, 22.7f), 180f);
+                var buzon = KitObjetos.Poner("Buzon", decorado, new Vector3(cx + 4.7f * Mathf.Sign(cx), 0f, FrenteCasa - 1.3f), 180f);
                 var col = buzon.AddComponent<BoxCollider>();
                 col.size = new Vector3(0.45f, 1.6f, 0.6f);
                 col.center = new Vector3(0f, 0.8f, 0f);
             }
 
             // Islas flotantes con árboles, arbustos y algún banco, a los lados del recorrido.
-            float[] zs = { -34f, -19f, -3f, 12f, 27f };
+            float[] zs = { -34f, -19f, -3f, 12f, 27f, 41f, 56f };
             for (int i = 0; i < zs.Length; i++)
             foreach (float lado in new[] { -1f, 1f })
             {
                 float z = zs[i] + (lado < 0 ? 0f : 4f);
-                var centro = new Vector3(16.5f * lado, 0f, z);
+                var centro = new Vector3((z > 44f ? 20.5f : 16.5f) * lado, 0f, z); // junto a las casas el suelo es más ancho
                 E.Bloque("Isla", decorado, centro + new Vector3(0f, -2.6f, 0f), new Vector3(6f, 4f, 6f), tierra);
                 E.Bloque("Cesped", decorado, centro + new Vector3(0f, -0.65f, 0f), new Vector3(6.2f, 0.3f, 6.2f), cesped);
                 KitObjetos.Poner("Arbol", decorado, centro + new Vector3(0.8f * lado, -0.5f, -0.6f), i * 47f, escala: 1f + 0.15f * (i % 3));
@@ -456,7 +463,8 @@ namespace BichoShow.Herramientas
             {
                 (new Vector3(-34f, 0f, -28f), 0f), (new Vector3(-36f, 0f, -2f), 90f), (new Vector3(-33f, 0f, 22f), 180f),
                 (new Vector3(34f, 0f, -24f), 270f), (new Vector3(37f, 0f, 2f), 0f), (new Vector3(33f, 0f, 26f), 90f),
-                (new Vector3(-16f, 0f, 54f), 0f), (new Vector3(2f, 0f, 58f), 90f), (new Vector3(19f, 0f, 53f), 180f),
+                (new Vector3(-35f, 0f, 48f), 270f), (new Vector3(36f, 0f, 52f), 180f),
+                (new Vector3(-16f, 0f, 84f), 0f), (new Vector3(2f, 0f, 88f), 90f), (new Vector3(19f, 0f, 83f), 180f),
             };
             for (int i = 0; i < fondo.Length; i++)
             {
@@ -475,7 +483,7 @@ namespace BichoShow.Herramientas
             barredora.transform.position = new Vector3(0f, 0f, -20f);
             barredora.AddComponent<Rigidbody>().isKinematic = true;
             var giro = barredora.AddComponent<BarraGiratoria>();
-            giro.velocidadGiro = 65f;
+            giro.velocidadGiro = 75f;
             E.Pieza(PrimitiveType.Cylinder, "Eje", barredora.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.8f, 0.6f, 0.8f), m.peligro, conCollider: true);
             var brazo = E.Bloque("Brazo", barredora.transform, new Vector3(0f, 0.55f, 0f), new Vector3(14f, 0.4f, 0.4f), m.basicos.obstaculo, local: true);
 
@@ -560,14 +568,14 @@ namespace BichoShow.Herramientas
         {
             var calle = Grupo(mapa, "CalleEmpujadores");
 
-            foreach (float z in new[] { -4f, 15f })
+            foreach (float z in new[] { -4f, 16.5f })
             {
                 var baden = E.Pieza(PrimitiveType.Cylinder, "Baden", calle, new Vector3(0f, 0f, z), new Vector3(0.7f, 10f, 0.7f), m.peligro, conCollider: true);
                 baden.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
             }
 
             // (z, lado del que sale, desfase)
-            (float z, float lado, float desfase)[] empujadores = { (1f, -1f, 0f), (5.5f, 1f, 1.3f), (10f, -1f, 2.6f) };
+            (float z, float lado, float desfase)[] empujadores = { (0f, -1f, 0f), (4.5f, 1f, 1f), (9f, -1f, 2f), (13.5f, 1f, 3f) };
             int numero = 0;
             foreach (var e in empujadores)
             {
@@ -589,24 +597,130 @@ namespace BichoShow.Herramientas
             }
         }
 
-        // --- Zona 5: casa de cada equipo con puerta giratoria ---
+        // --- Zona 5: almacén con cintas que van hacia atrás y pilas de cajas en medio ---
+        static void CrearAlmacen(Transform mapa, Mats m)
+        {
+            var almacen = Grupo(mapa, "Almacen");
+            foreach (float lado in new[] { -1f, 1f })
+            {
+                Cinta(almacen, m, 4.5f * lado, 7f, 19f, 31f);
+                PilaCajas(almacen, new Vector3(6.8f * lado, 0f, 23f), 15f * lado);
+                PilaCajas(almacen, new Vector3(8.9f * lado, 0f, 29.5f), -10f * lado);
+            }
+            PilaCajas(almacen, new Vector3(0f, 0f, 27.5f), 30f);
+            Cartel(almacen, "ALMACÉN", new Vector3(0f, 3.2f, 31.5f), 0.9f, Color.white);
+        }
+
+        /// <summary>Cinta transportadora a ras de suelo: lleva hacia atrás (-Z) todo lo que la pisa.</summary>
+        static void Cinta(Transform padre, Mats m, float x, float ancho, float z0, float z1)
+        {
+            float largo = z1 - z0;
+            var go = new GameObject("Cinta");
+            go.transform.SetParent(padre, false);
+            go.transform.position = new Vector3(x, 0f, (z0 + z1) * 0.5f);
+            Decorado(PrimitiveType.Cube, "Banda", go.transform, new Vector3(0f, 0.012f, 0f), new Vector3(ancho, 0.02f, largo), m.rueda, local: true);
+            foreach (float lado in new[] { -1f, 1f })
+                Decorado(PrimitiveType.Cube, "Borde", go.transform, new Vector3(lado * (ancho * 0.5f + 0.1f), 0.03f, 0f), new Vector3(0.2f, 0.06f, largo), m.peligro, local: true);
+
+            // Rayas y flechas que se mueven con la cinta (se ve hacia dónde te lleva).
+            var marcas = new List<Transform>();
+            for (float z = -largo * 0.5f + 0.5f; z < largo * 0.5f; z += 1f)
+                marcas.Add(Decorado(PrimitiveType.Cube, "Raya", go.transform, new Vector3(0f, 0.026f, z), new Vector3(ancho - 0.5f, 0.01f, 0.12f), m.linea, local: true).transform);
+            for (int i = 0; i < 3; i++)
+                marcas.Add(KitObjetos.Poner("Flecha", go.transform, new Vector3(0f, 0.03f, -largo * 0.5f + largo * (i + 0.5f) / 3f), 180f,
+                                            m.peligro, 1.4f, true, KitObjetos.KitCostura).transform);
+
+            var cinta = go.AddComponent<CintaTransportadora>();
+            cinta.direccion = Vector3.back;
+            cinta.velocidad = 1.8f;
+            cinta.tamano = new Vector2(ancho, largo);
+            cinta.marcas = marcas.ToArray();
+        }
+
+        /// <summary>Pila fija de cajas de cartón (una sola colisión, para no llenar la cinta de piezas).</summary>
+        static void PilaCajas(Transform padre, Vector3 posicion, float giro)
+        {
+            var pila = new GameObject("PilaCajas");
+            pila.transform.SetParent(padre, false);
+            pila.transform.SetPositionAndRotation(posicion, Quaternion.Euler(0f, giro, 0f));
+            var col = pila.AddComponent<BoxCollider>();
+            col.size = new Vector3(1.5f, 2.1f, 1.5f);
+            col.center = new Vector3(0f, 1.05f, 0f);
+            (Vector3 p, float g)[] cajas =
+            {
+                (new Vector3(-0.38f, 0f, -0.38f), 4f), (new Vector3(0.38f, 0f, -0.36f), -6f),
+                (new Vector3(-0.36f, 0f, 0.38f), 10f), (new Vector3(0.38f, 0f, 0.4f), -3f),
+                (new Vector3(-0.2f, 0.7f, 0f), 20f), (new Vector3(0.25f, 0.7f, 0.1f), -8f), (new Vector3(0.05f, 1.4f, 0.05f), -15f),
+            };
+            foreach (var c in cajas) KitObjetos.Poner("CajaCarton", pila.transform, c.p, c.g, local: true);
+        }
+
+        // --- Zona 6: patio de los ventiladores: ráfagas de lado y huecos en la valla ---
+        static void CrearPatio(Transform mapa, Mats m)
+        {
+            var patio = Grupo(mapa, "PatioVentiladores");
+            const float z0 = 34f, z1 = 46f;
+            // (z, lado en el que está): sopla hacia el otro lado, donde la valla tiene un hueco.
+            (float z, float lado, float desfase)[] ventiladores = { (37f, -1f, 0f), (43f, 1f, 0.5f) };
+            foreach (var v in ventiladores)
+            {
+                float giro = v.lado < 0 ? 90f : -90f; // mira (y sopla) hacia dentro
+                E.Bloque("Peana", patio, new Vector3(10.9f * v.lado, -1.5f, v.z), new Vector3(1.8f, 3f, 2.6f), m.rueda);
+                var ventilador = KitObjetos.Poner("Ventilador", patio, new Vector3(10.9f * v.lado, 0f, v.z), giro, m.peligro, 1.2f, false, KitObjetos.KitGirasol);
+                var col = ventilador.AddComponent<BoxCollider>();
+                col.size = new Vector3(1.4f, 3.4f, 1f);
+                col.center = new Vector3(0f, 1.7f, 0f);
+                var aspas = KitObjetos.Poner("AspasVentilador", ventilador.transform, new Vector3(0f, 2.8f, 0.2f), 0f, m.peligro, 1f, true, KitObjetos.KitGirasol);
+
+                var viento = new GameObject($"Viento z{v.z:0}").AddComponent<VientoLateral>();
+                viento.transform.SetParent(patio, false);
+                viento.transform.SetPositionAndRotation(new Vector3(10f * v.lado, 0f, v.z), Quaternion.LookRotation(new Vector3(-v.lado, 0f, 0f)));
+                viento.tamanoZona = new Vector3(5.5f, 4f, 21f);
+                viento.periodo = 5f;
+                viento.duracion = 1.6f;
+                viento.desfase = v.desfase;
+                viento.fuerza = 15f;
+                viento.fuerzaObjetos = 9f;
+                viento.aspas = aspas.transform;
+
+                // Flechas en el suelo: hacia dónde sopla.
+                foreach (float x in new[] { -4f, 4f })
+                    KitObjetos.Poner("Flecha", patio, new Vector3(x, 0.02f, v.z), giro, m.linea, 1.6f, false, KitObjetos.KitCostura);
+
+                // Valla baja: entera del lado del ventilador; con un hueco enfrente (por ahí se sale volando).
+                Valla(patio, m, v.lado, z0, z1);
+                Valla(patio, m, -v.lado, z0, v.z - 1.7f);
+                Valla(patio, m, -v.lado, v.z + 1.7f, z1);
+                Decorado(PrimitiveType.Cube, "AvisoHueco", patio, new Vector3(9.7f * -v.lado, 0.015f, v.z), new Vector3(0.6f, 0.03f, 3.4f), m.peligro);
+            }
+        }
+
+        static void Valla(Transform padre, Mats m, float lado, float z0, float z1)
+        {
+            if (z1 - z0 < 0.5f) return;
+            E.Bloque("Valla", padre, new Vector3(9.85f * lado, 0.35f, (z0 + z1) * 0.5f), new Vector3(0.3f, 0.7f, z1 - z0), m.madera);
+        }
+
+        // --- Zona 7: casa de cada equipo con puerta giratoria ---
         static ZonaEntrega CrearCasa(Transform mapa, Mats m, int equipo, float cx, string titulo,
                                      Material colorEquipo, Material pared, Color color, float giroPuerta)
         {
             var casa = Grupo(mapa, equipo == 0 ? "CasaRoja" : "CasaAzul");
-            const float frente = 24f, fondo = 32f, alto = 3.2f;
+            const float frente = FrenteCasa, fondo = FrenteCasa + 9f, alto = 3.6f, medio = 6f, hueco = 3.4f;
             float centroZ = (frente + fondo) * 0.5f;
+            float anchoFrente = medio - hueco;
 
-            E.Bloque("ParedFondo", casa, new Vector3(cx, alto / 2f, fondo), new Vector3(8f, alto, 0.3f), pared);
-            E.Bloque("ParedIzq", casa, new Vector3(cx - 4f, alto / 2f, centroZ), new Vector3(0.3f, alto, 8f), pared);
-            E.Bloque("ParedDer", casa, new Vector3(cx + 4f, alto / 2f, centroZ), new Vector3(0.3f, alto, 8f), pared);
-            E.Bloque("FrenteIzq", casa, new Vector3(cx - 3.2f, alto / 2f, frente), new Vector3(1.6f, alto, 0.3f), pared);
-            E.Bloque("FrenteDer", casa, new Vector3(cx + 3.2f, alto / 2f, frente), new Vector3(1.6f, alto, 0.3f), pared);
-            E.Bloque("Dintel", casa, new Vector3(cx, 2.9f, frente), new Vector3(4.8f, 0.6f, 0.3f), pared);
-            E.Bloque("Letrero", casa, new Vector3(cx, 4.1f, frente), new Vector3(6f, 1.2f, 0.25f), colorEquipo);
-            Cartel(casa, titulo, new Vector3(cx, 4.1f, frente - 0.2f), 0.75f, Color.white);
+            E.Bloque("ParedFondo", casa, new Vector3(cx, alto / 2f, fondo), new Vector3(medio * 2f, alto, 0.3f), pared);
+            E.Bloque("ParedIzq", casa, new Vector3(cx - medio, alto / 2f, centroZ), new Vector3(0.3f, alto, fondo - frente), pared);
+            E.Bloque("ParedDer", casa, new Vector3(cx + medio, alto / 2f, centroZ), new Vector3(0.3f, alto, fondo - frente), pared);
+            E.Bloque("FrenteIzq", casa, new Vector3(cx - hueco - anchoFrente / 2f, alto / 2f, frente), new Vector3(anchoFrente, alto, 0.3f), pared);
+            E.Bloque("FrenteDer", casa, new Vector3(cx + hueco + anchoFrente / 2f, alto / 2f, frente), new Vector3(anchoFrente, alto, 0.3f), pared);
+            E.Bloque("Dintel", casa, new Vector3(cx, alto - 0.3f, frente), new Vector3(hueco * 2f, 0.6f, 0.3f), pared);
+            E.Bloque("Letrero", casa, new Vector3(cx, alto + 0.9f, frente), new Vector3(7f, 1.2f, 0.25f), colorEquipo);
+            Cartel(casa, titulo, new Vector3(cx, alto + 0.9f, frente - 0.2f), 0.8f, Color.white);
 
-            // Puerta giratoria: cuatro hojas de cristal que no paran.
+            // Puerta giratoria: tres hojas de cristal grandes y lentas, con un rulo blando en la punta.
+            // Sus golpes hacen poco daño (Acolchado): lo difícil es meterse a tiempo en un hueco.
             var puerta = new GameObject("PuertaGiratoria");
             puerta.transform.SetParent(casa, false);
             puerta.transform.position = new Vector3(cx, 0f, frente);
@@ -616,24 +730,27 @@ namespace BichoShow.Herramientas
             giro.multiplicadorTurbo = -3f;
             giro.nombreTrampa = equipo == 0 ? "Puerta giratoria roja" : "Puerta giratoria azul";
             giro.enfriamiento = 7f;
-            giro.radioEfecto = 4f;
-            giro.alturaMarcador = 5.5f;
-            E.Pieza(PrimitiveType.Cylinder, "Columna", puerta.transform, new Vector3(0f, 1.25f, 0f), new Vector3(0.35f, 1.25f, 0.35f), m.rueda, conCollider: true);
-            var hojas = new Renderer[4];
-            for (int i = 0; i < 4; i++)
+            giro.radioEfecto = 5f;
+            giro.alturaMarcador = alto + 2.3f;
+            puerta.AddComponent<Acolchado>().factorDano = 0.35f;
+            const float radioColumna = 0.3f, largoHoja = 2.9f;
+            E.Pieza(PrimitiveType.Cylinder, "Columna", puerta.transform, new Vector3(0f, 1.35f, 0f), new Vector3(radioColumna * 2f, 1.35f, radioColumna * 2f), m.rueda, conCollider: true);
+            var hojas = new Renderer[3];
+            for (int i = 0; i < 3; i++)
             {
-                var rot = Quaternion.Euler(0f, 90f * i, 0f);
-                var hoja = E.Pieza(PrimitiveType.Cube, "Hoja", puerta.transform, rot * new Vector3(1.15f, 1.2f, 0f), new Vector3(2.05f, 2.3f, 0.12f), m.cristal, conCollider: true);
+                var rot = Quaternion.Euler(0f, 120f * i, 0f);
+                var hoja = E.Pieza(PrimitiveType.Cube, "Hoja", puerta.transform, rot * new Vector3(radioColumna + largoHoja / 2f, 1.35f, 0f), new Vector3(largoHoja, 2.6f, 0.12f), m.cristal, conCollider: true);
                 hoja.transform.localRotation = rot;
                 hojas[i] = hoja.GetComponent<Renderer>();
+                E.Pieza(PrimitiveType.Cylinder, "Rulo", puerta.transform, rot * new Vector3(radioColumna + largoHoja, 1.35f, 0f), new Vector3(0.36f, 1.3f, 0.36f), colorEquipo, conCollider: true);
             }
             giro.renderersAviso = hojas;
 
             // Zona de entrega dentro de la casa
-            Decorado(PrimitiveType.Cube, "Alfombra", casa, new Vector3(cx, 0.02f, 28.6f), new Vector3(6f, 0.04f, 5f), colorEquipo);
-            var zona = ZonaTrigger<ZonaEntrega>("ZonaEntrega", casa, new Vector3(cx, 1f, 28.6f), new Vector3(6.5f, 2f, 5.5f));
+            Decorado(PrimitiveType.Cube, "Alfombra", casa, new Vector3(cx, 0.02f, ZAlfombra), new Vector3(9f, 0.04f, 5f), colorEquipo);
+            var zona = ZonaTrigger<ZonaEntrega>("ZonaEntrega", casa, new Vector3(cx, 1f, ZAlfombra), new Vector3(10f, 2f, 5.2f));
             zona.equipo = equipo;
-            zona.confeti = Particulas("Confeti", casa, new Vector3(cx, 0.3f, 28.6f),
+            zona.confeti = Particulas("Confeti", casa, new Vector3(cx, 0.3f, ZAlfombra),
                 color, new Color(1f, 0.92f, 0.3f), 140, 5f, 10f, m.particula);
             return zona;
         }

@@ -113,7 +113,9 @@ namespace BichoShow
             {
                 llevandoObjeto = true;
                 quiereAgarrar = true;
-                objetivo = SiguientePuntoRuta(equipo, posObjeto);
+                // Desde el que vaya más adelantado (yo o el objeto): si tiro yo delante y ya he
+                // llegado al punto, el objeto se quedaba justo detrás y no cambiábamos de punto.
+                objetivo = SiguientePuntoRuta(equipo, yo.z > posObjeto.z ? yo : posObjeto);
                 return;
             }
 
