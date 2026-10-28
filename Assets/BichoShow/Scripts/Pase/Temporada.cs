@@ -66,44 +66,49 @@ namespace BichoShow
             /// <summary>La prenda (como en Vestuario) o el texto del título.</summary>
             public readonly string id;
             public readonly string nombre;
-            public Premio(int nivel, Tipo tipo, string id, string nombre) { this.nivel = nivel; this.tipo = tipo; this.id = id; this.nombre = nombre; }
+            /// <summary>Una frase para la pantalla del pase.</summary>
+            public readonly string descripcion;
+            public Premio(int nivel, Tipo tipo, string id, string nombre, string descripcion)
+            {
+                this.nivel = nivel; this.tipo = tipo; this.id = id; this.nombre = nombre; this.descripcion = descripcion;
+            }
             public bool EsPrenda => tipo != Tipo.Titulo;
         }
 
-        static Premio T(int nivel, string titulo) => new Premio(nivel, Tipo.Titulo, titulo, titulo);
+        static Premio T(int nivel, string titulo, string descripcion) => new Premio(nivel, Tipo.Titulo, titulo, titulo, descripcion);
 
         public static readonly Premio[] Premios =
         {
-            T(1, "Novato del plató"),
-            new Premio(2, Tipo.Cara, "Gafas3D", "Gafas 3D"),
-            T(3, "Mudancero"),
-            new Premio(4, Tipo.Gorro, "CascoObra", "Casco de obra"),
-            T(5, "Manos de mantequilla"),
-            new Premio(6, Tipo.Cuerpo, "Flotador", "Flotador de pato"),
-            T(7, "Pies ligeros"),
-            new Premio(8, Tipo.Cara, "BigoteRizado", "Bigote rizado"),
-            T(9, "Amigo de los bots"),
-            new Premio(10, Tipo.Gorro, "Auriculares", "Cascos de DJ"),
-            T(11, "Cazador de estrellas"),
-            new Premio(12, Tipo.Cuerpo, "Guitarra", "Guitarra"),
-            T(13, "Rompejarrones"),
-            T(14, "Saboteador de guardia"),
-            new Premio(15, Tipo.Cara, "Antifaz", "Antifaz"),
-            T(16, "As del placaje"),
-            T(17, "Rey del sofá"),
-            new Premio(18, Tipo.Gorro, "GorroCohete", "Gorro cohete"),
-            T(19, "Bicho con estilo"),
-            T(20, "Superviviente"),
-            new Premio(21, Tipo.Cuerpo, "Banda", "Banda de campeón"),
-            T(22, "Cerebro del equipo"),
-            T(23, "Terror de las cintas"),
-            new Premio(24, Tipo.Cara, "GafasEstrella", "Gafas de estrella"),
-            T(25, "Leyenda del barrio"),
-            T(26, "Invencible (casi)"),
-            new Premio(27, Tipo.Gorro, "Tiara", "Tiara de estrella"),
-            T(28, "Estrella invitada"),
-            T(29, "Fenómeno de la tele"),
-            new Premio(30, Tipo.Cuerpo, "Alas", "Alas de mariposa"),
+            T(1, "Novato del plató", "Demuestra que ya formas parte del espectáculo."),
+            new Premio(2, Tipo.Cara, "Gafas3D", "Gafas 3D", "Para ver los golpes venir… en tres dimensiones."),
+            T(3, "Mudancero", "Para quien ha llevado más teles que un repartidor."),
+            new Premio(4, Tipo.Gorro, "CascoObra", "Casco de obra", "Con linterna, por si la mudanza se alarga."),
+            T(5, "Manos de mantequilla", "Se te escurre todo, pero con estilo."),
+            new Premio(6, Tipo.Cuerpo, "Flotador", "Flotador de pato", "Por si alguien vuelve a caerse al río."),
+            T(7, "Pies ligeros", "Para los que llegan primero a la meta."),
+            new Premio(8, Tipo.Cara, "BigoteRizado", "Bigote rizado", "Elegancia de otra época, rizo a rizo."),
+            T(9, "Amigo de los bots", "Los bots también necesitan cariño."),
+            new Premio(10, Tipo.Gorro, "Auriculares", "Cascos de DJ", "El plató suena mejor con música."),
+            T(11, "Cazador de estrellas", "Ninguna estrella se te escapa."),
+            new Premio(12, Tipo.Cuerpo, "Guitarra", "Guitarra", "Para dar la serenata al ganar."),
+            T(13, "Rompejarrones", "Algo frágil se rompió… y no fue culpa tuya."),
+            T(14, "Saboteador de guardia", "Siempre hay una trampa a mano."),
+            new Premio(15, Tipo.Cara, "Antifaz", "Antifaz", "Nadie sabrá quién te ha placado."),
+            T(16, "As del placaje", "Derribas a quien se ponga delante."),
+            T(17, "Rey del sofá", "Lo llevas a casa sin un rasguño."),
+            new Premio(18, Tipo.Gorro, "GorroCohete", "Gorro cohete", "Despega directo a lo más alto del ranking."),
+            T(19, "Bicho con estilo", "Vestir bien también es ganar."),
+            T(20, "Superviviente", "Ni barredoras ni empujadores pueden contigo."),
+            new Premio(21, Tipo.Cuerpo, "Banda", "Banda de campeón", "Para lucir tus victorias."),
+            T(22, "Cerebro del equipo", "Siempre sabes quién pisa cada placa."),
+            T(23, "Terror de las cintas", "Las cintas transportadoras te temen."),
+            new Premio(24, Tipo.Cara, "GafasEstrella", "Gafas de estrella", "Brillas incluso con los focos apagados."),
+            T(25, "Leyenda del barrio", "En el barrio todos conocen tu nombre."),
+            T(26, "Invencible (casi)", "Casi nadie puede contigo. Casi."),
+            new Premio(27, Tipo.Gorro, "Tiara", "Tiara de estrella", "Para la estrella del show."),
+            T(28, "Estrella invitada", "El plató te recibe con aplausos."),
+            T(29, "Fenómeno de la tele", "Sales en todas las repeticiones."),
+            new Premio(30, Tipo.Cuerpo, "Alas", "Alas de mariposa", "El premio final: echa a volar."),
         };
 
         public static Premio? PremioDe(int nivel)

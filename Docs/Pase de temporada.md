@@ -6,9 +6,17 @@ Un pase **gratis** de 30 niveles que dura 20 días. Jugando shows se gana experi
 
 - En el menú, **Pase de temporada** (el botón lleva una pastilla con tu nivel). Ahí ves:
   - Tu nivel y la barra de experiencia.
-  - Los premios. Con el stick se pasa de uno a otro; los que ya tienes dicen «¡TUYO!».
-  - Los **retos de hoy**.
-  - **Tu cuenta**.
+  - Los premios, en cartas de cuatro en cuatro. Cada carta tiene el dibujo de la prenda, o el título como un cartel con una estrella detrás.
+    - Con el stick se pasa de una a otra.
+    - Las que aún no tienes llevan un candado; las tuyas, «¡TUYO!».
+    - La carta que miras tiene un borde dorado y, debajo, su frase y en qué nivel se gana.
+  - Los **retos de hoy**, cada uno con su dibujo y su barra.
+  - **Tu cuenta**, con el botón para iniciar o cerrar sesión.
+- Los dibujos salen de `Arte/Blender/crear_iconos_pase.py`. Renderiza las mismas prendas del vestuario y los iconos de los retos, y los guarda en `Assets/BichoShow/Resources/Pase/Iconos`. Para rehacerlos:
+
+```
+blender -b F:/Proyectos/UnityProyectos/BichoShow/BichoShow/Arte/Blender/KitVestuario.blend -P F:/Proyectos/UnityProyectos/BichoShow/BichoShow/Arte/Blender/crear_iconos_pase.py -- F:/Proyectos/UnityProyectos/BichoShow/BichoShow/Assets/BichoShow/Resources/Pase/Iconos
+```
 - Al volver al menú después de un show, sale a la derecha lo que has ganado y, si has subido de nivel, el premio con confeti.
 - En el **Vestuario**:
   - La ropa del pase sale en gris con el nivel que hace falta («Casco de obra · nivel 4»). Se puede **probar**, pero no se queda puesta hasta que la ganas.
