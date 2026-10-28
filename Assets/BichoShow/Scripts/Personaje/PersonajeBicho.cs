@@ -62,7 +62,13 @@ namespace BichoShow
                 bicho.renderersColor = modelo.piel;
                 if (bicho.ColorJugador.a > 0f) bicho.AsignarColor(bicho.ColorJugador);
             }
-            if (TryGetComponent(out Vestuario vestuario)) vestuario.CambiarAnclas(modelo.anclaGorro, modelo.anclaCara, modelo.anclaPecho, aspecto, modelo.tallaRopa);
+            if (TryGetComponent(out Vestuario vestuario))
+            {
+                // Lo separados que tiene los ojos (en su tamaño de siempre): las gafas se ajustan a ellos.
+                float ojos = modelo.ojoIzq != null && modelo.ojoDer != null
+                    ? Vector3.Distance(modelo.ojoIzq.position, modelo.ojoDer.position) / Mathf.Max(0.001f, modelo.transform.lossyScale.x) : 0f;
+                vestuario.CambiarAnclas(modelo.anclaGorro, modelo.anclaCara, modelo.anclaPecho, aspecto, modelo.tallaRopa, ojos);
+            }
             if (TryGetComponent(out SiluetaBicho silueta)) silueta.Rehacer();
             // Si el bicho está fuera (saboteando, eliminado…), el modelo nuevo tampoco se ve.
             if (retirado) foreach (var r in modelo.GetComponentsInChildren<Renderer>(true)) r.enabled = false;

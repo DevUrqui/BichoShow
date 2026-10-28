@@ -60,6 +60,8 @@ namespace BichoShow
         public Transform referencia;
         [Tooltip("Tamaño de la ropa (1 = Bichete; cada personaje trae la suya).")]
         public float talla = 1f;
+        [Tooltip("Lo separados que tiene los ojos (la ropa de la cara se ajusta a ellos).")]
+        public float separacionOjos = AjusteRopa.OjosBichete;
 
         public int Gorro { get; private set; }
         public int Complemento { get; private set; }
@@ -74,9 +76,10 @@ namespace BichoShow
         }
 
         /// <summary>El personaje ha cambiado: anclajes nuevos y la ropa, otra vez puesta en ellos.</summary>
-        public void CambiarAnclas(Transform gorro, Transform cara, Transform pecho, Transform referenciaNueva, float tallaNueva = 1f)
+        public void CambiarAnclas(Transform gorro, Transform cara, Transform pecho, Transform referenciaNueva, float tallaNueva = 1f, float ojos = 0f)
         {
             talla = tallaNueva > 0f ? tallaNueva : 1f;
+            separacionOjos = ojos > 0.01f ? ojos : AjusteRopa.OjosBichete;
             anclaGorro = gorro;
             anclaCara = cara;
             anclaPecho = pecho;
@@ -122,10 +125,10 @@ namespace BichoShow
             if (puestoCuerpo != null) Destroy(puestoCuerpo);
             helice = null;
 
-            puestoGorro = Colgar(Gorros[Gorro], anclaGorro, giroGorro);
+            puestoGorro = Colgar(Gorros[Gorro], anclaGorro, giroGorro, AjusteRopa.Zona.Gorro);
             if (puestoGorro != null) helice = puestoGorro.transform.Find("HeliceAspas");
-            puestoComplemento = Colgar(Complementos[Complemento], anclaCara, giroCara);
-            puestoCuerpo = Colgar(Cuerpos[Cuerpo], anclaPecho, giroPecho);
+            puestoComplemento = Colgar(Complementos[Complemento], anclaCara, giroCara, AjusteRopa.Zona.Cara);
+            puestoCuerpo = Colgar(Cuerpos[Cuerpo], anclaPecho, giroPecho, AjusteRopa.ZonaCuerpo(Cuerpos[Cuerpo]));
 
             // Que la silueta (la de cuando algo tapa al bicho) no salga por encima de la ropa.
             if (TryGetComponent(out SiluetaBicho silueta))
@@ -136,17 +139,28 @@ namespace BichoShow
             }
         }
 
-        GameObject Colgar(string prenda, Transform ancla, Quaternion giro)
+        /// <summary>
+        /// Cuelga una prenda de su anclaje, derecha, a la talla del bicho y con el ajuste de su especie
+        /// en esa zona (AjusteRopa). Lo de la cara va a la medida de sus ojos.
+        /// </summary>
+        GameObject Colgar(string prenda, Transform ancla, Quaternion giro, AjusteRopa.Zona zona)
         {
             if (string.IsNullOrEmpty(prenda) || ancla == null) return null;
             var prefab = Resources.Load<GameObject>($"Vestuario/{prenda}");
             if (prefab == null) return null;
             var go = Instantiate(prefab, ancla);
             go.name = prenda;
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = giro;
+            var ajuste = AjusteRopa.De(Especie);
+            // El gorro se puede echar hacia atrás (los ejes de la prenda ya son los del bicho).
+            go.transform.localRotation = zona == AjusteRopa.Zona.Gorro && ajuste.inclinarGorro != 0f
+                ? giro * Quaternion.Euler(ajuste.inclinarGorro, 0f, 0f) : giro;
             Vector3 escala = ancla.lossyScale;
-            go.transform.localScale = new Vector3(talla / Mathf.Max(0.001f, escala.x), talla / Mathf.Max(0.001f, escala.y), talla / Mathf.Max(0.001f, escala.z));
+            escala = new Vector3(Mathf.Max(0.001f, escala.x), Mathf.Max(0.001f, escala.y), Mathf.Max(0.001f, escala.z));
+            var (desplazamiento, factor) = AjusteRopa.De(ajuste, zona, prenda);
+            float tallaZona = zona == AjusteRopa.Zona.Cara ? factor * separacionOjos / AjusteRopa.OjosBichete : talla * factor;
+            Vector3 local = giro * desplazamiento; // del espacio del bicho al del anclaje
+            go.transform.localPosition = new Vector3(local.x / escala.x, local.y / escala.y, local.z / escala.z);
+            go.transform.localScale = new Vector3(tallaZona / escala.x, tallaZona / escala.y, tallaZona / escala.z);
 
             // Si el bicho está retirado (saboteando), la prenda tampoco se ve.
             if (TryGetComponent(out ControladorBicho bicho) && bicho.Retirado)
