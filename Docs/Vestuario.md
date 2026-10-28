@@ -25,7 +25,7 @@ En **Vestuario**, la cámara se acerca a los bichos y los pone grandes, arriba. 
 
 ## Cómo le queda a cada bicho
 
-La ropa está hecha para Bichete. Cada bicho la lleva a su **talla** y, además, con un **ajuste** propio en cada zona: gorro, cara, delante, espalda y alrededor (collar, bufanda, flotador). Todo está en .
+La ropa está hecha para Bichete. Cada bicho la lleva a su **talla** y, además, con un **ajuste** propio en cada zona: gorro, cara, delante, espalda y alrededor (collar, bufanda, flotador). Todo está en `Scripts/Personaje/AjusteRopa.cs`.
 
 - **Lo de la cara va a la medida de sus ojos**: se agranda o se encoge según lo separados que los tenga respecto a Bichete. Así las gafas caen siempre sobre los ojos.
 - **Ajustes por bicho** (desplazamientos en metros: x a su derecha, y arriba, z adelante):
@@ -38,7 +38,7 @@ La ropa está hecha para Bichete. Cada bicho la lleva a su **talla** y, además,
   | **Zumbi** (abeja), **Migas** (hormiga) y **Ocho** (araña) | Lo de la espalda va **encima del abdomen**, que lo tapaba. A Ocho, la capa le envuelve el abdomen. |
   | **Concha** (caracol) | Lo de la espalda, encima de la concha. |
 
-- Para retocar uno: en , cambia el desplazamiento o la talla de su zona. Si solo falla una prenda, añádela en  de ese bicho. La capa y la nariz ya están así.
+- Para retocar uno: en `AjusteRopa.PorEspecie`, cambia el desplazamiento o la talla de su zona. Si solo falla una prenda, añádela en `prendas` de ese bicho. La capa y la nariz ya están así.
 - Lo de la espalda es lo que más se ve en el juego, porque la cámara va detrás y por encima.
 
 ## Añadir más prendas
@@ -47,7 +47,7 @@ La ropa está hecha para Bichete. Cada bicho la lleva a su **talla** y, además,
    - **Gorro:** en lo alto de la cabeza.
    - **Cara:** delante de los ojos.
    - **Cuerpo:** sobre la barriga. Desde ahí, la espalda con el caparazón queda en y ≈ +1.0.
-2. Si va a la espalda o alrededor del cuerpo, añádela a  o  en .
+2. Si va a la espalda o alrededor del cuerpo, añádela a `DeEspalda` o `DeAnillo` en `AjusteRopa.cs`.
 3. Añade su nombre a la lista que toque en `Scripts/Personaje/Vestuario.cs` (`Gorros`, `Complementos` o `Cuerpos`) y el nombre que se ve en el menú (`NombresGorros`…).
 4. Vuelve a generar el kit con rutas completas:
 
