@@ -5,7 +5,8 @@ using UnityEngine.InputSystem;
 namespace BichoShow
 {
     /// <summary>
-    /// Menú del juego: Empezar el show · Jugar online · Vestuario · Ranking · Opciones · Salir.
+    /// Menú del juego: Empezar el show · Jugar online · Vestuario · Pase de temporada · Ranking ·
+    /// Opciones · Salir (el pase está en MenuPrincipal.Pase.cs).
     /// Online: partida rápida (te junta con quien esté buscando, sin código), crear una sala o
     /// unirse con código.
     /// Cualquier jugador unido lo maneja con el stick (arriba/abajo para elegir, izquierda/
@@ -16,9 +17,9 @@ namespace BichoShow
     /// bichos salen a la derecha de los botones o, en el vestuario, grandes y arriba, cada uno
     /// con su panel justo debajo (así no se tapan). En el resto, la cámara de grupo de siempre.
     /// </summary>
-    public class MenuPrincipal : MonoBehaviour
+    public partial class MenuPrincipal : MonoBehaviour
     {
-        enum Pantalla { Principal, Opciones, Vestuario, Online, Codigo, Sala, SalaMenu, Ranking }
+        enum Pantalla { Principal, Opciones, Vestuario, Online, Codigo, Sala, SalaMenu, Ranking, Pase }
 
         static readonly string[] NombresHabilidad = { "Torpes", "Normales", "Hábiles" };
         static readonly float[] ValoresHabilidad = { 0.25f, 0.55f, 0.85f };
@@ -45,7 +46,7 @@ namespace BichoShow
         /// <summary>Color de cada opción del menú principal.</summary>
         static readonly Color[] ColoresOpciones =
         {
-            EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Oro, EstiloShow.Verde, EstiloShow.Lila, new Color(0.62f, 0.6f, 0.72f),
+            EstiloShow.Rosa, EstiloShow.Cian, EstiloShow.Oro, ColorPase, EstiloShow.Verde, EstiloShow.Lila, new Color(0.62f, 0.6f, 0.72f),
         };
 
         void Start()
@@ -62,6 +63,7 @@ namespace BichoShow
             if (Keyboard.current != null) Keyboard.current.onTextInput += AlEscribir;
             camaraMenu = Camera.main;
             if (camaraMenu != null) camaraGrupo = camaraMenu.GetComponent<CamaraGrupo>();
+            EmpezarResumenPase();
         }
 
         // ---------------------------------------------------------------------
@@ -151,7 +153,7 @@ namespace BichoShow
 
         int NumeroOpciones => pantalla switch
         {
-            Pantalla.Principal => 6,
+            Pantalla.Principal => 7,
             Pantalla.Online => 4,
             Pantalla.SalaMenu => RedShow.EsAnfitrion ? 3 : 2,
             _ => 6,
@@ -195,6 +197,7 @@ namespace BichoShow
             if (Time.unscaledTime < ignorarHasta || PlayerInput.all.Count == 0) return;
             if (pantalla == Pantalla.Vestuario) { ActualizarVestuario(); return; }
             if (pantalla == Pantalla.Ranking) { ActualizarRanking(); return; }
+            if (pantalla == Pantalla.Pase) { ActualizarPase(); return; }
             if (pantalla == Pantalla.Codigo) { ActualizarCodigo(); return; }
             if (pantalla == Pantalla.Sala) { ActualizarSala(); return; }
             if (RedShow.Ocupado) return; // conectando: esperar
@@ -257,9 +260,10 @@ namespace BichoShow
                     case 0: EmpezarShow(); break;
                     case 1: pantalla = Pantalla.Online; seleccion = 0; RedShow.LimpiarAviso(); break;
                     case 2: EntrarVestuario(); break;
-                    case 3: EntrarRanking(); break;
-                    case 4: pantalla = Pantalla.Opciones; seleccion = 0; break;
-                    case 5: Salir(); break;
+                    case 3: EntrarPase(); break;
+                    case 4: EntrarRanking(); break;
+                    case 5: pantalla = Pantalla.Opciones; seleccion = 0; break;
+                    case 6: Salir(); break;
                 }
             }
             else if (pantalla == Pantalla.Online)
@@ -281,7 +285,7 @@ namespace BichoShow
             }
             else
             {
-                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 4; }
+                if (seleccion == OpcionVolver) { pantalla = Pantalla.Principal; seleccion = 5; }
                 else CambiarValor(+1);
             }
         }
@@ -313,7 +317,11 @@ namespace BichoShow
         {
             foreach (var e in new List<PlayerInput>(editandoNombre.Keys)) TerminarNombre(e);
             foreach (var entrada in PlayerInput.all)
+            {
                 if (entrada.TryGetComponent(out AnimadorBicho a)) a.giroExhibicion = 0f;
+                // Lo del pase que aún no es tuyo se ha podido probar, pero no se queda puesto.
+                if (entrada.TryGetComponent(out ControladorBicho bicho)) Vestuario.PonerGuardado(bicho);
+            }
             pantalla = Pantalla.Principal;
             seleccion = 2;
             Sonidos.Reproducir(Sonido.MenuAceptar);
@@ -347,8 +355,8 @@ namespace BichoShow
 
                 if (!listo)
                 {
-                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + 4) % 5; Sonidos.Reproducir(Sonido.MenuMover); }
-                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % 5; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y > 0.6f && antes.y <= 0.6f) { fila = (fila + FilasVestuario - 1) % FilasVestuario; Sonidos.Reproducir(Sonido.MenuMover); }
+                    if (stick.y < -0.6f && antes.y >= -0.6f) { fila = (fila + 1) % FilasVestuario; Sonidos.Reproducir(Sonido.MenuMover); }
                     if (stick.x > 0.6f && antes.x <= 0.6f) CambiarPrenda(entrada, fila, +1);
                     if (stick.x < -0.6f && antes.x >= -0.6f) CambiarPrenda(entrada, fila, -1);
                     filaVestuario[entrada] = fila;
@@ -426,12 +434,23 @@ namespace BichoShow
                 return;
             }
             fila--;
+            if (fila == 3)
+            {
+                // El título (los del pase): sale debajo del nombre.
+                var titulos = Vestuario.TitulosDisponibles();
+                int actual = Mathf.Max(0, titulos.IndexOf(Vestuario.Titulo(entrada.playerIndex)));
+                string nuevo = titulos[(actual + sentido + titulos.Count) % titulos.Count];
+                Vestuario.GuardarTitulo(entrada.playerIndex, nuevo);
+                Sonidos.Reproducir(Sonido.MenuMover, null, 1f, 1.2f, 0f);
+                return;
+            }
             int gorro = v.Gorro, complemento = v.Complemento, cuerpo = v.Cuerpo;
             if (fila == 0) gorro = (gorro + sentido + Vestuario.Gorros.Length) % Vestuario.Gorros.Length;
             else if (fila == 1) complemento = (complemento + sentido + Vestuario.Complementos.Length) % Vestuario.Complementos.Length;
             else cuerpo = (cuerpo + sentido + Vestuario.Cuerpos.Length) % Vestuario.Cuerpos.Length;
             v.Poner(gorro, complemento, cuerpo);
-            Vestuario.Guardar(entrada.playerIndex, gorro, complemento, cuerpo);
+            // Lo del pase sin desbloquear se puede probar, pero no se guarda.
+            if (Vestuario.Libre(gorro, complemento, cuerpo)) Vestuario.Guardar(entrada.playerIndex, gorro, complemento, cuerpo);
             Sonidos.Reproducir(Sonido.Aparecer, entrada.transform.position, 0.8f, 1.2f);
             if (entrada.TryGetComponent(out JugoBicho jugo)) jugo.Aplastar(); // ¡boing! al cambiarse
         }
@@ -457,7 +476,7 @@ namespace BichoShow
             int n = jugadores.Count;
             float hueco = px(18f);
             float ancho = Mathf.Min(px(400f), (w * 0.96f - hueco * (n - 1)) / Mathf.Max(1, n));
-            float alto = px(380f);
+            float alto = px(432f);
             float y = h - alto - px(96f);
             var centros = new float[n];
             for (int k = 0; k < n; k++)
@@ -528,11 +547,14 @@ namespace BichoShow
                     FilaPrenda(new Rect(panel.x + px(14f), filaY + paso, panel.width - px(28f), altoFila), "Bicho",
                                PersonajeBicho.Nombres[Mathf.Clamp(v.Especie, 0, PersonajeBicho.Nombres.Length - 1)], !listo && fila == 1);
                     FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 2f, panel.width - px(28f), altoFila), "Gorro",
-                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 2);
+                               Vestuario.NombresGorros[v.Gorro], !listo && fila == 2, Vestuario.NivelGorro(v.Gorro));
                     FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 3f, panel.width - px(28f), altoFila), "Cara",
-                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 3);
+                               Vestuario.NombresComplementos[v.Complemento], !listo && fila == 3, Vestuario.NivelComplemento(v.Complemento));
                     FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 4f, panel.width - px(28f), altoFila), "Cuerpo",
-                               Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 4);
+                               Vestuario.NombresCuerpos[v.Cuerpo], !listo && fila == 4, Vestuario.NivelCuerpo(v.Cuerpo));
+                    string titulo = Vestuario.Titulo(i);
+                    FilaPrenda(new Rect(panel.x + px(14f), filaY + paso * 5f, panel.width - px(28f), altoFila), "Título",
+                               titulo.Length > 0 ? titulo : "Ninguno", !listo && fila == 5);
                 }
                 var boton = new Rect(panel.x + panel.width * 0.18f, panel.yMax - px(54f), panel.width * 0.64f, px(42f));
                 if (listo) boton = EstiloShow.Escalar(boton, 1.05f + Mathf.Sin(Time.unscaledTime * 6f) * 0.02f);
@@ -548,10 +570,16 @@ namespace BichoShow
                 ("Stick", EstiloShow.GlifoTecla, "elegir y cambiar"), ("Stick der.", EstiloShow.GlifoTecla, "girar"), ("A", EstiloShow.GlifoA, "listo"), ("START", EstiloShow.GlifoTecla, "volver"));
         }
 
-        static void FilaPrenda(Rect r, string etiqueta, string valor, bool elegida)
+        const int FilasVestuario = 6; // nombre, bicho, gorro, cara, cuerpo y título
+
+        /// <summary>Una fila del vestuario. Si es del pase y aún no se tiene, sale en gris con su nivel.</summary>
+        static void FilaPrenda(Rect r, string etiqueta, string valor, bool elegida, int nivelPase = 0)
         {
             int tamano = Mathf.RoundToInt(r.height * 0.46f);
-            EstiloShow.Panel(r, elegida ? EstiloShow.Oro : EstiloShow.MoradoOscuro.WithAlpha(0.6f), r.height * 0.5f, -1f, false);
+            bool bloqueada = nivelPase > 0 && ProgresoPase.Nivel < nivelPase;
+            if (bloqueada) valor = $"{valor} · nivel {nivelPase}";
+            Color fondo = bloqueada ? new Color(0.45f, 0.42f, 0.52f) : elegida ? EstiloShow.Oro : EstiloShow.MoradoOscuro.WithAlpha(0.6f);
+            EstiloShow.Panel(r, fondo, r.height * 0.5f, -1f, false);
             float m = r.height * 0.4f;
             EstiloShow.Texto(new Rect(r.x + m, r.y, r.width * 0.35f, r.height), etiqueta, Mathf.RoundToInt(tamano * 0.8f), Color.white,
                              TextAnchor.MiddleLeft, EstiloShow.Fuente.Texto);
@@ -700,7 +728,7 @@ namespace BichoShow
                     if (accion != null && accion.WasPressedThisFrame())
                     {
                         pantalla = Pantalla.Principal;
-                        seleccion = 3;
+                        seleccion = 4;
                         Sonidos.Reproducir(Sonido.MenuAceptar);
                         return;
                     }
@@ -1218,6 +1246,11 @@ namespace BichoShow
                 DibujarVestuario(w, h);
                 return;
             }
+            if (PlayerInput.all.Count > 0 && pantalla == Pantalla.Pase)
+            {
+                DibujarPase(w, h);
+                return;
+            }
 
             // En el ranking y en el código, un velo detrás (las tablas y las casillas se leen mejor).
             if (PlayerInput.all.Count > 0 && (pantalla == Pantalla.Ranking || pantalla == Pantalla.Codigo)) EstiloShow.FondoPlato(0.55f);
@@ -1256,16 +1289,18 @@ namespace BichoShow
             float alto = px(pantalla == Pantalla.Principal ? 70f : 72f), paso = alto + px(pantalla == Pantalla.Principal ? 14f : 16f);
             float y = h * 0.34f;
             // La tarjeta de detrás de la columna (con hueco para que el elegido se asome).
-            int filas = pantalla == Pantalla.Principal ? 6 : 6;
+            int filas = pantalla == Pantalla.Principal ? 7 : 6;
             var tarjeta = new Rect(x - px(26f), y - px(pantalla == Pantalla.Principal ? 26f : 100f), ancho + px(70f),
                                    paso * filas - px(14f) + px(pantalla == Pantalla.Principal ? 52f : 126f));
             EstiloShow.Panel(tarjeta, EstiloShow.MoradoOscuro.WithAlpha(0.55f), px(40f), -1f, false);
             if (pantalla == Pantalla.Principal)
             {
-                string[] opciones = { "¡Empezar el show!", "Jugar online", "Vestuario", "Ranking", "Opciones", "Salir" };
+                string[] opciones = { "¡Empezar el show!", "Jugar online", "Vestuario", "Pase de temporada", "Ranking", "Opciones", "Salir" };
                 for (int i = 0; i < opciones.Length; i++)
                 {
-                    EstiloShow.BotonMenu(new Rect(x, y, ancho, alto), opciones[i], i == seleccion, tam(40f), ColoresOpciones[i]);
+                    var boton = new Rect(x, y, ancho, alto);
+                    EstiloShow.BotonMenu(boton, opciones[i], i == seleccion, tam(40f), ColoresOpciones[i]);
+                    if (i == 3) InsigniaPase(boton);
                     y += paso;
                 }
             }
@@ -1310,8 +1345,12 @@ namespace BichoShow
                 EstiloShow.Panel(ficha, Color.Lerp(color, EstiloShow.MoradoOscuro, 0.25f).WithAlpha(0.95f), altoFicha * 0.5f);
                 string mando = j.currentControlScheme == "Teclado" ? "Teclado" : "Mando";
                 EstiloShow.Texto(new Rect(ficha.x, ficha.y - px(6f), ficha.width, ficha.height * 0.7f), NombresJugadores.DeLocal(i), tam(estrecha ? 34f : 40f), Color.white);
+                // Debajo del nombre, su título del pase (si lleva) o el mando y el equipo.
+                string tituloFicha = Vestuario.Titulo(i);
+                string linea = tituloFicha.Length > 0 ? tituloFicha
+                             : estrecha ? $"Equipo {(i % 2 == 0 ? "Rojo" : "Azul")}" : $"{mando} · equipo {(i % 2 == 0 ? "Rojo" : "Azul")}";
                 EstiloShow.Texto(new Rect(ficha.x, ficha.y + ficha.height * 0.48f, ficha.width, ficha.height * 0.45f),
-                                 estrecha ? $"Equipo {(i % 2 == 0 ? "Rojo" : "Azul")}" : $"{mando} · equipo {(i % 2 == 0 ? "Rojo" : "Azul")}", tam(estrecha ? 19f : 21f), Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
+                                 linea, tam(estrecha ? 19f : 21f), tituloFicha.Length > 0 ? EstiloShow.Oro : Color.white, TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
             }
             if (jugadores.Count < 4)
             {
@@ -1320,6 +1359,8 @@ namespace BichoShow
                 EstiloShow.Texto(aviso, "¿Más jugadores? ¡Pulsad un botón en otro mando!", tam(25f),
                                  new Color(1f, 1f, 1f, 0.92f), TextAnchor.MiddleCenter, EstiloShow.Fuente.Texto);
             }
+
+            if (pantalla == Pantalla.Principal) DibujarResumenPase(w, h);
 
             // --- Ayuda de botones ---
             EstiloShow.Ayuda(new Rect(0, h - px(86f), w, px(50f)),

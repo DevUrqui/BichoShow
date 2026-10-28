@@ -214,6 +214,9 @@ namespace BichoShow
             string calidad = objeto.Integridad >= 95f ? "¡PERFECTO!" : objeto.Integridad >= 60f ? "¡Bien!" : objeto.Integridad >= 25f ? "Regulín..." : "¿Eso es una tele?";
             Mensaje($"Equipo {e.nombre} entrega {objeto.nombreObjeto} ({Mathf.CeilToInt(objeto.Integridad)}%)  +{puntos}  {calidad}", e.color, 3f);
 
+            foreach (var b in ControladorBicho.Todos)
+                if (b != null && !b.Retirado && EquipoDe(b) == i) EventosPase.Notificar(b, Temporada.Eventos.Entrega);
+
             zona.Celebrar();
             objeto.Entregar();
             if (e.objetoActual == objeto) e.objetoActual = null;

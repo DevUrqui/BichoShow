@@ -44,12 +44,19 @@ COLORES = {
     "Celeste": (0.55, 0.8, 1.0), "BarbaBlanca": (0.96, 0.96, 0.97), "Perla": (0.98, 0.95, 0.92),
     "CintaAzul": (0.2, 0.42, 0.92), "CorbataAzul": (0.2, 0.3, 0.75), "CapaRoja": (0.8, 0.1, 0.18),
     "MochilaVerde": (0.36, 0.62, 0.3), "MascaraAzul": (0.15, 0.45, 0.85),
+    # Pase de temporada 1
+    "CascoAmarillo": (1.0, 0.78, 0.12), "LuzCasco": (1.0, 0.95, 0.65), "Auricular": (1.0, 0.35, 0.62),
+    "GemaRosa": (1.0, 0.35, 0.7), "Lente3DRoja": (0.95, 0.15, 0.2), "Lente3DAzul": (0.2, 0.8, 0.95),
+    "AntifazMorado": (0.42, 0.2, 0.75), "FlotadorPato": (1.0, 0.84, 0.18), "PicoNaranja": (1.0, 0.55, 0.1),
+    "GuitarraRoja": (0.85, 0.2, 0.18), "MaderaMastil": (0.5, 0.3, 0.16), "AlaMariposa": (0.62, 0.42, 1.0),
+    "AlaMancha": (1.0, 0.85, 0.3),
     # Solo para el probador (no se exporta)
     "ManiquiPiel": (1.0, 0.42, 0.36), "ManiquiCaparazon": (0.82, 0.18, 0.2), "ManiquiOjo": (0.98, 0.98, 0.98),
     "ManiquiPupila": (0.07, 0.07, 0.09), "ManiquiBarriga": (1.0, 0.93, 0.78),
 }
 crear_materiales(COLORES, brillantes=("Oro", "GemaRoja", "GemaAzul", "CristalOscuro", "CristalClaro", "NarizPayaso", "Negro",
-                                      "CristalRosa", "Perla", "Yema", "SetaRoja", "Celeste"))
+                                      "CristalRosa", "Perla", "Yema", "SetaRoja", "Celeste", "GemaRosa", "Lente3DRoja",
+                                      "Lente3DAzul", "GuitarraRoja", "CascoAmarillo"))
 
 objetos = []
 
@@ -340,11 +347,123 @@ for s in (-1, 1):
     p.tubo((0.17 * s, 1.0, 0.24), (0.2 * s, 0.98, -0.2), 0.025, "LanaCrema", segmentos=6)          # asas
 objetos.append(p.crear(bisel=0.04))
 
+# ---------------------------------------------------------------------------
+# Pase de temporada 1 (se desbloquean subiendo de nivel)
+# ---------------------------------------------------------------------------
+
+p = Pieza("CascoObra")                                                        # casco de obra con linterna
+p.esfera((0, 0, 0.0), (0.3, 0.32, 0.25), "CascoAmarillo", segmentos=28, anillos=14)
+p.esfera((0, -0.2, 0.01), (0.27, 0.16, 0.025), "CascoAmarillo", segmentos=24, anillos=8)       # visera
+p.caja((0, 0.0, 0.21), (0.07, 0.5, 0.07), "CascoAmarillo", rotacion=(0, 0, 0))                 # cresta
+p.cilindro((0, -0.29, 0.1), 0.065, 0.07, "Negro", rotacion=(90, 0, 0), segmentos=16)          # linterna
+p.cilindro((0, -0.33, 0.1), 0.05, 0.02, "LuzCasco", rotacion=(90, 0, 0), segmentos=16)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Auriculares")                                                      # cascos de DJ
+arco = [(0.5 * math.cos(math.radians(a)), 0.0, -0.3 + 0.52 * math.sin(math.radians(a))) for a in range(0, 181, 15)]
+for a, b in zip(arco, arco[1:]):
+    p.tubo(a, b, 0.035, "Negro", segmentos=8)                                           # diadema por encima
+for s in (-1, 1):
+    p.cilindro((0.5 * s, 0, -0.3), 0.14, 0.12, "Negro", rotacion=(0, 90, 0), segmentos=24)
+    p.cilindro((0.57 * s, 0, -0.3), 0.105, 0.04, "Auricular", rotacion=(0, 90, 0), segmentos=24)
+    p.esfera((0.6 * s, 0, -0.3), (0.02, 0.05, 0.05), "Blanco", segmentos=10, anillos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("GorroCohete")                                                      # gorro cohete
+p.cilindro((0, 0, 0.03), 0.2, 0.06, "CintaRoja", segmentos=24)
+p.cilindro((0, 0, 0.22), 0.17, 0.34, "Blanco", segmentos=24)
+p.cilindro((0, 0, 0.49), 0.17, 0.22, "CintaRoja", radio_arriba=0.0, segmentos=24)               # punta
+p.toro((0, -0.165, 0.25), 0.06, 0.015, "Acero", rotacion=(90, 0, 0), segmentos=18, segmentos_tubo=6)
+p.esfera((0, -0.17, 0.25), (0.055, 0.012, 0.055), "CristalClaro", segmentos=14, anillos=6)    # ventanilla
+for a in (0, 120, 240):
+    d = (math.sin(math.radians(a)), math.cos(math.radians(a)))
+    p.caja((0.2 * d[0], 0.2 * d[1], 0.1), (0.04, 0.12, 0.16), "CintaRoja", rotacion=(0, 0, -a))   # aletas
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Tiara")                                                            # tiara con una estrella
+p.toro((0, 0, 0.02), 0.25, 0.022, "Oro", segmentos=32, segmentos_tubo=8)
+for a in range(0, 360, 72):
+    p.caja((0, -0.27, 0.2), (0.025, 0.02, 0.24), "Oro", rotacion=(0, a, 0))                   # estrella
+p.esfera((0, -0.285, 0.2), (0.05, 0.02, 0.05), "GemaRosa", segmentos=14, anillos=8)
+for s in (-1, 1):
+    p.esfera((0.15 * s, -0.2, 0.07), (0.035, 0.02, 0.035), "GemaAzul", segmentos=10, anillos=6)
+    p.tubo((0.07 * s, -0.25, 0.03), (0.04 * s, -0.27, 0.11), 0.015, "Oro", segmentos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Gafas3D")                                                          # gafas 3D de cartón
+p.caja((0, -0.01, 0.0), (0.64, 0.03, 0.22), "Blanco")
+for s, lente in ((-1, "Lente3DRoja"), (1, "Lente3DAzul")):
+    p.caja((0.17 * s, -0.03, 0.0), (0.22, 0.02, 0.14), lente)
+    p.tubo((0.31 * s, 0.0, 0.03), (0.36 * s, 0.25, 0.04), 0.014, "Blanco", segmentos=6)
+objetos.append(p.crear(bisel=0.01))
+
+p = Pieza("BigoteRizado")                                                     # bigote de manillar
+for s in (-1, 1):
+    p.esfera((0.09 * s, -0.065, -0.17), (0.11, 0.04, 0.035), "Bigote", rotacion=(0, -10 * s, 0), segmentos=14, anillos=8)
+    p.tubo((0.18 * s, -0.065, -0.17), (0.27 * s, -0.055, -0.11), 0.026, "Bigote", radio_final=0.016, segmentos=8)
+    p.toro((0.29 * s, -0.055, -0.07), 0.035, 0.013, "Bigote", rotacion=(90, 0, 0), segmentos=14, segmentos_tubo=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Antifaz")                                                          # antifaz de superhéroe
+for s in (-1, 1):
+    p.toro((0.17 * s, -0.02, 0.0), 0.15, 0.045, "AntifazMorado", rotacion=(90, 0, 0), segmentos=24, segmentos_tubo=8)
+    p.tubo((0.31 * s, 0.0, 0.02), (0.44 * s, 0.3, -0.1), 0.025, "AntifazMorado", radio_final=0.012, segmentos=8)   # cintas
+p.caja((0, -0.03, 0.03), (0.12, 0.04, 0.08), "AntifazMorado")
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("GafasEstrella")                                                    # gafas con forma de estrella
+for s in (-1, 1):
+    for a in range(0, 360, 72):
+        p.caja((0.17 * s, -0.02, 0.0), (0.06, 0.02, 0.28), "Oro", rotacion=(0, a, 0))
+        p.caja((0.17 * s, -0.035, 0.0), (0.04, 0.02, 0.22), "CristalRosa", rotacion=(0, a, 0))
+    p.tubo((0.31 * s, 0.0, 0.03), (0.36 * s, 0.25, 0.04), 0.012, "Oro", segmentos=6)
+p.tubo((-0.06, -0.02, 0.04), (0.06, -0.02, 0.04), 0.014, "Oro", segmentos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Flotador")                                                         # flotador de pato a la cintura
+p.toro((CUELLO[0], CUELLO[1], -0.12), 0.56, 0.11, "FlotadorPato", segmentos=36, segmentos_tubo=12,
+       rayas=("FlotadorPato", "Blanco", 8))
+p.esfera((0, -0.2, 0.06), (0.11, 0.1, 0.11), "FlotadorPato", segmentos=16, anillos=10)          # cabeza del pato
+p.caja((0, -0.31, 0.04), (0.08, 0.08, 0.04), "PicoNaranja")
+for s in (-1, 1):
+    p.esfera((0.05 * s, -0.27, 0.1), (0.02, 0.012, 0.02), "Negro", segmentos=8, anillos=5)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Guitarra")                                                         # guitarra a la espalda
+p.esfera((0.05, 1.08, -0.2), (0.24, 0.07, 0.22), "GuitarraRoja", segmentos=24, anillos=10)      # caja (abajo)
+p.esfera((0.03, 1.08, 0.04), (0.18, 0.065, 0.16), "GuitarraRoja", segmentos=22, anillos=10)     # caja (arriba)
+p.esfera((0.04, 1.14, -0.06), (0.06, 0.015, 0.06), "Negro", segmentos=14, anillos=6)            # boca
+p.tubo((0.02, 1.09, 0.15), (-0.22, 1.06, 0.62), 0.035, "MaderaMastil", segmentos=8)            # mástil
+p.caja((-0.25, 1.06, 0.69), (0.1, 0.05, 0.14), "MaderaMastil", rotacion=(0, -27, 0))           # pala
+p.tubo((-0.36, 0.05, 0.3), (0.38, 0.08, -0.22), 0.022, "Negro", segmentos=6)                  # correa por delante
+p.tubo((0.38, 0.08, -0.22), (0.3, 1.0, -0.3), 0.022, "Negro", segmentos=6)
+p.tubo((-0.36, 0.05, 0.3), (-0.12, 1.02, 0.3), 0.022, "Negro", segmentos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Banda")                                                            # banda de campeón cruzada
+for z, giro_x in ((0.24, -18), (0.0, 0), (-0.24, 18)):
+    x = -z * 0.65
+    p.caja((x, -0.05 + abs(z) * 0.2, z), (0.17, 0.025, 0.3), "CapaRoja", rotacion=(giro_x, -33, 0))
+    p.caja((x, -0.065 + abs(z) * 0.2, z), (0.03, 0.02, 0.3), "Oro", rotacion=(giro_x, -33, 0))
+p.cilindro((0.2, -0.08, -0.26), 0.08, 0.03, "Oro", rotacion=(90, 0, 0), segmentos=20)           # escarapela
+p.esfera((0.2, -0.1, -0.26), (0.045, 0.012, 0.045), "CapaRoja", segmentos=12, anillos=6)
+objetos.append(p.crear(bisel=0.0))
+
+p = Pieza("Alas")                                                             # alas de mariposa a la espalda
+for s in (-1, 1):
+    p.esfera((0.4 * s, 1.1, 0.25), (0.34, 0.03, 0.3), "AlaMariposa", rotacion=(0, -20 * s, 0), segmentos=24, anillos=10)
+    p.esfera((0.32 * s, 1.08, -0.18), (0.24, 0.03, 0.2), "AlaMariposa", rotacion=(0, 25 * s, 0), segmentos=20, anillos=8)
+    p.esfera((0.46 * s, 1.13, 0.3), (0.1, 0.02, 0.09), "AlaMancha", segmentos=14, anillos=6)
+    p.esfera((0.34 * s, 1.11, -0.2), (0.07, 0.02, 0.06), "AlaMancha", segmentos=12, anillos=6)
+p.esfera((0, 1.02, 0.05), (0.06, 0.05, 0.2), "Negro", segmentos=12, anillos=8)                   # donde se juntan
+objetos.append(p.crear(bisel=0.0))
+
 exportar(objetos, RUTA_FBX, RUTA_BLEND)
 
 vistas(objetos, CARPETA_VISTAS, "vestuario", [
     ("gorros", ["Corona", "Gorra", "Chistera", "GorroFiesta", "Vikingo", "GorroHelice", "HeliceAspas", "Flor"], 0.25, (0, -5, 1.6), (0, 0, 0.15)),
     ("gorros2", ["GorroChef", "Vaquero", "Bruja", "GorroLana", "OrejasConejo", "Seta", "HuevoFrito", "Aureola", "Pirata"], 0.25, (0, -6, 1.8), (0, 0, 0.2)),
+    ("pase", ["CascoObra", "Auriculares", "GorroCohete", "Tiara", "Gafas3D", "BigoteRizado", "Antifaz", "GafasEstrella"], 0.3, (0, -6, 1.2), (0, 0, 0.05)),
     ("cara", ["GafasSol", "GafasRedondas", "Bigote", "NarizPayaso", "GafasCorazon", "Monoculo", "ParcheOjo", "GafasBucear", "Barba", "Chupete"], 0.3, (0, -6, 0.6), (0, 0, -0.1)),
 ], color_fondo=(0.86, 0.85, 0.92))
 
@@ -378,6 +497,11 @@ CONJUNTOS = [
     ("bebe", "HuevoFrito", "Chupete", "Medalla"),
     ("santo", "Aureola", "Monoculo", "Pajarita"),
     ("seta", "Seta", "NarizPayaso", "Capa"),
+    # Pase de temporada 1
+    ("pase_obra", "CascoObra", "BigoteRizado", "Flotador"),
+    ("pase_dj", "Auriculares", "Gafas3D", "Guitarra"),
+    ("pase_cohete", "GorroCohete", "Antifaz", "Banda"),
+    ("pase_estrella", "Tiara", "GafasEstrella", "Alas"),
 ]
 
 if CARPETA_VISTAS:

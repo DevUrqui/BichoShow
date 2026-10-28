@@ -223,6 +223,7 @@ namespace BichoShow
                         ControladorBicho.EntradaBloqueada = true;
                         if (Estado == EstadoShow.Final)
                         {
+                            PremiarShow();
                             Sonidos.Reproducir(Sonido.Victoria);
                             Sonidos.Reproducir(Sonido.Aplausos);
                         }
@@ -324,6 +325,17 @@ namespace BichoShow
 
                 estrellasRonda[i] = ganadas * mult;
                 estrellas[i] += estrellasRonda[i];
+
+                // Para el pase de temporada (EventosPase se queda solo con el jugador 1 de cada ordenador).
+                if (esHumano[i])
+                {
+                    var b = EventosPase.BichoDe(i);
+                    EventosPase.Notificar(b, Temporada.Eventos.Ronda);
+                    EventosPase.Notificar(b, Temporada.Eventos.Estrellas, estrellasRonda[i]);
+                    if (ganadas >= 3) EventosPase.Notificar(b, Temporada.Eventos.Victoria);
+                    if (sabotaje.TryGetValue(i, out int puntosPase) && puntosPase >= 25) EventosPase.Notificar(b, Temporada.Eventos.Sabotaje);
+                    if (programa[RondaActual].esFinal) EventosPase.Notificar(b, Temporada.Eventos.Final);
+                }
             }
 
             saboteadorSiguiente = ElegirSaboteadorSiguiente();
@@ -332,6 +344,22 @@ namespace BichoShow
             Estadisticas.Texto($"Estrellas tras {programa[RondaActual].nombre}: {string.Join(" · ", tabla)}" + (string.IsNullOrEmpty(resumenSabotaje) ? "" : $" · {resumenSabotaje}"));
             Estado = EstadoShow.Resultado;
             inicioEstado = Time.time;
+        }
+
+        /// <summary>Al acabar el show, para el pase: haberlo jugado entero y, el que más estrellas tenga, ganarlo.</summary>
+        void PremiarShow()
+        {
+            int mejor = -1;
+            for (int i = 0; i < 4; i++) if (participa[i] && (mejor < 0 || estrellas[i] > estrellas[mejor])) mejor = i;
+            bool empate = mejor >= 0 && Enumerable.Range(0, 4).Count(i => participa[i] && estrellas[i] == estrellas[mejor]) > 1;
+            for (int i = 0; i < 4; i++)
+            {
+                if (!esHumano[i]) continue;
+                var b = EventosPase.BichoDe(i);
+                EventosPase.Notificar(b, Temporada.Eventos.Show);
+                if (i == mejor && !empate) EventosPase.Notificar(b, Temporada.Eventos.GanaShow);
+            }
+            ProgresoPase.Subir();
         }
 
         /// <summary>Quién está en el show: los humanos y, si hay bots, los huecos hasta 4.</summary>

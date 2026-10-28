@@ -137,6 +137,8 @@ MonoBehaviour:
   factorGolpeBicho: 0.6
   invulnerableAlAparecer: 2
   rozamiento: 0.35
+  portadoresNecesarios: 2
+  velocidadPocosPortadores: 1.2
   modelo: {fileID: 733794660564609478}
   renderersDano:
   - {fileID: 2204869104981516402}

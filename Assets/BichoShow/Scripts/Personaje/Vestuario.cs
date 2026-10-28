@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BichoShow
@@ -15,31 +16,40 @@ namespace BichoShow
         {
             "", "Corona", "Gorra", "Chistera", "GorroFiesta", "Vikingo", "GorroHelice", "Flor",
             "GorroChef", "Vaquero", "Bruja", "GorroLana", "OrejasConejo", "Seta", "HuevoFrito", "Aureola", "Pirata",
+            // Pase de temporada 1
+            "CascoObra", "Auriculares", "GorroCohete", "Tiara",
         };
         public static readonly string[] NombresGorros =
         {
             "Sin gorro", "Corona", "Gorra", "Chistera", "Gorro de fiesta", "Casco vikingo", "Gorro con hélice", "Flor",
             "Gorro de chef", "Sombrero vaquero", "Sombrero de bruja", "Gorro de lana", "Orejas de conejo", "Seta", "Huevo frito", "Aureola", "Sombrero pirata",
+            "Casco de obra", "Cascos de DJ", "Gorro cohete", "Tiara de estrella",
         };
         /// <summary>Lo de la cara (delante de los ojos).</summary>
         public static readonly string[] Complementos =
         {
             "", "GafasSol", "GafasRedondas", "Bigote", "NarizPayaso",
             "GafasCorazon", "Monoculo", "ParcheOjo", "GafasBucear", "Barba", "Chupete",
+            // Pase de temporada 1
+            "Gafas3D", "BigoteRizado", "Antifaz", "GafasEstrella",
         };
         public static readonly string[] NombresComplementos =
         {
             "Nada", "Gafas de sol", "Gafas redondas", "Bigote", "Nariz de payaso",
             "Gafas de corazón", "Monóculo", "Parche pirata", "Gafas de bucear", "Barba de mago", "Chupete",
+            "Gafas 3D", "Bigote rizado", "Antifaz", "Gafas de estrella",
         };
         /// <summary>Lo del cuerpo (pecho y espalda).</summary>
         public static readonly string[] Cuerpos =
         {
             "", "Pajarita", "Medalla", "CollarPerlas", "Babero", "Corbata", "Bufanda", "Capa", "Mochila",
+            // Pase de temporada 1
+            "Flotador", "Guitarra", "Banda", "Alas",
         };
         public static readonly string[] NombresCuerpos =
         {
             "Nada", "Pajarita", "Medalla de oro", "Collar de perlas", "Babero", "Corbata", "Bufanda", "Capa", "Mochila",
+            "Flotador de pato", "Guitarra", "Banda de campeón", "Alas de mariposa",
         };
 
         [Header("Anclajes (los pone la herramienta del personaje)")]
@@ -157,6 +167,38 @@ namespace BichoShow
         static string ClaveComplemento(int jugador) => $"BichoShow.Vestuario.Complemento{jugador}";
         static string ClaveCuerpo(int jugador) => $"BichoShow.Vestuario.Cuerpo{jugador}";
         static string ClaveEspecie(int jugador) => $"BichoShow.Vestuario.Especie{jugador}";
+        static string ClaveTitulo(int jugador) => $"BichoShow.Vestuario.Titulo{jugador}";
+
+        // --- Lo del pase: nivel con el que se desbloquea (0 = siempre libre) ---
+
+        public static int NivelGorro(int i) => Temporada.NivelDe(Temporada.Tipo.Gorro, Gorros[Mathf.Clamp(i, 0, Gorros.Length - 1)]);
+        public static int NivelComplemento(int i) => Temporada.NivelDe(Temporada.Tipo.Cara, Complementos[Mathf.Clamp(i, 0, Complementos.Length - 1)]);
+        public static int NivelCuerpo(int i) => Temporada.NivelDe(Temporada.Tipo.Cuerpo, Cuerpos[Mathf.Clamp(i, 0, Cuerpos.Length - 1)]);
+        static bool Libre(int nivel) => nivel == 0 || ProgresoPase.Nivel >= nivel;
+        public static bool Libre(int gorro, int complemento, int cuerpo) =>
+            Libre(NivelGorro(gorro)) && Libre(NivelComplemento(complemento)) && Libre(NivelCuerpo(cuerpo));
+
+        /// <summary>Títulos que se pueden poner: ninguno y los ganados en el pase.</summary>
+        public static List<string> TitulosDisponibles()
+        {
+            var lista = new List<string> { "" };
+            foreach (var p in Temporada.Premios)
+                if (p.tipo == Temporada.Tipo.Titulo && ProgresoPase.Nivel >= p.nivel) lista.Add(p.id);
+            return lista;
+        }
+
+        /// <summary>El título que lleva un jugador de este ordenador (vacío si ninguno o si ya no es suyo).</summary>
+        public static string Titulo(int jugador)
+        {
+            string t = PlayerPrefs.GetString(ClaveTitulo(jugador), "");
+            return t.Length > 0 && ProgresoPase.Desbloqueado(Temporada.Tipo.Titulo, t) ? t : "";
+        }
+
+        public static void GuardarTitulo(int jugador, string titulo)
+        {
+            PlayerPrefs.SetString(ClaveTitulo(jugador), titulo ?? "");
+            PlayerPrefs.Save();
+        }
 
         public static void GuardarEspecie(int jugador, int especie)
         {
@@ -178,7 +220,12 @@ namespace BichoShow
             if (bicho == null || !bicho.TryGetComponent(out Vestuario v)) return;
             int i = bicho.IndiceJugador;
             v.PonerEspecie(PlayerPrefs.GetInt(ClaveEspecie(i), 0));
-            v.Poner(PlayerPrefs.GetInt(ClaveGorro(i), 0), PlayerPrefs.GetInt(ClaveComplemento(i), 0), PlayerPrefs.GetInt(ClaveCuerpo(i), 0));
+            int gorro = PlayerPrefs.GetInt(ClaveGorro(i), 0), complemento = PlayerPrefs.GetInt(ClaveComplemento(i), 0), cuerpo = PlayerPrefs.GetInt(ClaveCuerpo(i), 0);
+            // Lo del pase, solo si está desbloqueado (otra cuenta, otra temporada…).
+            if (!Libre(NivelGorro(gorro))) gorro = 0;
+            if (!Libre(NivelComplemento(complemento))) complemento = 0;
+            if (!Libre(NivelCuerpo(cuerpo))) cuerpo = 0;
+            v.Poner(gorro, complemento, cuerpo);
         }
 
         /// <summary>Viste a un bot al azar (casi siempre con algo puesto).</summary>
@@ -186,9 +233,20 @@ namespace BichoShow
         {
             if (bicho == null || !bicho.TryGetComponent(out Vestuario v)) return;
             v.PonerEspecie(Random.Range(0, PersonajeBicho.Especies.Length));
-            v.Poner(Random.value < 0.85f ? Random.Range(1, Gorros.Length) : 0,
-                    Random.value < 0.55f ? Random.Range(1, Complementos.Length) : 0,
-                    Random.value < 0.5f ? Random.Range(1, Cuerpos.Length) : 0);
+            // Los bots, con la ropa de siempre: lo del pase es de quien lo gana.
+            v.Poner(Random.value < 0.85f ? AlAzarLibre(Gorros.Length, NivelGorro) : 0,
+                    Random.value < 0.55f ? AlAzarLibre(Complementos.Length, NivelComplemento) : 0,
+                    Random.value < 0.5f ? AlAzarLibre(Cuerpos.Length, NivelCuerpo) : 0);
+        }
+
+        static int AlAzarLibre(int cuantos, System.Func<int, int> nivel)
+        {
+            for (int intento = 0; intento < 20; intento++)
+            {
+                int i = Random.Range(1, cuantos);
+                if (nivel(i) == 0) return i;
+            }
+            return 0;
         }
     }
 }

@@ -39,7 +39,7 @@ namespace BichoShow
         const string MensajeMando = "BS.Mando", MensajeEstado = "BS.Estado", MensajeEvento = "BS.Evento";
         const string MensajeEscena = "BS.Escena", MensajeListo = "BS.Listo", MensajeCambios = "BS.Cambios",
                      MensajeMovimientos = "BS.Mov", MensajePantalla = "BS.Pantalla", MensajeAvisos = "BS.Avisos",
-                     MensajeHola = "BS.Hola", MensajeTiempo = "BS.Tiempo";
+                     MensajeHola = "BS.Hola", MensajeTiempo = "BS.Tiempo", MensajePase = "BS.Pase";
         const byte EventoAccion = 0, EventoGolpe = 1, EventoReaparecer = 2;
 
         public static Modo ModoActual { get; private set; }
@@ -322,20 +322,12 @@ namespace BichoShow
             return instancia;
         }
 
-        /// <summary>Unity Services y la sesión anónima (para salas y para el ranking mundial).</summary>
-        public static async Task IniciarServicios()
-        {
-            if (UnityServices.State == ServicesInitializationState.Uninitialized)
-            {
-                // Un perfil distinto en cada ejecución: así dos copias del juego en el mismo PC
-                // (o los jugadores virtuales de Multiplayer Play Mode) son jugadores distintos.
-                var opciones = new InitializationOptions().SetProfile("j" + Guid.NewGuid().ToString("N").Substring(0, 20));
-                await UnityServices.InitializeAsync(opciones);
-            }
-            while (UnityServices.State == ServicesInitializationState.Initializing) await Task.Yield();
-            if (!AuthenticationService.Instance.IsSignedIn)
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
-        }
+        /// <summary>
+        /// Unity Services y la sesión (para salas y para el ranking mundial). La lleva Cuenta: la
+        /// primera copia del ordenador entra con la cuenta guardada; las demás, como invitados
+        /// nuevos (así dos copias en el mismo PC son jugadores distintos).
+        /// </summary>
+        public static Task IniciarServicios() => Cuenta.Iniciar();
 
         static string Explicar(Exception e)
         {
@@ -463,6 +455,7 @@ namespace BichoShow
             mensajes.RegisterNamedMessageHandler(MensajeAvisos, RecibirAvisos);
             mensajes.RegisterNamedMessageHandler(MensajeHola, RecibirHola);
             mensajes.RegisterNamedMessageHandler(MensajeTiempo, RecibirTiempo);
+            mensajes.RegisterNamedMessageHandler(MensajePase, RecibirPase);
             manejadores = true;
         }
 
@@ -587,6 +580,26 @@ namespace BichoShow
             r.ReadValueSafe(out float segundos);
             r.ReadValueSafe(out FixedString32Bytes bicho);
             RankingTiempos.Apuntar(carrera.ToString(), NombresJugadores.DeLocal(local), segundos, bicho.ToString());
+        }
+
+        /// <summary>En el anfitrión: al ordenador de un jugador de fuera, algo que cuenta para su pase.</summary>
+        public static void EnviarPase(ulong cliente, string evento, int cantidad)
+        {
+            var red = instancia != null ? instancia.red : null;
+            if (!EsAnfitrion || red == null || !red.IsListening) return;
+            using var w = new FastBufferWriter(48, Allocator.Temp);
+            w.WriteValueSafe(new FixedString32Bytes(evento));
+            w.WriteValueSafe(cantidad);
+            red.CustomMessagingManager.SendNamedMessage(MensajePase, cliente, w, NetworkDelivery.ReliableSequenced);
+        }
+
+        void RecibirPase(ulong de, FastBufferReader r)
+        {
+            if (!EsInvitado) return;
+            r.ReadValueSafe(out FixedString32Bytes evento);
+            r.ReadValueSafe(out int cantidad);
+            ProgresoPase.Evento(evento.ToString(), cantidad);
+            if (evento.ToString() == Temporada.Eventos.Show) ProgresoPase.Subir();
         }
 
         bool PrepararDestinos()

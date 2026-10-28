@@ -23,6 +23,7 @@ namespace BichoShow
         /// </summary>
         protected void ApuntarTiempo(ControladorBicho b)
         {
+            if (b != null) EventosPase.Notificar(b, Temporada.Eventos.Meta);
             if (IdRanking == null || b == null || b.EsBot) return;
             float segundos = Time.time - InicioJugando;
             string nombre = NombreJugador(b);
