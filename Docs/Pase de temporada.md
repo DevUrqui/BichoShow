@@ -82,16 +82,15 @@ Se ven puestas en `Arte/Blender/vistas/probador_pase_*.png` y en `vestuario_pase
 - El progreso se guarda en este ordenador, para jugar sin conexión, y en la nube, con **Cloud Save**. Si las dos copias no coinciden, gana la que tiene más XP.
 - Si abres **dos copias** del juego en el mismo ordenador (para probar el online), solo la primera recuerda la sesión. La otra entra cada vez como un invitado nuevo.
 
-### Activar el inicio de sesión (una vez)
+### Inicio de sesión: ya activado
 
-Cloud Save ya funciona. Para que funcione el botón de iniciar sesión hay que darle a Unity el permiso de las cuentas:
+Está configurado y probado: el 30/10/2026 se entró con Google desde el editor. El *Client ID* de **Unity Player Accounts** está guardado en `Assets/Resources/UnityPlayerAccountSettings.asset`. No es secreto: solo identifica al juego ante Unity.
 
-1. En Unity: **Edit → Project Settings → Services → Authentication**.
-2. En **Identity Providers**, añade **Unity Player Accounts**. Unity crea la configuración y rellena solo el *Client ID* en `Assets/Resources/UnityPlayerAccountSettings.asset`. Ahora mismo está vacío.
-3. En [cloud.unity.com](https://cloud.unity.com), en tu proyecto, mira los ajustes de **Unity Player Accounts**. Comprueba que **Google** está entre las formas de entrar.
-4. Prueba: **Play → Pase de temporada → A**. Se abre el navegador, entras con Google, vuelves al juego y pone «Sesión iniciada».
-
-Si falta el paso 2, el juego avisa: «Faltan por activar las cuentas de Unity en el proyecto».
+Si algún día hay que rehacerlo (otro proyecto de Unity Cloud, por ejemplo):
+1. En [cloud.unity.com](https://cloud.unity.com), en el proyecto: **Player Authentication → Identity providers → Add identity provider → Unity Player Accounts**.
+   - **No** elijas «Google»: ese pide un Client ID de Google Cloud y es otro sistema.
+   - La página de la cuenta de Unity ya trae el botón de entrar con Google.
+2. En Unity: **Edit → Project Settings → Services → Authentication → Refresh**. Luego, en **Services → Unity Player Accounts**, el Client ID tiene que salir relleno.
 
 ## Cambiar de temporada
 
